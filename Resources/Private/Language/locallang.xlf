@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="en" datatype="plaintext" original="EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf" date="2026-08-11T00:00:00Z" product-name="modern_extbase_frontend_edit">
+        <header/>
+        <body>
+            <!--
+                Plugin registration. These two pairs are backend labels and
+                would usually sit in "locallang_db.xlf"; they live here so that
+                the whole plugin surface — its name in the content element
+                wizard and every string its templates render — is described in
+                one file.
+            -->
+            <trans-unit id="plugin.list.title">
+                <source>Profiles: list</source>
+            </trans-unit>
+            <trans-unit id="plugin.list.description">
+                <source>Lists the profiles of the configured storage page. Each entry links to the detail page, and to the edit page for profiles the logged-in website user owns.</source>
+            </trans-unit>
+            <trans-unit id="plugin.show.title">
+                <source>Profiles: detail</source>
+            </trans-unit>
+            <trans-unit id="plugin.show.description">
+                <source>Renders one profile with its addresses, e-mail addresses and image. The profile is selected by the link the list plugin renders.</source>
+            </trans-unit>
+
+            <!-- List plugin. -->
+            <trans-unit id="list.heading">
+                <source>Profiles</source>
+            </trans-unit>
+            <trans-unit id="list.empty">
+                <source>No profiles available.</source>
+            </trans-unit>
+
+            <!--
+                Link labels. Both are rendered by partials that are shared
+                between the plugins, so they carry no plugin name.
+            -->
+            <trans-unit id="link.show">
+                <source>View profile</source>
+            </trans-unit>
+            <trans-unit id="link.edit">
+                <source>Edit profile</source>
+            </trans-unit>
+
+            <!--
+                Profile labels, shared by both plugins. The keys are flat rather
+                than prefixed per plugin, because the partials that render them
+                are used by the list and by the detail template alike and must
+                not know which one called them.
+
+                The labels of the address and e-mail *types* are deliberately
+                not repeated here: those are select item labels and are already
+                translated in "locallang_db.xlf", keyed
+                "tx_modernextbasefrontendedit_domain_model_address.type.<value>"
+                and "…_email.type.<value>".
+            -->
+            <trans-unit id="profile.image.alt">
+                <source>Portrait of %s</source>
+            </trans-unit>
+            <trans-unit id="profile.birthday">
+                <source>Birthday</source>
+            </trans-unit>
+            <trans-unit id="profile.bio">
+                <source>Biography</source>
+            </trans-unit>
+            <trans-unit id="profile.addresses">
+                <source>Addresses</source>
+            </trans-unit>
+            <trans-unit id="profile.emails">
+                <source>E-mail addresses</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

@@ -1,0 +1,42 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/EmailList
+
+    The email addresses of a profile, including their section heading. Renders
+    nothing when the collection is empty, so a caller never has to ask.
+
+    Arguments
+        emails   iterable of Domain\Model\Email   required
+                 Pass profile.emails. The iteration order is the manual sorting
+                 order, because the ObjectStorage is returned live.
+
+    f:link.email rather than a hand written mailto href: it honours the
+    spamProtectEmailAddresses configuration of the installation, which a literal
+    href would bypass.
+
+    The type label is looked up dynamically in the database label file - see
+    Profile/AddressList for why.
+</f:comment>
+<f:if condition="{emails}">
+    <section class="modern-extbase-frontend-edit-profile-emails">
+        <h3><f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.emails" /></h3>
+
+        <ul>
+            <f:for each="{emails}" as="email">
+                <li>
+                    <span class="modern-extbase-frontend-edit-profile-type">
+                        <f:translate
+                            key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf:tx_modernextbasefrontendedit_domain_model_email.type.{email.type}"
+                            default="{email.type}"
+                        />
+                    </span>
+                    <f:link.email email="{email.email}" />
+                </li>
+            </f:for>
+        </ul>
+    </section>
+</f:if>
+</html>

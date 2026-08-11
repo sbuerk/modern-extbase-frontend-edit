@@ -1,0 +1,41 @@
+# Settings definitions of the site set.
+#
+# The keys are prefixed with the compact extension key rather than with a hand
+# written camel cased name, for two reasons: it is the same token the Extbase
+# TypoScript namespace "plugin.tx_modernextbasefrontendedit" is built from
+# (`FrontendConfigurationManager.php:140`), and it is one of the identifiers the
+# repository initialization rewrites, so a repository created from this template
+# does not keep a stale prefix.
+#
+# Labels and descriptions live in "labels.xlf" next to this file, keyed
+# "settings.<key>" and "settings.description.<key>".
+#
+# Every setting becomes a TypoScript constant of exactly this key
+# (`SysTemplateTreeBuilder::addDefaultTypoScriptConstantsFromSite()`), and
+# "setup.typoscript" of this set maps them onto the plugin configuration.
+categories:
+  modernextbasefrontendedit: ~
+
+settings:
+  # A comma separated page uid list, not a page picker: Extbase accepts a list
+  # here and expands it with GeneralUtility::intExplode() in
+  # `QueryFactory::create()`. Note that there is no "everywhere" value — an
+  # empty configuration becomes the page id list [0], and profiles do not live
+  # on the root level, so an unconfigured plugin lists nothing.
+  modernextbasefrontendedit.persistence.storagePid:
+    default: '0'
+    type: string
+    category: modernextbasefrontendedit
+
+  modernextbasefrontendedit.showPageUid:
+    default: 0
+    type: page
+    category: modernextbasefrontendedit
+
+  # The edit plugin is a later change. The list plugin links to this page and
+  # does not assume the plugin is there; while this is 0 no edit link is
+  # rendered at all.
+  modernextbasefrontendedit.editPageUid:
+    default: 0
+    type: page
+    category: modernextbasefrontendedit

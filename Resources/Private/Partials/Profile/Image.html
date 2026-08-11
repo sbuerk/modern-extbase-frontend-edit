@@ -1,0 +1,43 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/Image
+
+    Renders the profile image, or nothing at all when there is none.
+
+    Arguments
+        image             Domain\Model\ProfileImage or NULL   required
+                          The read side value object, Profile.profileImage.
+                          NULL and a value object without a public URL both
+                          render nothing.
+        alternativeText   string                              required
+                          Alternative text used when the file reference itself
+                          carries no alternative text. Profile/Card passes the
+                          translated "profile.image.alt" label.
+
+    No f:image here on purpose. ProfileImage exposes scalars only, which is what
+    the read side of this extension speaks; f:image would need the Extbase file
+    reference and would pull FAL processing into a template that only displays.
+    An extension that wants processed images replaces this partial and nothing
+    else - that is why the image is a partial of its own.
+
+    The dimension attributes are written conditionally because both are NULL for
+    a file without image metadata, and an empty width attribute is invalid HTML.
+</f:comment>
+<f:if condition="{image.publicUrl}">
+    <figure class="modern-extbase-frontend-edit-profile-image">
+        <img
+            src="{image.publicUrl}"
+            alt="{f:if(condition: image.alternative, then: image.alternative, else: alternativeText)}"
+            <f:if condition="{image.width}">width="{image.width}"</f:if>
+            <f:if condition="{image.height}">height="{image.height}"</f:if>
+            loading="lazy"
+        />
+        <f:if condition="{image.title}">
+            <figcaption>{image.title}</figcaption>
+        </f:if>
+    </figure>
+</f:if>
+</html>

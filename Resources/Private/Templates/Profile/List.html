@@ -1,0 +1,79 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Template: Profile/List - the list plugin.
+
+    Variables assigned by ProfileController.listAction
+        profiles   array of entries, each shaped
+                   profile    Domain\Model\Profile
+                   editable   bool, display only ownership flag
+        settings   array
+                   settings.showPageUid   page holding the show plugin, 0 when
+                                          unconfigured
+                   settings.editPageUid   page holding the edit plugin, 0 when
+                                          unconfigured
+
+    Both URIs are built here rather than in the partials: only a template knows
+    which plugin it links to, and keeping that knowledge out of the partials is
+    what lets the show plugin reuse them unchanged.
+
+    A page uid of 0 means "not configured" for both settings. It is guarded
+    rather than passed on, because f:uri.page and f:uri.action both resolve a
+    page uid of 0 to the current page - which for the list plugin would be a
+    link to itself.
+
+    The edit link points at the configured page and carries no profile
+    argument. The edit plugin is a later change, so an Extbase action URI into
+    it would be an assumption about a plugin name, a controller and an argument
+    name that nothing verifies. The argument is added together with that plugin.
+
+    The list carries its own heading, so the cards below it are one level
+    deeper - hence the h3.
+</f:comment>
+
+<f:layout name="Default" />
+
+<f:section name="Main">
+    <f:variable name="editUri" value="" />
+    <f:if condition="{settings.editPageUid}">
+        <f:variable name="editUri" value="{f:uri.page(pageUid: settings.editPageUid)}" />
+    </f:if>
+
+    <section class="modern-extbase-frontend-edit-profile-list">
+        <h2><f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:list.heading" /></h2>
+
+        <f:if condition="{profiles}">
+            <f:then>
+                <ul>
+                    <f:for each="{profiles}" as="entry">
+                        <li>
+                            <f:variable name="showUri" value="" />
+                            <f:if condition="{settings.showPageUid}">
+                                <f:variable name="showUri" value="{f:uri.action(action: 'show', controller: 'Profile', pluginName: 'Show', pageUid: settings.showPageUid, arguments: {profile: entry.profile})}" />
+                            </f:if>
+
+                            <f:render
+                                partial="Profile/Card"
+                                arguments="{
+                                    profile: entry.profile,
+                                    editable: entry.editable,
+                                    headingTag: 'h3',
+                                    showUri: showUri,
+                                    editUri: editUri
+                                }"
+                            />
+                        </li>
+                    </f:for>
+                </ul>
+            </f:then>
+            <f:else>
+                <p class="modern-extbase-frontend-edit-profile-list-empty">
+                    <f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:list.empty" />
+                </p>
+            </f:else>
+        </f:if>
+    </section>
+</f:section>
+</html>

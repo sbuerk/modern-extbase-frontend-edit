@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="en" datatype="plaintext" original="EXT:modern_extbase_frontend_edit/Configuration/Sets/Profiles/labels.xlf" date="2026-08-11T00:00:00Z" product-name="modern_extbase_frontend_edit">
+        <header/>
+        <body>
+            <trans-unit id="label">
+                <source>Profiles</source>
+            </trans-unit>
+            <trans-unit id="categories.modernextbasefrontendedit">
+                <source>Profiles</source>
+            </trans-unit>
+
+            <trans-unit id="settings.modernextbasefrontendedit.persistence.storagePid">
+                <source>Storage page</source>
+            </trans-unit>
+            <trans-unit id="settings.description.modernextbasefrontendedit.persistence.storagePid">
+                <source>Comma separated list of page uids the profile records are stored on. There is no value meaning "all pages": an empty configuration lists nothing.</source>
+            </trans-unit>
+
+            <trans-unit id="settings.modernextbasefrontendedit.showPageUid">
+                <source>Detail page</source>
+            </trans-unit>
+            <trans-unit id="settings.description.modernextbasefrontendedit.showPageUid">
+                <source>The page holding the profile detail plugin. The list plugin links its entries to this page.</source>
+            </trans-unit>
+
+            <trans-unit id="settings.modernextbasefrontendedit.editPageUid">
+                <source>Edit page</source>
+            </trans-unit>
+            <trans-unit id="settings.description.modernextbasefrontendedit.editPageUid">
+                <source>The page holding the profile edit plugin. The list plugin links here for profiles the current frontend user owns, and renders no edit link while this is unset.</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

@@ -1,0 +1,78 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/Card
+
+    The identifying block of a profile: image, name, and the links that apply to
+    it. Both plugins render it - the list once per row, the show plugin once as
+    the head of the detail view.
+
+    Arguments
+        profile      Domain\Model\Profile   required
+        editable     bool                   required
+                     The display only ownership flag as the controller computed
+                     it, passed on to Profile/EditLink.
+        headingTag   string                 required
+                     Tag name of the name heading, "h2" or "h3". The heading
+                     level depends on what surrounds the card, which only the
+                     calling template knows: the list puts its own heading above
+                     the cards, the show template does not.
+        showUri      string                 required
+                     URI of the show plugin for this profile, or empty for no
+                     link - which is what the show plugin itself passes, since
+                     it is already on that page.
+        editUri      string                 required
+                     URI of the edit page, or empty when none is configured.
+
+    The partial carries no knowledge of plugin, controller or action names. Both
+    URIs arrive fully built from the calling template, which keeps the partial
+    usable from a plugin that is added later.
+
+    The root element is a div and not an article, so that the caller decides the
+    semantics: the list wraps each card in a list item, the show template wraps
+    the whole profile in an article.
+</f:comment>
+<f:variable name="profileName" value="{f:format.trim(value: '{profile.firstname} {profile.lastname}')}" />
+<f:if condition="{profileName}">
+    <f:else>
+        <f:comment>
+            A profile may carry neither first nor last name; the shortname is
+            required by the edit form and is the only guaranteed label. Without
+            this fallback the heading and the image alternative text would be
+            empty.
+        </f:comment>
+        <f:variable name="profileName" value="{profile.shortname}" />
+    </f:else>
+</f:if>
+<f:variable name="imageAlternativeText" value="{f:translate(key: 'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.image.alt', arguments: {0: profileName})}" />
+
+<div class="modern-extbase-frontend-edit-profile-card">
+    <f:render
+        partial="Profile/Image"
+        arguments="{
+            image: profile.profileImage,
+            alternativeText: imageAlternativeText
+        }"
+    />
+
+    <{headingTag} class="modern-extbase-frontend-edit-profile-name">{profileName}</{headingTag}>
+
+    <f:if condition="{showUri}">
+        <p class="modern-extbase-frontend-edit-profile-link">
+            <a href="{showUri}">
+                <f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:link.show" />
+            </a>
+        </p>
+    </f:if>
+
+    <f:render
+        partial="Profile/EditLink"
+        arguments="{
+            editable: editable,
+            editUri: editUri
+        }"
+    />
+</div>
+</html>

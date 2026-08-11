@@ -1,0 +1,25 @@
+# TypoScript setup of the site set.
+#
+# It maps the site settings of this set onto the Extbase plugin configuration.
+# The defaults themselves are not repeated here — they are declared once, in
+# "settings.definitions.yaml".
+#
+# This file is included *after* the "siteSets" scoped statics that
+# "ext_localconf.php" writes through addTypoScriptSetup()
+# (`SysTemplateTreeBuilder::createSiteTemplateInclude()`), so the values below
+# win on a site that uses this set, and the classic defaults apply on a site
+# that does not.
+#
+# The "mvc" block is deliberately absent: it carries no site setting, it is the
+# same on every site, and it is already set by the classic TypoScript that this
+# file is layered on top of.
+
+plugin.tx_modernextbasefrontendedit {
+    persistence {
+        storagePid = {$modernextbasefrontendedit.persistence.storagePid}
+    }
+    settings {
+        showPageUid = {$modernextbasefrontendedit.showPageUid}
+        editPageUid = {$modernextbasefrontendedit.editPageUid}
+    }
+}

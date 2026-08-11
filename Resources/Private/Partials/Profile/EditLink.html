@@ -1,0 +1,31 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/EditLink
+
+    Renders the link to the edit page, and only then, when the controller has
+    said that the current frontend user may edit this profile.
+
+    Arguments
+        editable   bool     required
+                   The display only ownership flag as the controller computed
+                   it. The Fluid layer never derives ownership.
+        editUri    string   required
+                   The already built URI of the edit page. Empty when no edit
+                   page is configured, in which case nothing renders.
+
+    This is the only place in the Fluid layer that reads the ownership flag.
+    Hiding the link is a display decision and not an authorization boundary -
+    the boundary lives on the write endpoints. Do not treat a rendered link as
+    permission, and do not treat a missing one as protection.
+</f:comment>
+<f:if condition="{editable} && {editUri}">
+    <p class="modern-extbase-frontend-edit-profile-link">
+        <a href="{editUri}">
+            <f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:link.edit" />
+        </a>
+    </p>
+</f:if>
+</html>

@@ -1,0 +1,23 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Layout: Default
+
+    The single wrapper element of both profile plugins. It exists so that an
+    integrator has one stable hook to style or script against, and so that
+    neither template has to repeat the wrapper.
+
+    Sections
+        Main    required   The plugin output.
+
+    The sections HeaderAssets and FooterAssets are deliberately absent. Their
+    automatic rendering is deprecated since TYPO3 v14.0 and stops working in
+    v15.0 - see changelog 107057 "Deprecate auto-render assets sections". Use
+    f:asset.script or f:asset.css instead when this extension ever ships assets.
+</f:comment>
+<div class="modern-extbase-frontend-edit">
+    <f:render section="Main" />
+</div>
+</html>
