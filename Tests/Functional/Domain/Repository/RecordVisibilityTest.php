@@ -52,6 +52,33 @@ final class RecordVisibilityTest extends AbstractProfileTestCase
         $this->assertSame([1, 2, 7], $editable);
     }
 
+    /**
+     * The `feUser > 0` half of the constraint in `findAllByFrontendUser()`.
+     *
+     * Asserted against the repository rather than against the ownership
+     * resolver, and that is the whole point of the test: the resolver denies a
+     * caller id of `0` before it ever queries, so a test that goes through it
+     * passes with this constraint gone. The two guards are deliberately
+     * redundant, and redundancy is what makes each of them invisible through
+     * the other. This one pins the SQL half where nothing else can reach it.
+     *
+     * Profile 6 is the record it matters for: its `fe_user` column is `0`,
+     * which is the value `UserAspect::get('id')` yields for a visitor without a
+     * session.
+     */
+    #[Test]
+    public function editRepositoryReturnsNoProfileForTheAnonymousFrontendUserId(): void
+    {
+        $editable = ['not executed'];
+        $this->executeInFrontendContext(function () use (&$editable): void {
+            $editable = $this->sortedUids(
+                $this->get(ProfileEditRepository::class)->findAllByFrontendUser(0),
+            );
+        });
+
+        $this->assertSame([], $editable);
+    }
+
     #[Test]
     public function hiddenAddressIsAbsentFromTheDisplayRepositoryAndPresentOnTheEditRepository(): void
     {
