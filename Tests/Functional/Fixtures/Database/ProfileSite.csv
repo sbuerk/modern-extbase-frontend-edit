@@ -1,0 +1,4 @@
+"pages",,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","doktype","is_siteroot","title","slug"
+,1,0,0,0,0,1,1,"EN: Home","/"
+,2,0,1,1,1,1,0,"DE: Startseite","/"

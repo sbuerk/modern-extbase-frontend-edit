@@ -1,0 +1,24 @@
+"tx_modernextbasefrontendedit_domain_model_profile",,,,,,,,,,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","hidden","starttime","endtime","t3ver_wsid","t3ver_state","fe_user","shortname","firstname","lastname","birthday","bio","addresses","emails"
+,1,1,0,0,0,0,0,0,0,0,1,"visible","Ada","Lovelace","1980-05-17","",5,2
+,2,1,0,0,0,1,0,0,0,0,1,"hidden","Grace","Hopper",\NULL,"",0,0
+,3,1,0,0,0,0,2145916800,0,0,0,1,"scheduled","Barbara","Liskov",\NULL,"",0,0
+,4,1,0,0,0,0,0,1000000000,0,0,1,"expired","Karen","Sparck Jones",\NULL,"",0,0
+,5,1,0,0,0,0,0,0,0,0,2,"foreign","Radia","Perlman",\NULL,"",0,0
+,6,1,0,0,0,0,0,0,0,0,0,"unowned","Anita","Borg",\NULL,"",0,0
+,7,1,0,0,0,0,0,0,0,0,1,"sortable","Frances","Allen",\NULL,"",3,0
+,8,1,0,0,0,0,0,0,1,1,1,"workspace","Jean","Bartik",\NULL,"",0,0
+"tx_modernextbasefrontendedit_domain_model_address",,,,,,,,,,,,
+,"uid","pid","sys_language_uid","hidden","starttime","endtime","sorting","profile","tablenames","type","line1","line2"
+,1,1,0,0,0,0,1,1,"tx_modernextbasefrontendedit_domain_model_profile","home","Visible one",""
+,2,1,0,1,0,0,2,1,"tx_modernextbasefrontendedit_domain_model_profile","work","Hidden two",""
+,3,1,0,0,0,0,3,1,"tx_modernextbasefrontendedit_domain_model_profile","others","Visible three",""
+,4,1,0,0,2145916800,0,4,1,"tx_modernextbasefrontendedit_domain_model_profile","others","Scheduled four",""
+,5,1,0,0,0,1000000000,5,1,"tx_modernextbasefrontendedit_domain_model_profile","others","Expired five",""
+,11,1,0,0,0,0,3,7,"tx_modernextbasefrontendedit_domain_model_profile","home","Alpha",""
+,12,1,0,0,0,0,1,7,"tx_modernextbasefrontendedit_domain_model_profile","work","Beta",""
+,13,1,0,0,0,0,2,7,"tx_modernextbasefrontendedit_domain_model_profile","others","Gamma",""
+"tx_modernextbasefrontendedit_domain_model_email",,,,,,,,,
+,"uid","pid","sys_language_uid","hidden","sorting","profile","tablenames","type","email"
+,1,1,0,0,1,1,"tx_modernextbasefrontendedit_domain_model_profile","private","visible@example.org"
+,2,1,0,1,2,1,"tx_modernextbasefrontendedit_domain_model_profile","business","hidden@example.org"
