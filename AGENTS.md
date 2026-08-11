@@ -127,16 +127,18 @@ Nothing below `.agent/` is ever committed.
 
 ## Read this before changing code
 
-| Topic                                               | Page                                                                    |
-|-----------------------------------------------------|-------------------------------------------------------------------------|
-| Development environment, container based tooling    | [Environment](docs/development/environment.md)                          |
-| **Dual core setup — read this first**               | [Dual core setup](docs/development/dual-core-setup.md)                  |
-| The gates and what they check                       | [Quality gates](docs/development/quality-gates.md)                      |
-| Version differences split classes, not conditionals | [Core version aware code](docs/architecture/core-version-aware-code.md) |
-| Symfony DI attributes, stateless services           | [Dependency injection](docs/architecture/dependency-injection.md)       |
-| `final readonly`, injected abstracts, DTOs          | [Class design](docs/architecture/class-design.md)                       |
-| Both test suites and their strictness               | [Testing](docs/testing/Index.md)                                        |
-| Commit message conventions                          | [Commit messages](docs/workflow/commit-messages.md)                     |
+| Topic                                               | Page                                                                          |
+|-----------------------------------------------------|-------------------------------------------------------------------------------|
+| Development environment, container based tooling    | [Environment](docs/development/environment.md)                                |
+| **Dual core setup — read this first**               | [Dual core setup](docs/development/dual-core-setup.md)                        |
+| The gates and what they check                       | [Quality gates](docs/development/quality-gates.md)                            |
+| Version differences split classes, not conditionals | [Core version aware code](docs/architecture/core-version-aware-code.md)       |
+| Symfony DI attributes, stateless services           | [Dependency injection](docs/architecture/dependency-injection.md)             |
+| `final readonly`, injected abstracts, DTOs          | [Class design](docs/architecture/class-design.md)                             |
+| **Extbase attributes that differ per core version** | [Version neutral attributes](docs/architecture/version-neutral-attributes.md) |
+| The frontend editing design and its reasoning       | [Modern frontend editing](docs/frontend-edit/Index.md)                        |
+| Both test suites and their strictness               | [Testing](docs/testing/Index.md)                                              |
+| Commit message conventions                          | [Commit messages](docs/workflow/commit-messages.md)                           |
 
 ## The rules that are not negotiable
 

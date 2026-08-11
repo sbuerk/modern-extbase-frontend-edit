@@ -4,11 +4,12 @@ How the code base is organised and which design rules apply to it. These are the
 rules the skeleton itself follows — the shipped `Example` classes exist to
 demonstrate them and are meant to be deleted once real code arrives.
 
-| Page                                                  | Contents                                                                                                                                                |
-|-------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Core version aware code](core-version-aware-code.md) | `Classes/` vs `Core13/` vs `Core14/`, container based selection of the right variant, the interface + abstract + implementation pattern.                |
-| [Dependency injection](dependency-injection.md)       | Symfony DI attributes instead of `Services.yaml`, stateless services, private by default, `#[AsAlias]`, non-shared services.                            |
-| [Class design](class-design.md)                       | `final readonly` and what it implies for hierarchies, method injection in abstract classes, data objects vs services, the two accepted PHPStan ignores. |
+| Page                                                        | Contents                                                                                                                                                |
+|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Core version aware code](core-version-aware-code.md)       | `Classes/` vs `Core13/` vs `Core14/`, container based selection of the right variant, the interface + abstract + implementation pattern.                |
+| [Dependency injection](dependency-injection.md)             | Symfony DI attributes instead of `Services.yaml`, stateless services, private by default, `#[AsAlias]`, non-shared services.                            |
+| [Class design](class-design.md)                             | `final readonly` and what it implies for hierarchies, method injection in abstract classes, data objects vs services, the two accepted PHPStan ignores. |
+| [Version neutral attributes](version-neutral-attributes.md) | The three Extbase attributes with no spelling valid on both v13 and v14, what breaks in each direction, and the data driven alternatives.               |
 
 ## The short version
 
