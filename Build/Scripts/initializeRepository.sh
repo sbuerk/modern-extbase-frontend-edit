@@ -10,6 +10,10 @@
 #   <owner>/<repository>  ->  composer package name (composer.json)
 #   <repository>          ->  TYPO3 extension key (ext_emconf.php), normalized
 #                             to lowercase with "-", "." and " " turned into "_"
+#   <repository>          ->  the same extension key with its underscores
+#                             removed, the form TYPO3 builds database table
+#                             names, plugin signatures and the TypoScript path
+#                             "plugin.tx_<key>" from
 #   <OWNER>\<Repository>  ->  PHP root namespace in every PHP file, with the
 #                             owner in capital letters and the repository name
 #                             camel cased, including the core version aware
@@ -91,7 +95,7 @@ warn() { printf 'WARNING: %s\n' "$*" >&2; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 usage() {
-    sed -n '3,62p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//'
+    sed -n '3,67p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//'
 }
 
 # ---------------------------------------------------------------------------
@@ -249,6 +253,13 @@ to_extension_key() {
     printf '%s' "${value}"
 }
 
+# TYPO3 extension key with its underscores removed. That is the form TYPO3
+# builds database table names ("tx_<key>_domain_model_<model>"), plugin
+# signatures and the TypoScript path "plugin.tx_<key>" from, so it occurs in
+# TCA, ext_tables.sql, TypoScript and Fluid templates and is an identifier of
+# this repository like any other.
+to_compact_extension_key() { printf '%s' "${1//_/}"; }
+
 # PHP vendor namespace part: the owner in capital letters, separators dropped.
 to_vendor_namespace() {
     printf '%s' "$1" | tr -d '[:space:]._-' | tr '[:lower:]' '[:upper:]'
@@ -298,6 +309,7 @@ fi
 
 CURRENT_OWNER="${CURRENT_PACKAGE%%/*}"
 CURRENT_REPOSITORY="${CURRENT_PACKAGE#*/}"
+CURRENT_EXTENSION_KEY_COMPACT="$(to_compact_extension_key "${CURRENT_EXTENSION_KEY}")"
 CURRENT_VENDOR_NAMESPACE="$(to_vendor_namespace "${CURRENT_OWNER}")"
 CURRENT_PACKAGE_NAMESPACE="$(to_camel_case "${CURRENT_REPOSITORY}")"
 CURRENT_TITLE="$(to_title "${CURRENT_REPOSITORY}")"
@@ -309,6 +321,7 @@ NEW_OWNER_LOWER="$(to_lower "${NEW_OWNER}")"
 NEW_REPOSITORY_LOWER="$(to_lower "${NEW_REPOSITORY}")"
 NEW_PACKAGE="${NEW_OWNER_LOWER}/${NEW_REPOSITORY_LOWER}"
 NEW_EXTENSION_KEY="$(to_extension_key "${NEW_REPOSITORY}")"
+NEW_EXTENSION_KEY_COMPACT="$(to_compact_extension_key "${NEW_EXTENSION_KEY}")"
 NEW_VENDOR_NAMESPACE="$(to_vendor_namespace "${NEW_OWNER}")"
 NEW_PACKAGE_NAMESPACE="$(to_camel_case "${NEW_REPOSITORY}")"
 NEW_TITLE="$(to_title "${NEW_REPOSITORY}")"
@@ -362,6 +375,21 @@ add_replacement "${CURRENT_VENDOR_NAMESPACE}\\\\${CURRENT_PACKAGE_NAMESPACE}" "$
 add_replacement "${CURRENT_VENDOR_NAMESPACE}\\${CURRENT_PACKAGE_NAMESPACE}"   "${NEW_VENDOR_NAMESPACE}\\${NEW_PACKAGE_NAMESPACE}"
 add_replacement "${CURRENT_PACKAGE}"                                          "${NEW_PACKAGE}"
 add_replacement "${CURRENT_EXTENSION_KEY}"                                    "${NEW_EXTENSION_KEY}"
+
+# The extension key without its underscores, see "to_compact_extension_key".
+# Registered only when it differs from the extension key itself — otherwise the
+# entry above has already covered every occurrence of it.
+#
+# Its place in the list is deliberate. It contains no other search and no other
+# search contains it: the extension key and the repository name carry
+# separators, the title carries spaces, and the namespaces differ in case. What
+# it may well contain is the bare owner or vendor namespace — an owner "edit"
+# inside a key "frontend_edit" — so it has to be processed before those two,
+# which is what the position here guarantees.
+if [ "${CURRENT_EXTENSION_KEY_COMPACT}" != "${CURRENT_EXTENSION_KEY}" ]; then
+    add_replacement "${CURRENT_EXTENSION_KEY_COMPACT}" "${NEW_EXTENSION_KEY_COMPACT}"
+fi
+
 add_replacement "${CURRENT_REPOSITORY}"                                       "${NEW_REPOSITORY_LOWER}"
 add_replacement "${CURRENT_TITLE}"                                            "${NEW_TITLE}"
 add_replacement "${CURRENT_PACKAGE_NAMESPACE}"                                "${NEW_PACKAGE_NAMESPACE}"
