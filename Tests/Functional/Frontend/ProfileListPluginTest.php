@@ -20,6 +20,16 @@ use PHPUnit\Framework\Attributes\Test;
  * Labels are asserted by their **text**, never by the markup that surrounds
  * them. A missing `trans-unit` renders as an empty string, so a test asserting
  * only that a `<h2>` exists passes with every label gone.
+ *
+ * ## What is deliberately not covered here
+ *
+ * The `Profile/Image` partial and the `profile.image.alt` label it is passed:
+ * no fixture profile carries a profile image, so both plugins render the
+ * partial into an empty string and every assertion below holds with the partial
+ * gone. Covering it needs `sys_file` and `sys_file_reference` fixtures plus a
+ * file on disk in the test instance, which belongs with the change that owns
+ * the image handling rather than with the plugins. Until then this is a stated
+ * gap, not a covered case.
  */
 final class ProfileListPluginTest extends AbstractProfilePluginTestCase
 {
@@ -33,7 +43,25 @@ final class ProfileListPluginTest extends AbstractProfilePluginTestCase
         $renderedNames = array_keys($this->profileCards((string)$response->getBody()));
         sort($renderedNames);
 
-        $this->assertSame(['Ada Lovelace', 'Radia Perlman'], $renderedNames);
+        $this->assertSame(self::LISTED_PROFILE_NAMES, $renderedNames);
+    }
+
+    /**
+     * The shortname fallback of `Profile/Card`.
+     *
+     * A profile may carry neither a first nor a last name — only the shortname
+     * is required by the edit form — and the heading then falls back to it.
+     * Asserted through the card key, which *is* the trimmed content of the
+     * name heading: without the fallback that heading renders empty, and the
+     * card is then keyed by the empty string instead.
+     */
+    #[Test]
+    public function cardOfAProfileWithoutNamesFallsBackToItsShortname(): void
+    {
+        $cards = $this->profileCards((string)$this->renderListPlugin()->getBody());
+
+        $this->assertArrayHasKey(self::SHORTNAME_ONLY_PROFILE_NAME, $cards);
+        $this->assertArrayNotHasKey('', $cards);
     }
 
     /**
@@ -55,9 +83,18 @@ final class ProfileListPluginTest extends AbstractProfilePluginTestCase
     #[Test]
     public function listRendersNeitherHiddenNorDeletedNorOutOfScopeProfiles(string $name): void
     {
-        $response = $this->renderListPlugin();
+        $body = (string)$this->renderListPlugin()->getBody();
 
-        $this->assertStringNotContainsString($name, (string)$response->getBody());
+        // The card set is asserted first, and it is what makes the body check
+        // below mean "excluded" rather than "the plugin rendered nothing at
+        // all" — a substring that is absent from an empty page proves nothing.
+        $cards = $this->profileCards($body);
+        $renderedNames = array_keys($cards);
+        sort($renderedNames);
+        $this->assertSame(self::LISTED_PROFILE_NAMES, $renderedNames);
+        $this->assertArrayNotHasKey($name, $cards);
+
+        $this->assertStringNotContainsString($name, $body);
     }
 
     /**
@@ -74,7 +111,12 @@ final class ProfileListPluginTest extends AbstractProfilePluginTestCase
 
         $this->assertStringContainsString('<h2>Profiles</h2>', $body);
 
-        foreach ($this->profileCards($body) as $name => $card) {
+        // Without this the loop below is allowed to make no assertion at all,
+        // and the test would stay green for a plugin that renders no card.
+        $cards = $this->profileCards($body);
+        $this->assertNotSame([], $cards);
+
+        foreach ($cards as $name => $card) {
             $this->assertStringContainsString(
                 'View profile',
                 $card,
@@ -130,14 +172,45 @@ final class ProfileListPluginTest extends AbstractProfilePluginTestCase
      * This is the case the ownership resolver denies first: `UserAspect` yields
      * `0` for a visitor without a session, and `0` is a value the owner column
      * of a record can genuinely hold.
+     *
+     * The card of {@see UNOWNED_PROFILE_UID} is what gives the assertion teeth.
+     * Every other listed profile has a non-zero owner and would be excluded by
+     * the `feUser = 0` comparison alone, so a body-wide check over them stays
+     * green with both guards removed. This one record matches that comparison,
+     * and it is the record an anonymous visitor would be offered an edit link
+     * for.
      */
     #[Test]
     public function listRendersNoEditLinkForAnAnonymousVisitor(): void
     {
         $body = (string)$this->renderListPlugin()->getBody();
+        $cards = $this->profileCards($body);
+
+        $this->assertArrayHasKey(self::UNOWNED_PROFILE_NAME, $cards);
+        $this->assertStringNotContainsString('Edit profile', $cards[self::UNOWNED_PROFILE_NAME]);
+        $this->assertStringNotContainsString('/edit-profile', $cards[self::UNOWNED_PROFILE_NAME]);
 
         $this->assertStringNotContainsString('Edit profile', $body);
         $this->assertStringNotContainsString('/edit-profile', $body);
+    }
+
+    /**
+     * A profile without an owner belongs to nobody, not to everybody.
+     *
+     * The counterpart of the test above for a *logged-in* user: `fe_user = 0`
+     * must not match a real user id either, which is the `feUser = 0`
+     * comparison rather than the anonymous guards.
+     */
+    #[Test]
+    public function listRendersNoEditLinkForAProfileWithoutAnOwner(): void
+    {
+        $cards = $this->profileCards(
+            (string)$this->renderListPlugin(self::OWNER_FRONTEND_USER_ID)->getBody(),
+        );
+
+        $this->assertArrayHasKey(self::UNOWNED_PROFILE_NAME, $cards);
+        $this->assertStringNotContainsString('Edit profile', $cards[self::UNOWNED_PROFILE_NAME]);
+        $this->assertStringNotContainsString('/edit-profile', $cards[self::UNOWNED_PROFILE_NAME]);
     }
 
     /**

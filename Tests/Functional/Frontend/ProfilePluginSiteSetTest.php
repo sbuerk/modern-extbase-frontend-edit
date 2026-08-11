@@ -34,8 +34,8 @@ final class ProfilePluginSiteSetTest extends AbstractProfilePluginTestCase
     }
 
     /**
-     * The storage page setting: the two visible profiles of page 1 are listed,
-     * and the profile on the page outside it is not.
+     * The storage page setting: the visible profiles of page 1 are listed, and
+     * the profile on the page outside it is not.
      */
     #[Test]
     public function listPluginRendersTheProfilesOfTheStoragePageOfTheSiteSettings(): void
@@ -48,7 +48,7 @@ final class ProfilePluginSiteSetTest extends AbstractProfilePluginTestCase
         $renderedNames = array_keys($this->profileCards($body));
         sort($renderedNames);
 
-        $this->assertSame(['Ada Lovelace', 'Radia Perlman'], $renderedNames);
+        $this->assertSame(self::LISTED_PROFILE_NAMES, $renderedNames);
         $this->assertStringContainsString('<h2>Profiles</h2>', $body);
         $this->assertStringNotContainsString('Anita Borg', $body);
     }

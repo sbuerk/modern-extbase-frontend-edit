@@ -76,9 +76,62 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
     protected const OWNER_FRONTEND_USER_ID = 1;
 
     /**
-     * The frontend user owning the profile of "Radia Perlman".
+     * The frontend user owning the profiles of "Radia Perlman" and of the
+     * profile that carries a shortname only.
      */
     protected const OTHER_FRONTEND_USER_ID = 2;
+
+    /**
+     * A visible profile on the storage page whose `fe_user` column is `0` —
+     * "Hedy Lamarr".
+     *
+     * `UserAspect::get('id')` yields `0` for a visitor without a session, so
+     * this record is the one an anonymous visitor would own if the two guards
+     * against that value were gone: the `$frontendUserId <= 0` early return of
+     * `FrontendUserProfileOwnershipResolver::resolveOwnedProfiles()` and the
+     * `feUser > 0` half of the constraint in
+     * `ProfileEditRepository::findAllByFrontendUser()`. Without a record shaped
+     * like this in the fixture, removing both guards changes nothing that is
+     * rendered and the tests below pass over a disclosure.
+     */
+    protected const UNOWNED_PROFILE_UID = 6;
+
+    /**
+     * The rendered name of {@see UNOWNED_PROFILE_UID}.
+     */
+    protected const UNOWNED_PROFILE_NAME = 'Hedy Lamarr';
+
+    /**
+     * A visible profile on the storage page with neither a first nor a last
+     * name, carrying the shortname "nameless".
+     *
+     * `Profile/Card` falls back to the shortname for the heading and for the
+     * image alternative text. Every other fixture profile has both names, so
+     * without this record the fallback branch is never taken.
+     */
+    protected const SHORTNAME_ONLY_PROFILE_UID = 7;
+
+    /**
+     * The heading the shortname fallback produces for
+     * {@see SHORTNAME_ONLY_PROFILE_UID}.
+     */
+    protected const SHORTNAME_ONLY_PROFILE_NAME = 'nameless';
+
+    /**
+     * The names of every profile the `list` plugin renders for the default
+     * fixture and the default configuration, in the order `sort()` produces.
+     *
+     * Kept here because three tests state it and a fixture row added for one of
+     * them must not silently weaken the other two.
+     *
+     * @var list<string>
+     */
+    protected const LISTED_PROFILE_NAMES = [
+        'Ada Lovelace',
+        self::UNOWNED_PROFILE_NAME,
+        'Radia Perlman',
+        self::SHORTNAME_ONLY_PROFILE_NAME,
+    ];
 
     /**
      * The part a site package would normally provide. It renders the content
@@ -248,7 +301,7 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
      */
     protected function renderListPlugin(?int $frontendUserId = null): ResponseInterface
     {
-        return $this->renderUrl('https://acme.com/', $frontendUserId);
+        return $this->renderUri('https://acme.com/', $frontendUserId);
     }
 
     /**
@@ -256,18 +309,28 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
      */
     protected function renderShowPlugin(int $profileUid, ?int $frontendUserId = null): ResponseInterface
     {
-        return $this->renderUrl($this->showPluginUri($profileUid), $frontendUserId);
+        return $this->renderUri($this->showPluginUri($profileUid), $frontendUserId);
+    }
+
+    /**
+     * Renders an arbitrary URI of the test site.
+     *
+     * The seam the tests of the argument mapping failures need: they request
+     * the `show` page with an argument set the plugin never links to, which
+     * {@see renderShowPlugin()} cannot express.
+     */
+    protected function renderUri(string $uri, ?int $frontendUserId = null): ResponseInterface
+    {
+        $context = new InternalRequestContext();
+        if ($frontendUserId !== null) {
+            $context = $context->withFrontendUserId($frontendUserId);
+        }
+
+        return $this->executeFrontendSubRequest(new InternalRequest($uri), $context);
     }
 
     /**
      * The URI of the `show` plugin for a profile uid, including a valid cHash.
-     *
-     * The cHash is not optional: `PageArgumentValidator` turns a request with
-     * plugin arguments and no valid cHash into a 404 before Extbase is reached,
-     * so a test constructing the URL by hand would assert a 404 that says
-     * nothing about the plugin. The calculation mirrors
-     * `PageArgumentValidator::getRelevantParametersFromCacheHashArgument()`:
-     * the dynamic arguments plus the page id.
      *
      * The URL is built here rather than read out of the rendered list, so that
      * the `show` tests do not depend on the `list` plugin. That the list links
@@ -275,12 +338,32 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
      */
     protected function showPluginUri(int $profileUid): string
     {
+        return $this->showPluginUriForArguments([
+            'action' => 'show',
+            'controller' => 'Profile',
+            'profile' => (string)$profileUid,
+        ]);
+    }
+
+    /**
+     * The URI of the `show` plugin for a hand written argument set, including a
+     * valid cHash.
+     *
+     * The cHash is not optional: `PageArgumentValidator` turns a request with
+     * plugin arguments and no valid cHash into a 404 before Extbase is reached,
+     * so a test constructing the URL by hand would assert a 404 that says
+     * nothing about the plugin — and in particular nothing about the two `mvc`
+     * switches, which is the whole reason an argument set can be passed in
+     * here. The calculation mirrors
+     * `PageArgumentValidator::getRelevantParametersFromCacheHashArgument()`:
+     * the dynamic arguments plus the page id.
+     *
+     * @param array<string, string> $showArguments
+     */
+    protected function showPluginUriForArguments(array $showArguments): string
+    {
         $pluginArguments = [
-            'tx_modernextbasefrontendedit_show' => [
-                'action' => 'show',
-                'controller' => 'Profile',
-                'profile' => (string)$profileUid,
-            ],
+            'tx_modernextbasefrontendedit_show' => $showArguments,
         ];
 
         $cacheHashCalculator = $this->get(CacheHashCalculator::class);
@@ -335,13 +418,27 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
         ));
     }
 
-    private function renderUrl(string $url, ?int $frontendUserId): ResponseInterface
+    /**
+     * The second capturing group of every match, keyed by the first.
+     *
+     * For assertions that pair a child record with something rendered next to
+     * it — a type label with its address, for instance. Keyed rather than
+     * ordered on purpose: which label belongs to which record is what such a
+     * test states, and asserting a list would additionally fail whenever the
+     * sorting changes, which two other tests already cover.
+     *
+     * @return array<string, string>
+     */
+    protected function renderedPairs(string $pattern, string $subject): array
     {
-        $context = new InternalRequestContext();
-        if ($frontendUserId !== null) {
-            $context = $context->withFrontendUserId($frontendUserId);
-        }
+        preg_match_all($pattern, $subject, $matches, PREG_SET_ORDER);
 
-        return $this->executeFrontendSubRequest(new InternalRequest($url), $context);
+        $pairs = [];
+        foreach ($matches as $match) {
+            $pairs[trim($match[2])] = trim($match[1]);
+        }
+        ksort($pairs);
+
+        return $pairs;
     }
 }

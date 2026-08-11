@@ -17,7 +17,22 @@ use PHPUnit\Framework\Attributes\Test;
  *   and comes out of the `ObjectStorage` the data mapper filled, and
  * - the **404 cases**, which are produced by
  *   `ActionController::handleArgumentMappingExceptions()` and depend on the two
- *   `mvc` switches of the plugin TypoScript being in place.
+ *   `mvc` switches of the plugin TypoScript being in place. Both switches have
+ *   a test of their own:
+ *   {@see showReturnsPageNotFoundForAProfileTheListWouldNotShow()} covers
+ *   `showPageNotFoundIfTargetNotFoundException`, and
+ *   {@see showReturnsPageNotFoundWhenTheProfileArgumentIsMissing()} covers
+ *   `showPageNotFoundIfRequiredArgumentIsMissingException`.
+ *
+ * ## What is deliberately not covered here
+ *
+ * The `Profile/Image` partial and the `profile.image.alt` label it is passed:
+ * no fixture profile carries a profile image, so the partial renders into an
+ * empty string and every assertion below holds with the partial gone. Covering
+ * it needs `sys_file` and `sys_file_reference` fixtures plus a file on disk in
+ * the test instance, which belongs with the change that owns the image handling
+ * rather than with the plugins. Until then this is a stated gap, not a covered
+ * case.
  */
 final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
 {
@@ -83,6 +98,25 @@ final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
     }
 
     /**
+     * The line breaks of the biography, which `f:format.nl2br` turns into
+     * markup.
+     *
+     * A biography is a multi line text field, and without the ViewHelper the
+     * newlines survive into the HTML source and collapse into a single space in
+     * the browser. The fixture text is two lines for exactly this assertion —
+     * with a single line body, the ViewHelper is a no-op and can be removed
+     * without any test noticing.
+     */
+    #[Test]
+    public function showRendersTheLineBreaksOfTheBiographyAsMarkup(): void
+    {
+        $body = (string)$this->renderShowPlugin(self::ADA_PROFILE_UID)->getBody();
+
+        $this->assertStringContainsString('Wrote the first algorithm.<br />', $body);
+        $this->assertStringContainsString('And the second one, too.', $body);
+    }
+
+    /**
      * The addresses in the manual sorting order of the fixture, which is
      * deliberately not the uid order: uids 1, 2, 3 carry the sorting values
      * 3, 1, 2.
@@ -133,9 +167,15 @@ final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
     }
 
     /**
-     * The type labels of the addresses, in the same order — which is what
-     * proves the label lookup follows the record and is not a coincidence of
-     * one row.
+     * The type label of every child, paired with the child it belongs to —
+     * which is what proves the label lookup follows the record and is not a
+     * coincidence of one row.
+     *
+     * Paired rather than listed in render order on purpose. A list of labels
+     * additionally fails whenever the sorting changes, which
+     * {@see showRendersTheVisibleAddressesInTheirManualSortingOrder()} and
+     * {@see showRendersTheEmailAddressesInTheirManualSortingOrder()} already
+     * assert; this test would then report a labelling defect for a sorting one.
      */
     #[Test]
     public function showRendersTheAddressAndEmailTypeLabelsOfEachChild(): void
@@ -143,9 +183,26 @@ final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
         $body = (string)$this->renderShowPlugin(self::ADA_PROFILE_UID)->getBody();
 
         $this->assertSame(
-            ['Work', 'Others', 'Home', 'Business', 'Private'],
-            $this->renderedInOrder(
-                '#<span class="modern-extbase-frontend-edit-profile-type">(.*?)</span>#s',
+            [
+                'Analytical Engine Lane 3' => 'Home',
+                'Bernoulli Street 2' => 'Others',
+                'Difference Engine Road 1' => 'Work',
+            ],
+            $this->renderedPairs(
+                '#<span class="modern-extbase-frontend-edit-profile-type">([^<]*)</span>\s*'
+                    . '<span class="modern-extbase-frontend-edit-profile-address">([^<]+)#s',
+                $body,
+            ),
+        );
+
+        $this->assertSame(
+            [
+                'first@example.org' => 'Business',
+                'second@example.org' => 'Private',
+            ],
+            $this->renderedPairs(
+                '#<span class="modern-extbase-frontend-edit-profile-type">([^<]*)</span>\s*'
+                    . '<a href="mailto:([^"]+)"#s',
                 $body,
             ),
         );
@@ -171,6 +228,32 @@ final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
     {
         $body = (string)$this->renderShowPlugin(self::ADA_PROFILE_UID)->getBody();
 
+        $this->assertStringNotContainsString('Edit profile', $body);
+        $this->assertStringNotContainsString('/edit-profile', $body);
+    }
+
+    /**
+     * The profile without an owner, requested by a visitor without a session.
+     *
+     * The case both anonymous guards exist for: `UserAspect::get('id')` yields
+     * `0`, {@see UNOWNED_PROFILE_UID} carries `fe_user = 0`, and a plain
+     * comparison of the two makes every visitor the owner of every unassigned
+     * profile. The test above cannot see that — "Ada Lovelace" has a non-zero
+     * owner and is excluded by the comparison itself — so this is the rendering
+     * that changes when the `$frontendUserId <= 0` early return of
+     * `FrontendUserProfileOwnershipResolver::resolveOwnedProfiles()` and the
+     * `feUser > 0` constraint of `ProfileEditRepository::findAllByFrontendUser()`
+     * are both gone.
+     */
+    #[Test]
+    public function showRendersNoEditLinkForAnAnonymousVisitorOnAProfileWithoutAnOwner(): void
+    {
+        $response = $this->renderShowPlugin(self::UNOWNED_PROFILE_UID);
+
+        $this->assertSame(200, $response->getStatusCode());
+
+        $body = (string)$response->getBody();
+        $this->assertStringContainsString(self::UNOWNED_PROFILE_NAME, $body);
         $this->assertStringNotContainsString('Edit profile', $body);
         $this->assertStringNotContainsString('/edit-profile', $body);
     }
@@ -224,6 +307,34 @@ final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
     public function showReturnsPageNotFoundForAProfileTheListWouldNotShow(int $profileUid): void
     {
         $response = $this->renderShowPlugin($profileUid);
+
+        $this->assertSame(404, $response->getStatusCode());
+    }
+
+    /**
+     * The second `mvc` switch:
+     * `showPageNotFoundIfRequiredArgumentIsMissingException`.
+     *
+     * The request addresses the `show` action of the plugin and carries no
+     * `profile` argument, which is the one thing no link this extension renders
+     * can produce — it is a hand written or truncated URL. Extbase then raises
+     * `RequiredArgumentMissingException` while mapping the arguments, and
+     * without the switch that exception propagates into an exception page
+     * instead of the site's 404.
+     *
+     * The cHash still has to be valid, and is calculated over the two arguments
+     * that *are* present: without it `PageArgumentValidator` answers 404 before
+     * Extbase is entered at all, and the test would assert the right status
+     * code for the wrong reason. Removing the `mvc` switch is what tells the two
+     * apart — the status then changes, which a cHash rejection would not do.
+     */
+    #[Test]
+    public function showReturnsPageNotFoundWhenTheProfileArgumentIsMissing(): void
+    {
+        $response = $this->renderUri($this->showPluginUriForArguments([
+            'action' => 'show',
+            'controller' => 'Profile',
+        ]));
 
         $this->assertSame(404, $response->getStatusCode());
     }
