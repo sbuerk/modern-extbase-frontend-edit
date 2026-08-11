@@ -10,6 +10,8 @@
 
 FILES=`find . -type f \
     ! -path "./.Build/*" \
+    ! -path "./.agent/*" \
+    ! -path "./.cache/*" \
     ! -path "./.git/*" \
     ! -path "./.php-cs-fixer.cache" \
     ! -path "./Documentation-GENERATED-temp/*" \
