@@ -33,6 +33,15 @@ require_once __DIR__ . '/MarkdownTableFormatter.php';
  * a property that can be asserted. The protected token assertion covers the part
  * that actually breaks a repository.
  *
+ * The assertions are worth no more than what the working tree feeds them: an
+ * identifier that appears in no file cannot be shown to be rewritten. The
+ * extension key without underscores is currently carried by
+ * "docs/frontend-edit/domain-schema.md" and "docs/frontend-edit/ajax-transport.md",
+ * which spell out the table names, plugin signatures and TypoScript paths built
+ * from it. Nothing was added to the tree for the sake of this check — once
+ * "Configuration/TCA/" and "ext_tables.sql" carry those tables, they cover it
+ * too, and the documentation may then stop being the only source.
+ *
  * See "docs/workflow/repository-initialization.md".
  */
 final class RepositoryInitializationCheck
@@ -301,6 +310,12 @@ final class RepositoryInitializationCheck
      * No template identifier may survive. The new identifiers are removed from
      * the line first: a new name may legitimately contain the old one, which is
      * the whole point of these cases.
+     *
+     * The extension key without its underscores is one of those identifiers and
+     * the one that is easiest to forget, because it is spelled nowhere in
+     * composer.json: TYPO3 builds database table names, plugin signatures and
+     * the TypoScript path "plugin.tx_<key>" from it. It stayed behind in the
+     * rewrite until it was asserted here.
      */
     private function assertNoStaleIdentifiers(
         string $label,
@@ -309,16 +324,19 @@ final class RepositoryInitializationCheck
         string $expectedKey,
         string $expectedNamespace,
     ): void {
+        $expectedRepository = substr($expectedPackage, strpos($expectedPackage, '/') + 1);
         $newTokens = [
             substr($expectedNamespace, strpos($expectedNamespace, '\\') + 1),
-            substr($expectedPackage, strpos($expectedPackage, '/') + 1),
+            $expectedRepository,
             $expectedKey,
-            $this->title(substr($expectedPackage, strpos($expectedPackage, '/') + 1)),
+            $this->compactExtensionKey($expectedKey),
+            $this->title($expectedRepository),
         ];
         $staleTokens = array_filter([
             $this->currentPackage,
             $this->currentRepository,
             $this->currentExtensionKey,
+            $this->compactExtensionKey($this->currentExtensionKey),
             $this->currentNamespace,
             $this->currentTitle,
         ]);
@@ -586,7 +604,7 @@ final class RepositoryInitializationCheck
         return is_array($decoded) ? $decoded : [];
     }
 
-    // The four derivations below mirror the ones in
+    // The five derivations below mirror the ones in
     // "Build/Scripts/initializeRepository.sh". They are written out a second
     // time on purpose: a check that reuses the implementation it verifies proves
     // nothing about it.
@@ -599,6 +617,11 @@ final class RepositoryInitializationCheck
         }
 
         return trim($value, '_');
+    }
+
+    private function compactExtensionKey(string $extensionKey): string
+    {
+        return str_replace('_', '', $extensionKey);
     }
 
     private function vendorNamespace(string $owner): string
