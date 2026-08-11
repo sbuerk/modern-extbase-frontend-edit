@@ -6,8 +6,22 @@ The transport is settled elsewhere — a dedicated page type running an
 apply on top of it.
 
 Code paths quoted below are relative to `.Build/vendor/typo3/`, so they can be
-opened in the installed dependency set. **Implementation follows in a later
-change**; nothing described here exists in `Classes/` yet.
+opened in the installed dependency set.
+
+**Half of this page is code now.** `Classes/Security/` holds
+`ProfileOwnershipResolverInterface` and its column-based implementation
+`FrontendUserProfileOwnershipResolver`, and `Classes/Controller/ProfileController.php`
+reads the frontend user through the `Context` aspect exactly as described below.
+The rest — the rule service, the `Core13/`/`Core14/` adapters, the DTOs and every
+write endpoint — **follows in a later change**, and the sections describing them
+say so.
+
+> [!IMPORTANT]
+> The read plugins already ask the resolver a question, and its answer decides
+> whether an edit link is rendered. That is a **display** decision. It is not
+> one of the defences on this page, it protects nothing, and no defence here may
+> be replaced by it.
+> → [Plugins and the Fluid layer](plugins-and-fluid.md)
 
 ## Identity comes from the `Context` aspect
 
@@ -74,11 +88,11 @@ that. A hardcoded `profile.fe_user` comparison cannot be adopted there.
 
 The ownership question is therefore asked through an interface:
 
-| Layer                  | Responsibility                                                        |
-|------------------------|-----------------------------------------------------------------------|
-| Ownership resolver     | Given a frontend user id, which records are owned — and nothing else. |
-| Ownership rule service | Deny before compare, anonymous is never an owner, throw or return.    |
-| Version adapter        | How the rule is invoked: `#[Authorize]` on v14, a guard call on v13.  |
+| Layer                  | Responsibility                                                        | State                          |
+|------------------------|-----------------------------------------------------------------------|--------------------------------|
+| Ownership resolver     | Given a frontend user id, which records are owned — and nothing else. | `Classes/Security/`, in place. |
+| Ownership rule service | Deny before compare, anonymous is never an owner, throw or return.    | Later change, with the writes. |
+| Version adapter        | How the rule is invoked: `#[Authorize]` on v14, a guard call on v13.  | Later change, with the writes. |
 
 Only the resolver knows the storage shape. This extension ships a column-based
 implementation; an MM-based one is a second class implementing the same
@@ -88,6 +102,13 @@ this record": `int $frontendUserId → the records they own` maps onto both a
 column and an MM table, whereas `record → owner uid` silently assumes 1:1.
 
 ## One stateless rule service, two adapters
+
+**This section describes code that does not exist yet.** What exists is the
+resolver below it: `FrontendUserProfileOwnershipResolver` is `final readonly`,
+holds a repository and nothing request-derived, takes the frontend user id as an
+argument on every call, and already refuses to compare a non-positive id — the
+"deny before compare" rule stated below, applied one layer down so that it holds
+even for a caller that skips the rule service.
 
 The rule is a single `final readonly` service, stateless per repository policy,
 with `Context` injected and the aspect resolved on every call. It exposes both
@@ -121,7 +142,7 @@ that version differences split classes, the split is:
 The shared abstract base holds everything else and uses `#[Required]`
 `inject*()` methods, so the duplication is the guard line and nothing more.
 
-Three details worth writing down before the code exists:
+Three details worth writing down before that code exists:
 
 1. **`#[Authorize]` runs after property mapping and validation**, inside
    `callActionMethod()` (`cms-extbase/Classes/Mvc/Controller/ActionController.php:465-479`),
@@ -327,6 +348,13 @@ path calls once — not each action, which would make it forgettable.
 
 ## How the rules are tested
 
+The resolver is covered today by
+`Tests/Functional/Security/ProfileOwnershipResolverTest.php`: the owned set
+includes the owner's *hidden* profiles, never contains another user's profile,
+is empty for an anonymous caller, and an ownerless profile belongs to nobody.
+Everything in the table below belongs to the write endpoints and is written with
+them.
+
 Frontend user authentication is faithfully exercised by the testing framework: a
 real `fe_sessions` row and a real JWT cookie are created, and core's own
 authentication middleware then runs unmodified, resolving the cookie,
@@ -358,6 +386,8 @@ reason is worse than no test, because it is trusted.
 
 ## See also
 
+- [Plugins and the Fluid layer](plugins-and-fluid.md) — the ownership flag the
+  read plugins render, and why it is not one of the defences on this page.
 - [Class design](../architecture/class-design.md)
 - [Dependency injection](../architecture/dependency-injection.md)
 - [Core version aware code](../architecture/core-version-aware-code.md)

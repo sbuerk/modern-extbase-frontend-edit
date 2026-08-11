@@ -466,6 +466,8 @@ Consequences for this extension:
 ## See also
 
 - [Modern frontend editing](Index.md) — the other pages of this design.
+- [Plugins and the Fluid layer](plugins-and-fluid.md) — the same
+  `configurePlugin()` rule applied to the two read plugins.
 - [Authorization](authorization.md) — who may edit which record, and why the
   request token does not answer that.
 - [DTOs and validation](dto-and-validation.md) — why rules are data rather than

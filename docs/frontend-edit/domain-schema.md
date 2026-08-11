@@ -7,11 +7,13 @@ workspace guard, the "hidden children stay editable" requirement, the
 translation gap — only make sense against a schema that carries those
 capabilities.
 
-This page records the schema decisions and the reasons for them. **The
-implementation follows in a later change**; nothing described here exists in
-`Configuration/TCA/` yet. What is below is copy-pasteable and was derived by
-reading `DefaultTcaSchema`, `TcaMigration`, `RelationHandler` and the shipped
-changelogs of both core versions, not from memory.
+This page records the schema decisions and the reasons for them. **It describes
+the code that is in `Configuration/TCA/` and `ext_tables.sql`** — the TCA blocks
+below are those files, not a proposal for them. They were derived by reading
+`DefaultTcaSchema`, `TcaMigration`, `RelationHandler` and the shipped changelogs
+of both core versions, not from memory, and the generated column shapes are
+asserted against a running database by
+`Tests/Functional/Domain/SchemaShapeTest.php`.
 
 ## The three tables
 
@@ -399,7 +401,7 @@ reader looks — without suppressing anything.
 ## Complete TCA
 
 Labels reference `EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf`,
-which is created alongside. The identifiers are template identifiers and are
+which sits next to them. The identifiers are template identifiers and are
 rewritten on initialization.
 
 Note that the language and access palettes have to be spelled out.
@@ -549,6 +551,25 @@ return [
                 ],
             ],
         ],
+        // Ownership pointer. A single value select on 'fe_users' with
+        // 'renderType' => 'selectSingle' and 'maxitems' => 1 is stored as a
+        // scalar int column, so the model carries a plain int and the
+        // ownership comparison stays "int === int" — the column is an
+        // implementation detail behind the ownership resolver interface.
+        'fe_user' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf:tx_modernextbasefrontendedit_domain_model_profile.fe_user',
+            'config' => [
+                'type' => 'select',
+                'renderType' => 'selectSingle',
+                'foreign_table' => 'fe_users',
+                'maxitems' => 1,
+                'default' => 0,
+                'items' => [
+                    ['label' => 'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf:tx_modernextbasefrontendedit_domain_model_profile.fe_user.none', 'value' => 0],
+                ],
+            ],
+        ],
     ],
     'types' => [
         '1' => [
@@ -562,7 +583,7 @@ return [
                 --div--;LLL:EXT:core/Resources/Private/Language/Form/locallang_tabs.xlf:language,
                     --palette--;;language,
                 --div--;LLL:EXT:core/Resources/Private/Language/Form/locallang_tabs.xlf:access,
-                    hidden, --palette--;;timeRestriction,
+                    fe_user, hidden, --palette--;;timeRestriction,
                 --div--;LLL:EXT:core/Resources/Private/Language/Form/locallang_tabs.xlf:extended,
             ',
         ],
@@ -785,17 +806,23 @@ that need the note.
 
 ## Not covered here
 
-- **Nothing has been executed.** The generated column shapes above were derived
-  by reading `DefaultTcaSchema` and the Doctrine platform code. They must be
-  confirmed once against `-d mariadb`, `-d postgres` and `-d sqlite` when the TCA
-  lands, and that run is part of the implementing change, not of this page.
+- **The generated column shapes are asserted, the platform mapping is not.**
+  `Tests/Functional/Domain/SchemaShapeTest.php` covers the three decisions this
+  page argues for — the nullable native `birthday`, the nullable `bio` without a
+  default, and the pinned `type` default — against a running database. All three
+  are invisible on SQLite alone, so that class is one to run on `-d mariadb` and
+  `-d postgres` as well. The exact `varchar`/`int(11)` spellings in the table
+  above remain what `DefaultTcaSchema` and the Doctrine platform produce; no test
+  asserts the DDL string itself.
 - **`behaviour.allowLanguageSynchronization`** on the two inline columns follows
   core practice for `pages.media`; it presumes connected-mode translations.
   Confirm the intended translation workflow before it ships.
 - **Extbase identity map changes in v14.2** (Important #93765, the identity map
-  is now language aware) were noticed but not analysed. They affect how
-  translated children behave within one request and deserve their own look when
-  the models are written.
+  is now language aware) were noticed but not analysed. The models exist now and
+  `Tests/Functional/Domain/Repository/LanguageOverlayTest.php` covers the overlay
+  behaviour the display repositories rely on, but nothing covers how the same
+  object behaves across two different language settings **within one request**.
+  That is still open.
 
 ## See also
 

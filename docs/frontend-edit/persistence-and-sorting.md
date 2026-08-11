@@ -11,9 +11,14 @@ differ. v14 numbers come from the installed set below `.Build/vendor/`, v13
 numbers from 13.4.34. Where no version is named, the code is the same in both.
 
 > [!NOTE]
-> This change adds documentation only. The implementation follows in a later
-> change, so that it can be reviewed against a written specification instead of
-> against itself.
+> **The read side of this page is code; the write side is not.** The display and
+> edit repositories exist in `Classes/Domain/Repository/`, including the
+> enable-field handling, the `findByUidIncludingHidden()` and
+> `findAllByProfileUid()` lookups, and the `hidden` property on the models — with
+> functional coverage of sorting, visibility, workspace and language overlays.
+> Everything that *writes* — the sorting service, orphan removal, the workspace
+> guard, the file cleanup — follows in a later change, so that it can be reviewed
+> against a written specification instead of against itself.
 
 ## The decision: `PersistenceManager`, not DataHandler
 
@@ -459,7 +464,13 @@ test may observe.
 
 Everything in this table is behaviour `DataHandler` would have provided and the
 Extbase persistence layer does not. It is the acceptance checklist for the
-implementation change.
+implementation.
+
+Four rows are done: the `foreign_sortby`/`ctrl.sortby` pair is in the TCA, the
+per-child edit repositories exist with `setEnableFieldsToBeIgnored(['disabled'])`
+alongside `setIgnoreEnableFields(true)`, `findByUidIncludingHidden()` is on the
+profile edit repository, and the models carry a `hidden` property with a setter.
+The remaining rows all belong to the write path and are open.
 
 | Item                               | Why Extbase does not do it                                                                                         | What we build                                                                                         |
 |------------------------------------|--------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
