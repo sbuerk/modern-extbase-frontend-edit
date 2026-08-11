@@ -11,8 +11,13 @@ costs and what was decided instead.
 
 Code paths quoted below are relative to `.Build/vendor/typo3/` and refer to the
 installed set, which is TYPO3 v14.3, unless a v13.4 line is named explicitly.
-**The implementation follows in a later change**; nothing described here exists
-in `Classes/` yet.
+**The read side of this page exists; the upload side does not.**
+`Profile::$image` is the framework `FileReference`, `Profile::getProfileImage()`
+derives the scalar-only value object `Domain\Model\ProfileImage` from it, and
+`Resources/Private/Partials/Profile/Image.html` renders that. Everything that
+*writes* — `FileUploadConfiguration` in an `initialize<Action>()`, replacement,
+and the reference-counted cleanup of the previous file — follows in a later
+change, and the sections describing it say so.
 
 ## A custom `FileReference` subclass is impossible
 
@@ -399,6 +404,7 @@ decisions rather than omissions:
 - [DTOs and validation](dto-and-validation.md)
 - [Persistence and sorting](persistence-and-sorting.md)
 - [Domain and schema](domain-schema.md)
+- [Plugins and the Fluid layer](plugins-and-fluid.md)
 - [AJAX transport](ajax-transport.md)
 - [Class design](../architecture/class-design.md)
 - [Modern frontend editing](Index.md)

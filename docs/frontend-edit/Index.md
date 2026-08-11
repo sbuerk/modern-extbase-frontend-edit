@@ -6,13 +6,15 @@ to AJAX endpoints, without giving up authorization, validation or the two
 supported core versions.
 
 > [!NOTE]
-> These pages document the **design and the reasoning behind it**. The
-> implementation lands in the pull requests that follow this one. Where a page
-> describes code that does not exist yet, it says so.
+> These pages document the **design and the reasoning behind it**, and the code
+> is landing against them one change at a time. The domain, the schema, the
+> ownership resolver and the two read plugins exist; the write side does not.
+> Where a page describes code that does not exist yet, it says so.
 
 | Page                                                  | Contents                                                                                     |
 |-------------------------------------------------------|----------------------------------------------------------------------------------------------|
 | [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                 |
+| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                  |
 | [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.  |
 | [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the JSON contract, the request token.       |
 | [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence belongs.  |
@@ -29,6 +31,10 @@ supported core versions.
 - A profile is **owned by a frontend user**. Endpoints resolve it from the
   session and never trust a uid from the client; child records are reached by
   filtering the already-owned set. → [Authorization](authorization.md)
+- The **read plugins render an edit link only for profiles the current frontend
+  user owns — and that is a display decision, not a boundary.** A link that is
+  not drawn is still reachable by typing the URL.
+  → [Plugins and the Fluid layer](plugins-and-fluid.md)
 - **Validation rules are data, not attributes.** Three Extbase attributes have
   no spelling that is valid and deprecation-free on both core versions.
   → [Version neutral attributes](../architecture/version-neutral-attributes.md)
