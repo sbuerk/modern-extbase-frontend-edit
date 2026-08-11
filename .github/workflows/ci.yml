@@ -15,6 +15,10 @@ name: "CI"
 #            │
 #   docs ────┘  (independent, for fast feedback on documentation changes)
 #
+# "ci-status" closes the graph. Every other job feeds into it, so there is one
+# stable check name to look at — the matrix job names contain the core version,
+# the PHP version and the DBMS, and change whenever a matrix does.
+#
 # The DBMS matrix is the expensive part — 16 jobs, each starting a database
 # container — so it only runs once the same tests have passed on SQLite for both
 # core versions and both edge PHP versions. A failure that is not DBMS specific
@@ -316,3 +320,34 @@ jobs:
           retention-days: 5
           include-hidden-files: true
           overwrite: true
+
+  ci-status:
+    name: "ci-status"
+    runs-on: ubuntu-latest
+    # "always()" is what makes this job meaningful: without it the job would
+    # itself be skipped as soon as one of its dependencies failed, and a skipped
+    # check reports neither success nor failure.
+    if: "always()"
+    needs:
+      - "quality"
+      - "phpstan"
+      - "lint"
+      - "unit"
+      - "functional-sqlite"
+      - "functional-dbms"
+      - "documentation"
+    steps:
+
+      # "skipped" and "cancelled" are failures here, deliberately. A job that did
+      # not run has not proven anything, and the whole point of this job is that a
+      # green "ci-status" means the full matrix executed and passed — not merely
+      # that nothing went red.
+      - name: "Fail unless every job succeeded"
+        if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')"
+        run: |
+          echo "At least one job did not succeed:"
+          echo '${{ toJSON(needs) }}'
+          exit 1
+
+      - name: "Report success"
+        run: "echo 'Every job succeeded.'"
