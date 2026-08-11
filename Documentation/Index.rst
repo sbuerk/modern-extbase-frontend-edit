@@ -2,15 +2,15 @@
 
 ..  _start:
 
-==================
-Extension Skeleton
-==================
+============================
+Modern Extbase Frontend Edit
+============================
 
 :Extension key:
-    extension_skeleton
+    modern_extbase_frontend_edit
 
 :Package name:
-    sbuerk/extension-skeleton
+    sbuerk/modern-extbase-frontend-edit
 
 :Version:
     |release|

@@ -5,7 +5,7 @@ need to get started and links to the detailed developer documentation in
 [`docs/`](docs/Index.md).
 
 Source code and issue tracker are hosted on GitHub:
-[sbuerk/extension-skeleton](https://github.com/sbuerk/extension-skeleton).
+[sbuerk/modern-extbase-frontend-edit](https://github.com/sbuerk/modern-extbase-frontend-edit).
 
 ## Table of contents
 

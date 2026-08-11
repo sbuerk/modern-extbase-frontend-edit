@@ -23,7 +23,7 @@ return static function (
 
     // Core version independent classes.
     $services->load(
-        'SBUERK\\ExtensionSkeleton\\',
+        'SBUERK\\ModernExtbaseFrontendEdit\\',
         __DIR__ . '/../Classes/*',
     );
 
@@ -35,7 +35,7 @@ return static function (
     $coreAwareDirectory = sprintf('%s/../Core%d', __DIR__, $coreMajorVersion);
     if (is_dir($coreAwareDirectory)) {
         $services->load(
-            sprintf('SBUERK\\ExtensionSkeleton\\Core%d\\', $coreMajorVersion),
+            sprintf('SBUERK\\ModernExtbaseFrontendEdit\\Core%d\\', $coreMajorVersion),
             $coreAwareDirectory . '/*',
         );
     }

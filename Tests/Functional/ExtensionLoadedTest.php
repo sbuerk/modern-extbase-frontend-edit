@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SBUERK\ExtensionSkeleton\Tests\Functional;
+namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use SBUERK\ExtensionSkeleton\Tests\ExtensionCoreVersionCompatTestsTrait;
+use SBUERK\ModernExtbaseFrontendEdit\Tests\ExtensionCoreVersionCompatTestsTrait;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 
 /**
@@ -56,8 +56,8 @@ final class ExtensionLoadedTest extends AbstractFunctionalTestCase
      */
     public static function expectedLoadedExtensionIdentifiers(): \Generator
     {
-        yield 'composer package name: sbuerk/extension-skeleton' => ['identifier' => 'sbuerk/extension-skeleton'];
-        yield 'extension key: extension_skeleton' => ['identifier' => 'extension_skeleton'];
+        yield 'composer package name: sbuerk/modern-extbase-frontend-edit' => ['identifier' => 'sbuerk/modern-extbase-frontend-edit'];
+        yield 'extension key: modern_extbase_frontend_edit' => ['identifier' => 'modern_extbase_frontend_edit'];
     }
 
     #[DataProvider('expectedLoadedExtensionIdentifiers')]

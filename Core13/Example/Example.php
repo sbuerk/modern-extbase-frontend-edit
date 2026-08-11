@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace SBUERK\ExtensionSkeleton\Core13\Example;
+namespace SBUERK\ModernExtbaseFrontendEdit\Core13\Example;
 
-use SBUERK\ExtensionSkeleton\Example\AbstractExample;
-use SBUERK\ExtensionSkeleton\Example\ExampleInterface;
+use SBUERK\ModernExtbaseFrontendEdit\Example\AbstractExample;
+use SBUERK\ModernExtbaseFrontendEdit\Example\ExampleInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
 /**

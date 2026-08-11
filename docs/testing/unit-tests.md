@@ -52,8 +52,8 @@ see [Dual core setup](../development/dual-core-setup.md).
   ```php
   public static function expectedLoadedExtensionIdentifiers(): \Generator
   {
-      yield 'composer package name: sbuerk/extension-skeleton' => ['identifier' => 'sbuerk/extension-skeleton'];
-      yield 'extension key: extension_skeleton' => ['identifier' => 'extension_skeleton'];
+      yield 'composer package name: sbuerk/modern-extbase-frontend-edit' => ['identifier' => 'sbuerk/modern-extbase-frontend-edit'];
+      yield 'extension key: modern_extbase_frontend_edit' => ['identifier' => 'modern_extbase_frontend_edit'];
   }
   ```
 

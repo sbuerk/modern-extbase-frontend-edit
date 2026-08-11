@@ -1,8 +1,8 @@
 <?php
 
-$EM_CONF['extension_skeleton'] = [
-    'title' => 'Extension Skeleton',
-    'description' => 'TYPO3 CMS extension extension_skeleton.',
+$EM_CONF['modern_extbase_frontend_edit'] = [
+    'title' => 'Modern Extbase Frontend Edit',
+    'description' => 'TYPO3 CMS extension modern_extbase_frontend_edit.',
     'version' => '1.0.0',
     'category' => 'misc',
     'state' => 'alpha',

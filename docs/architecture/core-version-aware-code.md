@@ -20,9 +20,9 @@ core version as the third namespace part:
 ```json
 "autoload": {
     "psr-4": {
-        "SBUERK\\ExtensionSkeleton\\": "Classes/",
-        "SBUERK\\ExtensionSkeleton\\Core13\\": "Core13/",
-        "SBUERK\\ExtensionSkeleton\\Core14\\": "Core14/"
+        "SBUERK\\ModernExtbaseFrontendEdit\\": "Classes/",
+        "SBUERK\\ModernExtbaseFrontendEdit\\Core13\\": "Core13/",
+        "SBUERK\\ModernExtbaseFrontendEdit\\Core14\\": "Core14/"
     }
 }
 ```
@@ -41,7 +41,7 @@ $coreMajorVersion = (new Typo3Version())->getMajorVersion();
 $coreAwareDirectory = sprintf('%s/../Core%d', __DIR__, $coreMajorVersion);
 if (is_dir($coreAwareDirectory)) {
     $services->load(
-        sprintf('SBUERK\\ExtensionSkeleton\\Core%d\\', $coreMajorVersion),
+        sprintf('SBUERK\\ModernExtbaseFrontendEdit\\Core%d\\', $coreMajorVersion),
         $coreAwareDirectory . '/*',
     );
 }
