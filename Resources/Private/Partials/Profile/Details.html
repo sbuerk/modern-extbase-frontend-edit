@@ -1,0 +1,32 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/Details
+
+    The scalar fields of a profile that are not part of its identifying card:
+    birthday and biography. Renders nothing when both are empty, so that no
+    empty description list reaches the output.
+
+    Arguments
+        profile   Domain\Model\Profile   required
+
+    f:format.date is used without a format argument on purpose. The format then
+    comes from the installation wide SYS/ddmmyy setting, which keeps the date
+    format an integrator decision instead of one made in a template.
+</f:comment>
+<f:if condition="{profile.birthday} || {profile.bio}">
+    <dl class="modern-extbase-frontend-edit-profile-details">
+        <f:if condition="{profile.birthday}">
+            <dt><f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.birthday" /></dt>
+            <dd><f:format.date date="{profile.birthday}" /></dd>
+        </f:if>
+
+        <f:if condition="{profile.bio}">
+            <dt><f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.bio" /></dt>
+            <dd><f:format.nl2br>{profile.bio}</f:format.nl2br></dd>
+        </f:if>
+    </dl>
+</f:if>
+</html>

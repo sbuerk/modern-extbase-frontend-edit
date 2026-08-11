@@ -16,6 +16,10 @@ $EM_CONF['modern_extbase_frontend_edit'] = [
             'core' => '13.4.0-14.3.99',
             'extbase' => '13.4.0-14.3.99',
             'fluid' => '13.4.0-14.3.99',
+            // Required because the plugin rendering definition that
+            // ExtensionUtility::configurePlugin() generates references
+            // "lib.contentElement" — see the reasoning in ext_localconf.php.
+            'fluid_styled_content' => '13.4.0-14.3.99',
             'frontend' => '13.4.0-14.3.99',
         ],
         'conflicts' => [],

@@ -1,0 +1,30 @@
+"pages",,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","doktype","is_siteroot","title","slug"
+,3,1,0,0,0,1,0,"EN: Profile detail","/profiles"
+,4,1,0,0,0,1,0,"EN: Edit profile","/edit-profile"
+,5,1,0,0,0,1,0,"EN: Elsewhere","/elsewhere"
+"tt_content",,,,,
+,"uid","pid","CType","header","colPos"
+,1,1,"modernextbasefrontendedit_list","",0
+,2,3,"modernextbasefrontendedit_show","",0
+"fe_users",,,,,,
+,"uid","pid","deleted","disable","username","password","name"
+,1,1,0,0,"owner","",""
+,2,1,0,0,"other","",""
+"tx_modernextbasefrontendedit_domain_model_profile",,,,,,,,,,,,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","deleted","hidden","starttime","endtime","t3ver_wsid","t3ver_state","fe_user","shortname","firstname","lastname","birthday","bio","addresses","emails"
+,1,1,0,0,0,0,0,0,0,0,0,1,"ada","Ada","Lovelace","1980-05-17","Wrote the first algorithm.",4,2
+,2,1,0,0,0,0,1,0,0,0,0,1,"grace","Grace","Hopper",\NULL,"",0,0
+,3,1,0,0,0,1,0,0,0,0,0,1,"karen","Karen","Sparck Jones",\NULL,"",0,0
+,4,1,0,0,0,0,0,0,0,0,0,2,"radia","Radia","Perlman",\NULL,"",0,0
+,5,5,0,0,0,0,0,0,0,0,0,1,"anita","Anita","Borg",\NULL,"",0,0
+"tx_modernextbasefrontendedit_domain_model_address",,,,,,,,,,,,,
+,"uid","pid","sys_language_uid","deleted","hidden","starttime","endtime","sorting","profile","tablenames","type","line1","line2"
+,1,1,0,0,0,0,0,3,1,"tx_modernextbasefrontendedit_domain_model_profile","home","Analytical Engine Lane 3",""
+,2,1,0,0,0,0,0,1,1,"tx_modernextbasefrontendedit_domain_model_profile","work","Difference Engine Road 1","Second line of the first address"
+,3,1,0,0,0,0,0,2,1,"tx_modernextbasefrontendedit_domain_model_profile","others","Bernoulli Street 2",""
+,4,1,0,0,1,0,0,4,1,"tx_modernextbasefrontendedit_domain_model_profile","home","Hidden Alley 4",""
+"tx_modernextbasefrontendedit_domain_model_email",,,,,,,,,,
+,"uid","pid","sys_language_uid","deleted","hidden","sorting","profile","tablenames","type","email"
+,1,1,0,0,0,2,1,"tx_modernextbasefrontendedit_domain_model_profile","private","second@example.org"
+,2,1,0,0,0,1,1,"tx_modernextbasefrontendedit_domain_model_profile","business","first@example.org"

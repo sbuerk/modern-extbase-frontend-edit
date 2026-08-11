@@ -42,4 +42,17 @@ Classic mode
 
 ..  _TER: https://extensions.typo3.org/extension/modern_extbase_frontend_edit
 
-The extension does not require any further configuration yet.
+Configuration
+=============
+
+The two profile plugins need a storage page before they render anything, and
+the list plugin needs to know which page holds the detail plugin before it can
+link to it.
+
+Either add the site set :guilabel:`Profiles` to the site configuration and fill
+in its settings, or set the equivalent TypoScript constants below
+:typoscript:`plugin.tx_modernextbasefrontendedit`. Both spellings, and what
+each setting does, are described in the changelog entry for the plugins.
+
+There is no value meaning "every page": a storage page has to be named, or the
+plugins query page zero and find nothing.

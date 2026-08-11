@@ -1,0 +1,57 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Template: Profile/Show - the show plugin.
+
+    Variables assigned by ProfileController.showAction
+        profile    Domain\Model\Profile
+                   The profile to display.
+        editable   bool
+                   Display only ownership flag, as computed by the controller.
+        settings   array
+                   settings.editPageUid   page holding the edit plugin, 0 when
+                                          unconfigured
+
+    No show URI is passed to the card: this page already is the show page, so
+    the card renders no link to it.
+
+    The card is the top level heading of this plugin, so it gets the h2 that the
+    list template spends on its own heading.
+
+    The edit link points at the configured page and carries no profile
+    argument - see Profile/List for why.
+
+    There is no "back to the list" link. No setting names the page the list
+    plugin sits on, and guessing it - the referrer, the current page - would be
+    a link that is wrong on some installations. It is added when a setting for
+    it is, together with its label.
+</f:comment>
+
+<f:layout name="Default" />
+
+<f:section name="Main">
+    <f:variable name="editUri" value="" />
+    <f:if condition="{settings.editPageUid}">
+        <f:variable name="editUri" value="{f:uri.page(pageUid: settings.editPageUid)}" />
+    </f:if>
+
+    <article class="modern-extbase-frontend-edit-profile-show">
+        <f:render
+            partial="Profile/Card"
+            arguments="{
+                profile: profile,
+                editable: editable,
+                headingTag: 'h2',
+                showUri: '',
+                editUri: editUri
+            }"
+        />
+
+        <f:render partial="Profile/Details" arguments="{profile: profile}" />
+        <f:render partial="Profile/AddressList" arguments="{addresses: profile.addresses}" />
+        <f:render partial="Profile/EmailList" arguments="{emails: profile.emails}" />
+    </article>
+</f:section>
+</html>

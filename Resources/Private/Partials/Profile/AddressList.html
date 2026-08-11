@@ -1,0 +1,43 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/AddressList
+
+    The postal addresses of a profile, including their section heading. Renders
+    nothing when the collection is empty, so a caller never has to ask.
+
+    Arguments
+        addresses   iterable of Domain\Model\Address   required
+                    Pass profile.addresses. The iteration order is the manual
+                    sorting order, because the ObjectStorage is returned live.
+
+    The type label is looked up dynamically in the database label file rather
+    than repeated here. That file already carries one label per TCA select item,
+    and a template that switched over the known types would silently miss a type
+    added to the TCA later. The raw value is the fallback so that a missing
+    label is visible instead of blank.
+</f:comment>
+<f:if condition="{addresses}">
+    <section class="modern-extbase-frontend-edit-profile-addresses">
+        <h3><f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.addresses" /></h3>
+
+        <ul>
+            <f:for each="{addresses}" as="address">
+                <li>
+                    <span class="modern-extbase-frontend-edit-profile-type">
+                        <f:translate
+                            key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf:tx_modernextbasefrontendedit_domain_model_address.type.{address.type}"
+                            default="{address.type}"
+                        />
+                    </span>
+                    <span class="modern-extbase-frontend-edit-profile-address">
+                        {address.line1}<f:if condition="{address.line2}"><br />{address.line2}</f:if>
+                    </span>
+                </li>
+            </f:for>
+        </ul>
+    </section>
+</f:if>
+</html>

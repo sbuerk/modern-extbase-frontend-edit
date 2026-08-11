@@ -1,0 +1,16 @@
+# Site set of this extension.
+#
+# Site sets exist since TYPO3 v13.1 (Feature #103437) and are therefore
+# available on both target versions of this extension. They are opt-in per site
+# though, so the classic TypoScript registered in "ext_localconf.php" ships
+# alongside and carries the same defaults.
+#
+# The directory name below "Configuration/Sets/" is arbitrary and deliberately
+# carries no template identifier: the repository initialization rewrites file
+# *contents*, not paths. What identifies the set is the "name" below, which
+# follows the composer package name by convention and is rewritten with it.
+#
+# The label and every settings label live in "labels.xlf" next to this file,
+# which core picks up automatically when no "label" key is given here
+# (`YamlSetDefinitionProvider.php:157-173`).
+name: sbuerk/modern-extbase-frontend-edit
