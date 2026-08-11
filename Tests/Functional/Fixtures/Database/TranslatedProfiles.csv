@@ -1,0 +1,5 @@
+"tx_modernextbasefrontendedit_domain_model_profile",,,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","hidden","fe_user","shortname","firstname","lastname"
+,20,1,0,0,0,0,1,"translated","Ada","Lovelace"
+,21,1,1,20,20,0,1,"translated-de","Ada (DE)","Lovelace (DE)"
+,22,1,0,0,0,0,1,"untranslated","Grace","Hopper"

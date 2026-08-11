@@ -20,21 +20,22 @@ rewritten on repository initialization. The *Column* column is what the schema
 analyzer generates — MySQL/MariaDB flavour — with no `ext_tables.sql` entry,
 unless the note says otherwise.
 
-| Table     | Field       | TCA `type`                        | Column                                   | Note                                                       |
-|-----------|-------------|-----------------------------------|------------------------------------------|------------------------------------------------------------|
-| `profile` | `shortname` | `input`                           | `varchar(255) DEFAULT '' NOT NULL`       | record label, `required`                                   |
-| `profile` | `firstname` | `input`                           | `varchar(255) DEFAULT '' NOT NULL`       | `label_alt`                                                |
-| `profile` | `lastname`  | `input`                           | `varchar(255) DEFAULT '' NOT NULL`       | `label_alt`                                                |
-| `profile` | `image`     | `file`, `relationship: manyToOne` | `int(11) unsigned DEFAULT 0 NOT NULL`    | reference *count*, not a uid; single nullable reference    |
-| `profile` | `birthday`  | `datetime`, `dbType: date`        | `date DEFAULT NULL`                      | nullable on purpose, see below                             |
-| `profile` | `bio`       | `text`                            | `longtext` (nullable)                    | `''` invariant lives in the model, see below               |
-| `profile` | `addresses` | `inline`                          | `int(11) unsigned DEFAULT 0 NOT NULL`    | 1:n, manually sorted                                       |
-| `profile` | `emails`    | `inline`                          | `int(11) unsigned DEFAULT 0 NOT NULL`    | 1:n, manually sorted                                       |
-| `address` | `type`      | `select`, `dbFieldLength: 150`    | `varchar(150) DEFAULT 'others' NOT NULL` | **pinned in `ext_tables.sql`**, see below                  |
-| `address` | `line1`     | `input`                           | `varchar(255) DEFAULT '' NOT NULL`       | record label                                               |
-| `address` | `line2`     | `input`                           | `varchar(255) DEFAULT '' NOT NULL`       |                                                            |
-| `email`   | `type`      | `select`, `dbFieldLength: 150`    | `varchar(150) DEFAULT 'others' NOT NULL` | **pinned in `ext_tables.sql`**, see below                  |
-| `email`   | `email`     | `email`                           | `varchar(255) DEFAULT '' NOT NULL`       | `required`; `type=email` already produces the wanted shape |
+| Table     | Field       | TCA `type`                           | Column                                   | Note                                                       |
+|-----------|-------------|--------------------------------------|------------------------------------------|------------------------------------------------------------|
+| `profile` | `shortname` | `input`                              | `varchar(255) DEFAULT '' NOT NULL`       | record label, `required`                                   |
+| `profile` | `firstname` | `input`                              | `varchar(255) DEFAULT '' NOT NULL`       | `label_alt`                                                |
+| `profile` | `lastname`  | `input`                              | `varchar(255) DEFAULT '' NOT NULL`       | `label_alt`                                                |
+| `profile` | `image`     | `file`, `relationship: manyToOne`    | `int(11) unsigned DEFAULT 0 NOT NULL`    | reference *count*, not a uid; single nullable reference    |
+| `profile` | `birthday`  | `datetime`, `dbType: date`           | `date DEFAULT NULL`                      | nullable on purpose, see below                             |
+| `profile` | `bio`       | `text`                               | `longtext` (nullable)                    | `''` invariant lives in the model, see below               |
+| `profile` | `addresses` | `inline`                             | `int(11) unsigned DEFAULT 0 NOT NULL`    | 1:n, manually sorted                                       |
+| `profile` | `emails`    | `inline`                             | `int(11) unsigned DEFAULT 0 NOT NULL`    | 1:n, manually sorted                                       |
+| `profile` | `fe_user`   | `select`, `renderType: selectSingle` | `int(11) unsigned DEFAULT 0 NOT NULL`    | owning frontend user, see below                            |
+| `address` | `type`      | `select`, `dbFieldLength: 150`       | `varchar(150) DEFAULT 'others' NOT NULL` | **pinned in `ext_tables.sql`**, see below                  |
+| `address` | `line1`     | `input`                              | `varchar(255) DEFAULT '' NOT NULL`       | record label                                               |
+| `address` | `line2`     | `input`                              | `varchar(255) DEFAULT '' NOT NULL`       |                                                            |
+| `email`   | `type`      | `select`, `dbFieldLength: 150`       | `varchar(150) DEFAULT 'others' NOT NULL` | **pinned in `ext_tables.sql`**, see below                  |
+| `email`   | `email`     | `email`                              | `varchar(255) DEFAULT '' NOT NULL`       | `required`; `type=email` already produces the wanted shape |
 
 The four capabilities come from `ctrl` alone, and every system column and index
 follows from them. None of these columns is ever written by hand:
@@ -46,6 +47,39 @@ follows from them. None of these columns is ever written by hand:
 | soft delete     | `delete`                                                                                  | `deleted`                                                                         |
 | hidden / access | `enablecolumns.disabled`, `.starttime`, `.endtime`                                        | `hidden`, `starttime`, `endtime`                                                  |
 | manual sorting  | `sortby` (children only)                                                                  | `sorting`                                                                         |
+
+### `fe_user`: ownership, and why it is a scalar
+
+The owning frontend user is a `select` with `renderType => 'selectSingle'`,
+`foreign_table => 'fe_users'`, `maxitems => 1` and `default => 0`, plus one item
+with value `0` so the field can be cleared. `DefaultTcaSchema` turns that
+combination — `selectSingle` with a `foreign_table` and integer-only items —
+into `int(11) unsigned DEFAULT 0 NOT NULL`, which is a plain scalar and **not**
+an Extbase relation. That is deliberate: `Extbase\Domain\Model\FrontendUser` was
+removed in v12.0, and the model therefore carries `int $feUser`, which Extbase
+maps to this column through its default camelCase to underscore conversion.
+
+The scalar is also what keeps the ownership resolver pluggable. The upstream
+migration target resolves ownership through an n:m table rather than a column,
+so the resolver interface speaks in owned sets and this column is only how *this*
+extension happens to implement it.
+→ [Authorization](authorization.md)
+
+### `hidden` is a column, but not one we declare
+
+`ctrl.enablecolumns.disabled => 'hidden'` creates the database column, and
+`TcaEnrichment::enrichDisabledField()` additionally injects a matching
+`columns['hidden']` definition into the prepared TCA when the table does not
+declare one (`TcaEnrichment.php:48-70`). Extbase's `DataMapFactory` reads the
+prepared TCA, not our files, so a `bool $hidden` model property maps correctly
+even though no `hidden` entry appears in any file in `Configuration/TCA/`.
+
+This matters because the edit plugin has to show hidden relation records and
+toggle them. Do not "fix" the apparently missing entry by declaring one — that
+replaces core's version-appropriate label and configuration with a hand-written
+copy, which is exactly what
+[never hand-write a system column](#never-hand-write-a-system-column) warns
+against.
 
 ## No version conditional is needed, anywhere
 

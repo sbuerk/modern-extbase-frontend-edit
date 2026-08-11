@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="en" datatype="plaintext" original="EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf" date="2026-08-11T00:00:00Z" product-name="modern_extbase_frontend_edit">
+        <header/>
+        <body>
+            <trans-unit id="tabs.contact">
+                <source>Contact</source>
+            </trans-unit>
+
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile">
+                <source>Profile</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.shortname">
+                <source>Short name</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.firstname">
+                <source>First name</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.lastname">
+                <source>Last name</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.image">
+                <source>Image</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.birthday">
+                <source>Birthday</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.bio">
+                <source>Biography</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.addresses">
+                <source>Addresses</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.emails">
+                <source>Email addresses</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.fe_user">
+                <source>Owner (website user)</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_profile.fe_user.none">
+                <source>No owner</source>
+            </trans-unit>
+
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address">
+                <source>Address</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address.type">
+                <source>Type</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address.type.home">
+                <source>Home</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address.type.work">
+                <source>Work</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address.type.others">
+                <source>Others</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address.line1">
+                <source>Address line 1</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_address.line2">
+                <source>Address line 2</source>
+            </trans-unit>
+
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_email">
+                <source>Email address</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_email.type">
+                <source>Type</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_email.type.private">
+                <source>Private</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_email.type.business">
+                <source>Business</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_email.type.others">
+                <source>Others</source>
+            </trans-unit>
+            <trans-unit id="tx_modernextbasefrontendedit_domain_model_email.email">
+                <source>Email address</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

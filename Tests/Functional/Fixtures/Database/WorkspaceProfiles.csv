@@ -1,0 +1,4 @@
+"tx_modernextbasefrontendedit_domain_model_profile",,,,,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","hidden","fe_user","shortname","firstname","lastname","t3ver_oid","t3ver_wsid"
+,30,1,0,0,0,0,1,"live","Ada","Lovelace",0,0
+,31,1,0,0,0,0,1,"draft","Augusta","Lovelace",30,1
