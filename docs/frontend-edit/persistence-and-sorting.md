@@ -11,14 +11,15 @@ differ. v14 numbers come from the installed set below `.Build/vendor/`, v13
 numbers from 13.4.34. Where no version is named, the code is the same in both.
 
 > [!NOTE]
-> **The read side of this page is code; the write side is not.** The display and
-> edit repositories exist in `Classes/Domain/Repository/`, including the
-> enable-field handling, the `findByUidIncludingHidden()` and
-> `findAllByProfileUid()` lookups, and the `hidden` property on the models — with
-> functional coverage of sorting, visibility, workspace and language overlays.
-> Everything that *writes* — the sorting service, orphan removal, the workspace
-> guard, the file cleanup — follows in a later change, so that it can be reviewed
-> against a written specification instead of against itself.
+> **Both sides of this page are code now.** The display and edit repositories in
+> `Classes/Domain/Repository/` cover the read side. The write side is
+> `Classes/Domain/Persistence/`: `ChildCollectionSynchronizer` does the reorder,
+> the child `pid` and the orphan diff on the object graph and touches no
+> repository; `ProfilePersistenceService` is the single place in the extension
+> that calls `update()`, `remove()` or `persistAll()`; `WorkspaceGuard` refuses
+> while a workspace is active. The only item of the checklist at the end of this
+> page that is still open is the **file cleanup**, because the upload it belongs
+> to is not implemented — see [Image handling](image-handling.md).
 
 ## The decision: `PersistenceManager`, not DataHandler
 
@@ -96,7 +97,7 @@ identical.
 | The **parent** column's TCA carries `foreign_sortby` | `ColumnMapFactory.php:130` (v14) / `:196` (v13)                                                      | `childSortByFieldName` is `null`, and no sorting value is ever written.    |
 | The relation is `HAS_MANY`                           | `Backend::attachObjectToParentObject()` dispatches only for `HAS_MANY` and `HAS_AND_BELONGS_TO_MANY` | An `IllegalRelationTypeException` (1345368105) or no sorting write at all. |
 | The storage reports itself dirty                     | `Backend.php:281` (v14), guarded by `ObjectStorage::_isDirty()`                                      | `persistObjectStorage()` is never called and nothing is written.           |
-| The computed positions actually differ               | the loop at `Backend.php:356-389` (v14), comparing against the clean clone                           | Every member keeps the value it already had in the database.               |
+| The computed positions actually differ               | the loop at `Backend.php:360-389` (v14), comparing against the clean clone                           | Every member keeps the value it already had in the database.               |
 
 The first one is the trap that looks solved and is not: **`ctrl.sortby` on the
 child table is invisible to the Extbase write path.** Extbase only ever reads
@@ -329,30 +330,49 @@ no effect on it — including `ignoreEnableFields`, which is not touched and sta
 `false` in the frontend. A hidden `Profile` is **not** findable through
 `findByUid()`.
 
-The edit repositories therefore carry their own lookup, which goes through
-`createQuery()` and thus through the configured defaults:
+The edit repositories therefore carry their own lookup, built from
+`createEditQuery()` rather than from the inherited finders:
 
 ```php
 public function findByUidIncludingHidden(int $uid): ?Profile
 {
-    $query = $this->createQuery();
+    $query = $this->createEditQuery();
     return $query->matching($query->equals('uid', $uid))->execute()->getFirst();
 }
 ```
 
+The child repositories carry the **owner constrained** variant of the same shape,
+`findByUidAndProfileUidIncludingHidden(int $uid, int $profileUid)`, whose second
+constraint comes from the profile the session already resolved. The client uid is
+one half of the `logicalAnd()` and never the whole of it, which is what makes a
+foreign child uid match nothing instead of matching a row that is then inspected.
+
 This is separate from the rule that the AJAX controller resolves the profile
 from the session rather than from a client-supplied uid — that rule stands, and
-this lookup is used for the already-owned set.
+these lookups are used on the already-owned set.
 
 ## The display and edit repository split
 
-Two repositories over the same table, differing only in their default query
-settings, set in `initializeObject()`.
+Two repositories over the same table, differing in the query settings the edit
+one relaxes **per query**, in a protected `createEditQuery()` on
+`AbstractEditRepository` — deliberately not in `initializeObject()` through
+`setDefaultQuerySettings()`.
 
 | Repository | Query settings                                                                   | Sees                                     |
 |------------|----------------------------------------------------------------------------------|------------------------------------------|
 | Display    | defaults, written out explicitly                                                 | visible records only                     |
 | Edit       | `setIgnoreEnableFields(true)` **and** `setEnableFieldsToBeIgnored(['disabled'])` | hidden records too, nothing else relaxed |
+
+The per-query placement is the load-bearing half of that, for two reasons.
+`setDefaultQuerySettings()` makes `createQuery()` clone the relaxed object for
+**every** query the repository will ever build — `findAll()`, `findByUid()` and
+the inherited `findBy*()` magic included, none of which take an owner constraint
+— so nothing but a docblock would stand between a future caller and a result set
+of other people's disabled records. With the relaxation on `createEditQuery()`,
+the inherited finders stay visible-only and a hidden record can only be reached
+by writing a method that says so. Second, `setDefaultQuerySettings()` freezes
+what `QueryFactory::create()` resolved when the shared repository was first
+instantiated, `persistence.storagePid` included, for the rest of the request.
 
 The second call is not optional. `setIgnoreEnableFields(true)` **alone** takes
 the `else` branch of `getFrontendConstraintStatement()` and reduces the whole
@@ -410,11 +430,53 @@ if (!$this->context->getPropertyFromAspect('workspace', 'isLive', true)) {
 ```
 
 `WorkspaceAspect::isLive()` is `$this->workspaceId === 0` and the class is
-byte-identical in both versions. The default passed to `getPropertyFromAspect()`
-is `true` deliberately: an absent aspect must read as "live", so a missing
-aspect cannot disable the guard. Core uses the same signal in the same area —
+byte-identical in both versions. Core uses the same signal in the same area —
 `Typo3DbQueryParser` reads `workspace/isOffline`, `PageRepository` reads
-`workspace/id`.
+`workspace/id`, and `RequestHandler::getClientCacheHeaders()` reads
+`workspace/isLive` with exactly the same `true` default
+(`cms-frontend/Classes/Http/RequestHandler.php:1221`).
+
+### Correction: what the `true` default actually covers
+
+An earlier revision of this page justified that default with "an absent aspect
+must read as live, so a missing aspect cannot disable the guard". That reasoning
+is wrong, and it is worth replacing rather than deleting, because it is the
+reasoning anyone will reach for again.
+
+**An absent `workspace` aspect cannot happen.** `Context::hasAspect()` answers
+`true` for it unconditionally:
+
+```php
+// cms-core/Classes/Context/Context.php:64-70
+public function hasAspect(string $name): bool
+{
+    return match ($name) {
+        'date', 'visibility', 'backend.user', 'frontend.user', 'workspace', 'language' => true,
+        default => isset($this->aspects[$name]),
+    };
+}
+```
+
+and `getAspect()` lazily instantiates `new WorkspaceAspect()` when none was set
+(`Context.php:83-105`), whose `$workspaceId` defaults to `0` — live. The
+`AspectNotFoundException` branch of `getPropertyFromAspect()` (`Context.php:120-122`)
+is therefore **unreachable for this aspect name**, and the default is never
+consulted on account of a missing aspect.
+
+What the default does cover is one case, and it is a narrow one: a
+`AspectPropertyNotFoundException` from `get()`, which is the only exception
+`getPropertyFromAspect()` catches (`Context.php:123-127`).
+`WorkspaceAspect::get()` handles `id`, `isLive` and `isOffline` and throws
+`1527779447` for anything else (`WorkspaceAspect.php:41-52`), so reaching the
+default means **somebody replaced the aspect** with a class that does not
+implement the documented contract.
+
+That is not a hypothetical worth removing the default for — replacing the
+workspace aspect is exactly what a preview or a simulation extension does — but
+it does change what the default is *for*. It is a fail-live answer to a
+non-conforming aspect, not a guard against an unset one. The comparison is
+`=== true` rather than a truthiness check for the same reason: a replacement
+aspect returning a non-boolean must not pass as "live" by accident.
 
 ## Languages: no translation creation
 
@@ -463,32 +525,89 @@ test may observe.
 ## What we implement by hand
 
 Everything in this table is behaviour `DataHandler` would have provided and the
-Extbase persistence layer does not. It is the acceptance checklist for the
-implementation.
+Extbase persistence layer does not. It was the acceptance checklist for the
+implementation; it is now the map of where each item ended up.
 
-Four rows are done: the `foreign_sortby`/`ctrl.sortby` pair is in the TCA, the
-per-child edit repositories exist with `setEnableFieldsToBeIgnored(['disabled'])`
-alongside `setIgnoreEnableFields(true)`, `findByUidIncludingHidden()` is on the
-profile edit repository, and the models carry a `hidden` property with a setter.
-The remaining rows all belong to the write path and are open.
+**Every row but one is done.** The open row is the file cleanup, which belongs to
+the image upload and lands with it.
 
-| Item                               | Why Extbase does not do it                                                                                         | What we build                                                                                         |
-|------------------------------------|--------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| Reordering a collection            | `ObjectStorage` has no reorder API; `attach()` on a contained object keeps its array position                      | A sorting service doing detach-all + re-attach in target order, plus a test proven to fail without it |
-| Writing `sorting` at all           | Only `foreign_sortby` on the parent column feeds `childSortByFieldName` (`ColumnMapFactory.php:130`)               | `foreign_sortby` on both collection columns, next to `ctrl.sortby` on the child tables                |
-| Deleting orphans                   | Detach clears the parent pointer and sets `sorting = 0`; the row survives (`Backend.php:500-513`)                  | Explicit `$repository->remove($child)` per removed child, before `persistAll()`                       |
-| Deleting a replaced file reference | `#[Cascade]` on `HAS_ONE` only runs when the parent is removed, and is skipped entirely for `#[Lazy]`              | Explicit removal of the old reference, with the file cleanup rule from the image handling page        |
-| Loading hidden children            | `DataMapper::getPreparedQuery()` builds fresh default query settings for relations                                 | Own edit repositories per child, assembled by the edit service — never read off the parent storage    |
-| Finding a hidden record by uid     | `Backend::getObjectByIdentifier()` builds a fresh query and ignores `defaultQuerySettings`                         | `findByUidIncludingHidden()` on the edit repositories, going through `createQuery()`                  |
-| Showing hidden but not expired     | `setIgnoreEnableFields(true)` alone drops `starttime`/`endtime`/`fe_group` as well                                 | `setEnableFieldsToBeIgnored(['disabled'])` alongside it, with `includeDeleted` left `false`           |
-| Toggling `hidden`                  | No API; the column is only writable if it is a mapped property                                                     | A `hidden` property, its TCA `columns` entry, and a setter                                            |
-| Refusing workspace writes          | Writes are plain `insert`/`update` on the live row, entirely workspace-blind                                       | A guard reading `workspace/isLive` from the injected `Context`, defaulting to `true`                  |
-| Language handling                  | `INSERT` always writes `sys_language_uid = 0` and `l10n_parent = 0`                                                | Default-language-only editing, enforced and documented as a limitation                                |
-| The `pid` of new records           | `determineStoragePageIdForNewRecord()` prefers the object's own pid over all configuration (`Backend.php:855-882`) | `setPid()` from the parent record explicitly; `pid` is never a DTO property                           |
+| Item                               | Why Extbase does not do it                                                                                         | What we build, and where it lives                                                                                     |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| Reordering a collection            | `ObjectStorage` has no reorder API; `attach()` on a contained object keeps its array position                      | `ChildCollectionSynchronizer::synchronize()` — detach-all, then re-attach in the intended order                       |
+| Writing `sorting` at all           | Only `foreign_sortby` on the parent column feeds `childSortByFieldName` (`ColumnMapFactory.php:130`)               | `foreign_sortby` on both collection columns, next to `ctrl.sortby` on the child tables                                |
+| Deleting orphans                   | Detach clears the parent pointer and sets `sorting = 0`; the row survives (`Backend.php:500-513`)                  | `synchronize()` returns the dropped children; `ProfilePersistenceService` calls `remove()` per child before the flush |
+| Deleting a replaced file reference | `#[Cascade]` on `HAS_ONE` only runs when the parent is removed, and is skipped entirely for `#[Lazy]`              | **Open.** Belongs to the upload path, with the file cleanup rule from the image handling page                         |
+| Loading hidden children            | `DataMapper::getPreparedQuery()` builds fresh default query settings for relations                                 | `findAllByProfileUid()` on the child edit repositories; the parent's collection is never read for display             |
+| Finding a hidden record by uid     | `Backend::getObjectByIdentifier()` builds a fresh query and ignores `defaultQuerySettings`                         | `findByUidIncludingHidden()` and the owner constrained `findByUidAndProfileUidIncludingHidden()`                      |
+| Showing hidden but not expired     | `setIgnoreEnableFields(true)` alone drops `starttime`/`endtime`/`fe_group` as well                                 | `setEnableFieldsToBeIgnored(['disabled'])` alongside it, with `includeDeleted` left `false`                           |
+| Toggling `hidden`                  | No API; the column is only writable if it is a mapped property                                                     | A `hidden` property, its TCA `columns` entry, a setter, and one endpoint — **for children only**                      |
+| Refusing workspace writes          | Writes are plain `insert`/`update` on the live row, entirely workspace-blind                                       | `WorkspaceGuard`, asserted by the controller *and* at the entry of every write method of the persistence service      |
+| Language handling                  | `INSERT` always writes `sys_language_uid = 0` and `l10n_parent = 0`                                                | Default-language-only editing, enforced and documented as a limitation                                                |
+| The `pid` of new records           | `determineStoragePageIdForNewRecord()` prefers the object's own pid over all configuration (`Backend.php:855-882`) | `synchronize()` assigns `$parent->getPid()` to new children only, gated by `_isNew()`; `pid` is never a DTO property  |
+
+The workspace row is asserted twice on purpose. The controller's call is what
+turns a refusal into a clean `409` instead of an exception page; the one in
+`ProfilePersistenceService` is what makes the rule impossible to bypass by adding
+a second caller. It is one rule read from one `Context`, not two copies that can
+drift.
+
+## What the write path does not do
+
+Three gaps, stated here rather than discovered later. None of them is a bug in
+the sense of "the code does not do what it says"; each is a property of the
+chosen approach that a reader has to know about.
+
+### `persistAll()` is not a transaction
+
+There is no transaction anywhere in this write path, and the Extbase storage
+backend offers none. `Backend::commit()` runs `persistObjects()` and then
+`processDeletedObjects()` (`Backend.php:229-233`), issuing a sequence of
+independent `INSERT`, `UPDATE`
+and soft-delete statements through `Typo3DbBackend`. **A failure part way through
+leaves a partially written aggregate** — for example a reorder in which some
+children carry their new `sorting` and some do not, or a removal in which the
+detach was written and the soft-delete was not.
+
+That is accepted for this editing surface, and it is why every write method of
+`ProfilePersistenceService` flushes **exactly once**: the window is then as small
+as the API allows, and a full record save is one flush rather than three. Wrapping
+the flush in a DBAL transaction of our own was considered and rejected here — it
+would have to span the connection Extbase picks internally, and getting that
+half-right is worse than the honest statement.
+
+### Densification is not repaired
+
+Extbase writes dense `1..n` over a collection it renumbers, but it only writes at
+all for a new child, a child the clean storage does not know, or a child whose
+position moved (the loop at `Backend.php:360-389`). **A collection whose order
+does not change is therefore not renumbered**, and pre-existing gaps in the
+`sorting` column survive — a row reordered in the backend with
+`DataHandler::$sortIntervals`, or a row whose neighbour was deleted outside this
+extension.
+
+The gaps are harmless: every read orders *by* the column and never trusts its
+values, and a frontend reorder rewrites the whole collection densely. What is not
+available is "open the editor and the sorting is tidied up". Repairing it would
+mean writing every member on every save, which turns a no-op save into `n`
+`UPDATE` statements for a cosmetic property of the data.
+
+### The profile's own `hidden` flag is not writable
+
+`setChildVisibility` is the only endpoint that reaches the `hidden` column, and
+its name is literal — it addresses a child. The profile's own flag is in every
+response so an editor can show the state, and no endpoint changes it.
+
+That is deliberate rather than an oversight. Publishing or unpublishing a whole
+profile is a different decision from hiding one of its e-mail addresses: it needs
+a rule about who may make a record public, and possibly a moderation step, and
+that rule is not written. Shipping the column as writable "for symmetry" would
+ship the missing rule with it.
 
 ## See also
 
 - [Modern frontend editing](Index.md) — the other pages of this design.
+- [AJAX transport](ajax-transport.md) — the seven endpoints that drive this
+  write path, and what each of them hands to it.
 - [Domain and schema](domain-schema.md) — where `ctrl.sortby` and
   `foreign_sortby` are actually configured, and the rest of the TCA.
 - [Image handling](image-handling.md) — the file reference, its replacement and

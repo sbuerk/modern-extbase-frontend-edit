@@ -30,6 +30,13 @@
             <trans-unit id="settings.description.modernextbasefrontendedit.editPageUid">
                 <source>The page holding the profile edit plugin. The list plugin links here for profiles the current frontend user owns, and renders no edit link while this is unset.</source>
             </trans-unit>
+
+            <trans-unit id="settings.modernextbasefrontendedit.ajaxPageType">
+                <source>Endpoint page type</source>
+            </trans-unit>
+            <trans-unit id="settings.description.modernextbasefrontendedit.ajaxPageType">
+                <source>The page type the editing endpoints answer on. Change it only when another extension on this site already uses this number.</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

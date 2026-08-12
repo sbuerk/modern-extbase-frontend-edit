@@ -28,16 +28,16 @@ Documentation for people **using** the extension lives in
 
 ## [Modern frontend editing](frontend-edit/Index.md)
 
-| Page                                                                | Contents                                                                               |
-|---------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| [Domain and schema](frontend-edit/domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.           |
-| [Plugins and the Fluid layer](frontend-edit/plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.            |
-| [Persistence and sorting](frontend-edit/persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children.        |
-| [AJAX transport](frontend-edit/ajax-transport.md)                   | Why a page type rather than eID or a middleware, the JSON contract, the request token. |
-| [Authorization](frontend-edit/authorization.md)                     | Ownership resolved from the session, and the security checklist.                       |
-| [DTOs and validation](frontend-edit/dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the mappers.                 |
-| [Image handling](frontend-edit/image-handling.md)                   | The modern upload API, the read-side wrapper, replacement and cleanup.                 |
-| [Frontend assets](frontend-edit/frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain.                  |
+| Page                                                                | Contents                                                                                                  |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| [Domain and schema](frontend-edit/domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                              |
+| [Plugins and the Fluid layer](frontend-edit/plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                               |
+| [Persistence and sorting](frontend-edit/persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, and the gaps that remain. |
+| [AJAX transport](frontend-edit/ajax-transport.md)                   | Why a page type rather than eID or a middleware, the seven endpoints, the request token.                  |
+| [Authorization](frontend-edit/authorization.md)                     | Ownership resolved from the session, and the security checklist.                                          |
+| [DTOs and validation](frontend-edit/dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the mappers.                                    |
+| [Image handling](frontend-edit/image-handling.md)                   | The modern upload API, the read-side wrapper, replacement and cleanup.                                    |
+| [Frontend assets](frontend-edit/frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain.                                     |
 
 ## [Testing](testing/Index.md)
 
