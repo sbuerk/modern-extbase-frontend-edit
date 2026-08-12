@@ -1,13 +1,54 @@
 # TYPO3 extension `modern_extbase_frontend_edit`
 
-TYPO3 CMS extension skeleton supporting TYPO3 v13 and v14 within one code base,
-including core version aware class loading, the container based test and
-quality gate harness, the GitHub Actions workflows and the release tooling.
+> [!CAUTION]
+> **This is a proof of concept, not a product.** It exists to answer one
+> question — *can Extbase entities with relations be managed from the frontend
+> with a modern, accessible, progressively enhanced interface?* — and to be read
+> while answering it.
+>
+> **Do not copy it into a production extension, whole or in parts.** Several
+> decisions in it are deliberate trade-offs that are wrong outside this context,
+> and they are documented as such rather than fixed. Read
+> [what it deliberately does not do](#what-it-deliberately-does-not-do) before
+> reusing anything.
+
+Editing a profile record and its child collections directly on the page: every
+field, every address, every e-mail address and the profile image, saved over
+AJAX without a page reload, from a
+[lit](https://lit.dev) web component that enhances markup the server already
+rendered.
 
 - **Package name**: `sbuerk/modern-extbase-frontend-edit`
 - **Extension key**: `modern_extbase_frontend_edit`
 - **Repository**: https://github.com/sbuerk/modern-extbase-frontend-edit
 - **License**: GPL-2.0-or-later
+
+## What it demonstrates
+
+| Question it answers                                                        | How                                                                                                                                                                   |
+|----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Can a visitor edit an Extbase aggregate and its relations in the frontend? | Three plugins — a list, a detail view and an edit surface — over one `Profile` record with two inline child collections and a FAL image.                              |
+| Without a full page form?                                                  | Per field and whole record saves against JSON endpoints, plus add, remove, reorder and hide for each child collection.                                                |
+| Without breaking when JavaScript does not load?                            | The server renders the whole record inside the custom element. The component replaces it once it upgrades; until then, and forever without it, the plain view stands. |
+| Who is allowed to write?                                                   | The record is owned by a frontend user. Every endpoint resolves the profile from the session, never from a uid the client supplied.                                   |
+| How does it persist?                                                       | Extbase `PersistenceManager` with a DTO to model mapping service, deliberately **not** `DataHandler`.                                                                 |
+| What stops a forged request?                                               | A TYPO3 request token, verified on every write, plus validation driven by rule sets shared between the endpoints and the surface.                                     |
+| Does it run on both current core versions?                                 | v13 and v14 from one code base, with version differences split into separate classes rather than conditionals.                                                        |
+
+## What it deliberately does not do
+
+These are the reasons it must not be copied without reading. Each is a decision,
+not an oversight, and each is documented where it is made:
+
+- **Writes bypass `DataHandler`.** That means no `sys_history`, no hooks and no
+  reference index update. For a proof of concept about Extbase persistence that
+  is the point; for a production extension it is usually a defect.
+- **Editing is refused while a workspace is active**, and the surface says so
+  before the visitor types rather than after. Versioning a record is
+  `DataHandler`'s job, so workspace editing is out of scope.
+- **Only default language records are edited.** No translation is created.
+- **Last write wins.** There is no optimistic locking and no rate limiting.
+- **One image, no cropping, no metadata editing.**
 
 ## Compatibility
 
@@ -30,6 +71,10 @@ composer require sbuerk/modern-extbase-frontend-edit:^1.0@dev
 
 This additionally requires `minimum-stability: "dev"` together with
 `prefer-stable: true` in the root `composer.json` file.
+
+Installing it is not enough to see anything: the extension needs a storage page,
+the plugins placed on pages, and a frontend user owning a profile record. The
+[installation chapter](Documentation/Installation/Index.rst) has the full list.
 
 ## Documentation
 
