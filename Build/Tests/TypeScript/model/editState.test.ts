@@ -10,6 +10,10 @@
  *
  * **A failed save keeps what was typed.** A `422` adds errors and leaves the
  * session, its open fields and its drafts standing.
+ *
+ * **A draft is content, not a by-product of an open field.** A session whose
+ * only content is a draft is a session worth keeping — see the block on the add
+ * form below for what it costs when it is not.
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
@@ -32,7 +36,7 @@ import {
     setDraft,
 } from '../../../Sources/TypeScript/model/editState.js';
 import { fieldValue, parseProfileRecord, recordValues } from '../../../Sources/TypeScript/model/profileRecord.js';
-import { childTarget, profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
+import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
 import type { ProfileRecord } from '../../../Sources/TypeScript/model/types.js';
 import { profileDocument, profileDocumentWith } from '../profileDocument.js';
 
@@ -162,6 +166,59 @@ describe('cancelling a field', (): void => {
         const edits = emptyEditMap();
 
         assert.equal(endFieldEdit(edits, profileTarget, 'firstname'), edits);
+    });
+});
+
+/**
+ * The add form, which is the one record that types into a session it never
+ * opened.
+ *
+ * Its controls are always rendered, so nothing ever calls `beginFieldEdit()`
+ * for it and the only thing its session ever holds is a draft. `write()` used
+ * to drop a session that had no open field *whatever was in its drafts*, so
+ * every keystroke was discarded on the way out: `addChild()` submitted the
+ * initial values while the control on screen still showed what had been typed,
+ * and the server answered `422` for the empty required field.
+ *
+ * ## Why the tests above cannot see this
+ *
+ * Every one of them that reaches the drop has a field open — the two field
+ * cancel test says so in as many words, and the single field cancel asserts
+ * through `draftOf()` with a fallback that is *also* the value it expects, so a
+ * dropped session and a discarded draft answer identically. The drop therefore
+ * never fires on a session that still has something to lose.
+ *
+ * The assertion has to be made on a session whose **only** content is a draft,
+ * and against a fallback the draft differs from. A test that opens a field
+ * first is a test of `beginFieldEdit()`, and it goes green against the defect.
+ */
+describe('a record whose controls are always open', (): void => {
+    it('keeps a draft that was recorded without an open field', (): void => {
+        const target = newChildTarget('email');
+        const edits = setDraft(emptyEditMap(), target, 'email', 'third@example.org');
+
+        assert.notEqual(editOf(edits, target), null, 'the session is not dropped as empty');
+        assert.deepEqual(editOf(edits, target)?.fields, [], 'and it never opened a field');
+
+        // The fallback is what the add form seeds its controls with, i.e. what
+        // the payload would carry if the draft were gone.
+        assert.equal(draftOf(edits, target, 'email', ''), 'third@example.org');
+    });
+
+    it('keeps the drafts of a whole form typed field by field', (): void => {
+        const target = newChildTarget('email');
+        let edits = setDraft(emptyEditMap(), target, 'type', 'business');
+        edits = setDraft(edits, target, 'email', 'third@example.org');
+
+        assert.equal(draftOf(edits, target, 'type', 'others'), 'business');
+        assert.equal(draftOf(edits, target, 'email', ''), 'third@example.org');
+    });
+
+    it('is still dropped when the form is cancelled', (): void => {
+        const target = newChildTarget('email');
+        const edits = endRecordEdit(setDraft(emptyEditMap(), target, 'email', 'third@example.org'), target);
+
+        assert.equal(editOf(edits, target), null, 'keeping a draft is not keeping it forever');
     });
 });
 

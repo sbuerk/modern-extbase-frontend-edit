@@ -230,15 +230,24 @@ export function clearErrors(edits: EditMap, target: RecordTarget): EditMap {
 /**
  * Writes a session back, dropping it when it carries nothing worth keeping.
  *
- * "Nothing worth keeping" is: no open field, no error, and no request in
- * flight. Keeping such an entry would leave an empty session behind after every
- * cancelled edit and make `editOf()` answer with something that means nothing.
+ * "Nothing worth keeping" is: no open field, no draft, no error, and no request
+ * in flight. Keeping such an entry would leave an empty session behind after
+ * every cancelled edit and make `editOf()` answer with something that means
+ * nothing.
+ *
+ * The draft condition is not symmetry for its own sake. A record whose controls
+ * are always visible — the form that adds a child — never opens a field, so
+ * every keystroke it records would be dropped again on the way out, and the
+ * submitted payload would carry the defaults while the control on screen showed
+ * what the user typed. Cancelling still drops the session, because
+ * `endFieldEdit()` removes a field and its draft together.
  */
 function write(edits: EditMap, target: RecordTarget, edit: RecordEdit): EditMap {
     const next = new Map(edits);
     const key = targetKey(target);
     if (
         edit.fields.length === 0
+        && Object.keys(edit.drafts).length === 0
         && edit.generalErrors.length === 0
         && Object.keys(edit.fieldErrors).length === 0
         && !edit.busy
