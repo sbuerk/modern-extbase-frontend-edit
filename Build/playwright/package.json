@@ -9,7 +9,8 @@
     },
     "scripts": {
         "test": "playwright test",
-        "screenshots": "playwright test --config=screenshots.playwright.config.ts"
+        "screenshots": "playwright test --config=screenshots.playwright.config.ts",
+        "visual": "playwright test --config=visual.playwright.config.ts"
     },
     "devDependencies": {
         "@playwright/test": "1.56.1",

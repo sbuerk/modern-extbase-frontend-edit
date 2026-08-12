@@ -31,6 +31,9 @@ Build/Scripts/runTests.sh -s functional -d sqlite -- --filter ExtensionLoadedTes
 
 # Browser based acceptance tests, against a seeded TYPO3 instance.
 Build/Scripts/runTests.sh -s acceptance
+
+# The appearance of the surface, against committed baseline images.
+Build/Scripts/runTests.sh -s visualRegression
 ```
 
 ## The two tests that must never be dropped

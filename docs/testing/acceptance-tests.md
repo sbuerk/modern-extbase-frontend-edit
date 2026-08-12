@@ -257,6 +257,33 @@ suite asserts that an import map was emitted; only a browser can assert that a
 bare specifier resolves out of it. Without it, a `lit` major version bump in
 TYPO3 core reaches this extension as a broken page rather than as a red gate.
 
+## The visual regression suite rides on it too
+
+`runTests.sh -s visualRegression` compares seven components of the surface
+against committed PNG baselines, using the same instance, page object and reset.
+It is a **gate** — unlike the screenshot generator, which writes into the tracked
+tree and cannot fail — and the two are easy to confuse:
+
+| Suite                     | Files         | Writes                                    | Can fail |
+|---------------------------|---------------|-------------------------------------------|----------|
+| `acceptance`              | `*.spec.ts`   | nothing                                   | yes      |
+| `visualRegression`        | `*.visual.ts` | baselines, only with `--update-snapshots` | yes      |
+| `screenshotDocumentation` | `*.shots.ts`  | `Documentation/files/images/`             | no       |
+
+```bash
+Build/Scripts/runTests.sh -s visualRegression
+# After an intended styling change - look at the diff before re-recording.
+Build/Scripts/runTests.sh -s visualRegression -- --update-snapshots
+```
+
+Baselines live in `Tests/Acceptance/Visual/__baselines__/` and are committed, so
+a restyle arrives in a pull request as an image diff a reviewer can look at.
+`Tests/` is `export-ignore`d, so none of them reach the composer package.
+
+Why it is clipped to components, why the tolerance is 60 pixels, and why the
+platform is kept out of the baseline path are in
+[Styling](../frontend-edit/styling.md#the-appearance-is-guarded-by-seven-baselines).
+
 ## The documentation screenshots ride on this harness
 
 `runTests.sh -s screenshotDocumentation` regenerates the images the rendered

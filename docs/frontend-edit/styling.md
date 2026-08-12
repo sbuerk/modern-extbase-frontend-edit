@@ -306,6 +306,45 @@ The fix is the standard one, and it is worth knowing why each half is needed:
 component: it is a control, and that is the module that makes a control look like
 one.
 
+## The appearance is guarded by seven baselines
+
+`Tests/Acceptance/Visual/surface.visual.ts` compares seven components against
+committed PNGs: a field at rest, a field being edited, a rejected field, a child
+header, a hidden child header, the image row, and a field in a narrow column.
+
+```bash
+Build/Scripts/runTests.sh -s visualRegression                      # the gate
+Build/Scripts/runTests.sh -s visualRegression -- --update-snapshots  # re-record
+```
+
+**This was deliberately refused three times** while the surface was being
+designed, and the reason is worth keeping: a baseline freezes an appearance, and
+freezing one nobody is happy with turns every improvement into a wall of red
+diffs to approve — which trains a reviewer to approve them unread, at which point
+the suite costs time and catches nothing. It became worth having once the design
+stopped moving.
+
+Four things about it are decisions rather than defaults:
+
+- **One baseline per component, never a full page.** A 2000 pixel image is a
+  large binary that fails on any change anywhere and names none of them. All
+  seven together are 56 kB.
+- **`maxDiffPixels: 60`, measured not estimated.** Raising
+  `--frontend-edit-border-width` from `1px` to `2px` fails all seven, and the
+  smallest of them differs by 188 pixels. A change small enough to slip through
+  is smaller than a border.
+- **`deviceScaleFactor: 1`**, unlike the documentation screenshots. A 2×
+  baseline is four times the bytes and four times the antialiased edges that can
+  differ between two machines, and nothing here is read by a human.
+- **No `{platform}` in the baseline path.** Playwright puts it there by default,
+  which would invite a second set recorded on a host — and a host run is exactly
+  the one with different fonts. One set, recorded in the container, is the point.
+
+**No dark scheme baseline.** `prefers-color-scheme` can be emulated and the eight
+dark tokens would then be pinned, but a second set doubles what a restyle has to
+re-record, and the dark values are a courtesy rather than a supported theme.
+Named rather than hidden.
+
 ## Class names are structural, not presentational
 
 `.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by
@@ -318,9 +357,8 @@ Renaming one is a test change, not a styling change.
 - **No motion beyond two colour transitions.** There is one duration token, and
   `prefers-reduced-motion` sets it to `0ms` — one declaration rather than an
   `!important` sweep.
-- **Nothing verifies the appearance.** The acceptance suite proves the surface
-  still works, and one spec pins which button carries which emphasis — but that
-  a colour is legible, that a focus ring is visible against a dark host page, or
-  that nothing overlaps at 320 pixels is a person looking at the six generated
-  screenshots. A visual regression suite would be the honest fix and does not
-  exist.
+- **Legibility is still nobody's assertion.** The visual suite pins that the
+  surface has not *changed*; whether a colour has enough contrast, whether the
+  focus ring survives a dark host page, and whether the dark scheme is usable at
+  all are still a person's judgement. No baseline is recorded for the dark
+  scheme — see below.

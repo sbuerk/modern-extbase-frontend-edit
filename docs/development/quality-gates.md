@@ -283,6 +283,7 @@ assets   ─┘
 | `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                                            |
 | `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                                |
 | `acceptance`        | —                                        | `acceptance`, uploads traces and the TYPO3 log on failure         |
+| `visual-regression` | —                                        | `visualRegression`, uploads the image diffs on failure            |
 | `documentation`     | —                                        | `renderDocumentation`, uploads the artifact                       |
 | `frontend-assets`   | —                                        | `lintTypescript -n`, `typecheckJs`, `unitJs`, `checkJsBuildClean` |
 
