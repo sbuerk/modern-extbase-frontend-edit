@@ -11,6 +11,7 @@ use SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\AbstractFunctionalTestCase
 use SBUERK\ModernExtbaseFrontendEdit\Validation\AddressRuleSet;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\DtoValidator;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\EmailRuleSet;
+use SBUERK\ModernExtbaseFrontendEdit\Validation\ProfileImageUploadRules;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\ProfileRuleSet;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\RuleSetInterface;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\Validator\ChoiceValidator;
@@ -125,6 +126,30 @@ final class ValidationMessageTest extends AbstractFunctionalTestCase
     }
 
     /**
+     * The same guarantee for the upload rules, which no rule set covers.
+     *
+     * {@see ProfileImageUploadRules} deliberately does not implement
+     * {@see RuleSetInterface} — its docblock says why — so the two tests above
+     * cannot reach it, and the messages a rejected upload renders would be the
+     * one part of this layer with no guarantee at all. Its keys are collected
+     * with the others in `collectMessageKeys()`; what is left is the rule side.
+     */
+    #[Test]
+    public function everyImageUploadRuleConfiguresAMessage(): void
+    {
+        foreach ((new ProfileImageUploadRules())->rules() as [$validatorClassName, $options]) {
+            $this->assertNotSame(
+                [],
+                array_intersect(self::translationOptionsOf($validatorClassName), array_keys($options)),
+                sprintf(
+                    'The upload rule on %s configures no message, so it would answer with its own default.',
+                    $validatorClassName,
+                ),
+            );
+        }
+    }
+
+    /**
      * @return \Generator<string, array{ruleSet: RuleSetInterface}>
      */
     public static function ruleSets(): \Generator
@@ -139,18 +164,28 @@ final class ValidationMessageTest extends AbstractFunctionalTestCase
      * validators this extension adds — a rule set normally names a message of
      * its own, and these are what is shown when it does not.
      *
+     * The upload rules are collected alongside the rule sets even though they
+     * are not one: they carry the same kind of key, they fail the same silent
+     * way, and the shape they share is exactly the part this method uses.
+     *
      * @return list<non-empty-string>
      */
     private static function collectMessageKeys(): array
     {
         $keys = [];
+        $ruleLists = [];
         foreach ([new ProfileRuleSet(), new AddressRuleSet(), new EmailRuleSet()] as $ruleSet) {
             foreach ($ruleSet->rules() as $rules) {
-                foreach ($rules as [, $options]) {
-                    foreach ($options as $option) {
-                        if (is_string($option) && str_starts_with($option, 'LLL:')) {
-                            $keys[] = $option;
-                        }
+                $ruleLists[] = $rules;
+            }
+        }
+        $ruleLists[] = (new ProfileImageUploadRules())->rules();
+
+        foreach ($ruleLists as $rules) {
+            foreach ($rules as [, $options]) {
+                foreach ($options as $option) {
+                    if (is_string($option) && str_starts_with($option, 'LLL:')) {
+                        $keys[] = $option;
                     }
                 }
             }
