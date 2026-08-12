@@ -46,7 +46,7 @@ hosted runners, not of this repository.
 | `-d <dbms>`    | Database for functional tests (`sqlite`, `mariadb`, `mysql`, `postgres`). |
 | `-i <version>` | Database image version, together with `-d`. `-h` lists the accepted ones. |
 | `-b <bin>`     | Container binary, `podman` or `docker`. Auto-detected, podman preferred.  |
-| `-n`           | Check only, do not modify files (used by `cgl` in CI).                    |
+| `-n`           | Check only, do not modify files (`cgl` and `lintTypescript`, as in CI).   |
 | `-o <seed>`    | Replay a specific random order seed with `unitRandom`.                    |
 | `-h`           | Full help with every suite and option.                                    |
 
@@ -66,6 +66,11 @@ hosted runners, not of this repository.
 | `checkMarkdownTables`           | Markdown tables must be formatted, `-- --fix` formats them.   |
 | `checkRepositoryInitialization` | `initializeRepository.sh` rewrites every identifier.          |
 | `checkTestMethodsPrefix`        | Test methods must not start with `test`.                      |
+| `lintTypescript`                | eslint over `Build/Sources/`, fixes in place, `-n` checks.    |
+| `typecheckJs`                   | `tsc --noEmit`, which the asset build does not do.            |
+| `buildJs`                       | Compile `Build/Sources/` into `Resources/Public/`.            |
+| `checkJsBuildClean`             | The committed artifacts must match `Build/Sources/`.          |
+| `npm`                           | `npm` with all remaining arguments, run in `Build/`.          |
 | `composer`                      | `composer` with all remaining arguments dispatched.           |
 | `composerInstall`               | `composer install`.                                           |
 | `composerUpdate`                | `composer update` for the core version given with `-t`.       |
@@ -75,8 +80,15 @@ hosted runners, not of this repository.
 | `watchDocumentation`            | Serve `Documentation/`, re-rendering on every change.         |
 | `clean`                         | Remove build, cache, rendered documentation and test files.   |
 | `cleanCache`                    | Cache files and folders only.                                 |
+| `cleanJs`                       | `Build/node_modules` and `Build/.cache` only.                 |
 | `cleanRenderedDocumentation`    | `Documentation-GENERATED-temp/` only.                         |
 | `cleanTests`                    | Test related files and folders only.                          |
+
+The five node based suites — `lintTypescript`, `typecheckJs`, `buildJs`,
+`checkJsBuildClean` and `npm` — run in a node container and ignore `-t`
+entirely. They read `Build/Sources/` and `Resources/Public/`, never the
+installed core, and are the only suites that need no `composerUpdate` first.
+→ [Frontend assets](../frontend-edit/frontend-assets.md#the-runtestssh-suites)
 
 ## Passing arguments to the underlying tool
 
@@ -91,4 +103,5 @@ Build/Scripts/runTests.sh -s functional -d sqlite -- --filter DummyTest
 
 - [Dual core setup](dual-core-setup.md)
 - [Quality gates](quality-gates.md)
+- [Frontend assets](../frontend-edit/frontend-assets.md)
 - [Testing](../testing/Index.md)

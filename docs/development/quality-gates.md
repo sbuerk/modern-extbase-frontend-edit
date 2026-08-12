@@ -4,6 +4,9 @@ The same gates run locally and in the GitHub Actions workflows for TYPO3 v13
 and v14. Every one of them must pass for both core versions, each after the
 matching `composerUpdate` — see [Dual core setup](dual-core-setup.md).
 
+The exception is the [frontend asset gates](#frontend-asset-gates), which read
+no PHP and no installed core. They are run once, not once per core version.
+
 ## The gates
 
 ```bash
@@ -36,6 +39,12 @@ Build/Scripts/runTests.sh -s checkRepositoryInitialization
 
 # Ensure test methods do not start with "test".
 Build/Scripts/runTests.sh -s checkTestMethodsPrefix
+
+# The frontend assets: lint, type check, and prove the committed artifacts
+# still match their sources.
+Build/Scripts/runTests.sh -s lintTypescript -n
+Build/Scripts/runTests.sh -s typecheckJs
+Build/Scripts/runTests.sh -s checkJsBuildClean
 ```
 
 | Gate                            | Configuration                                                                                              | Core version dependent |
@@ -49,6 +58,9 @@ Build/Scripts/runTests.sh -s checkTestMethodsPrefix
 | `checkMarkdownTables`           | [`Build/Scripts/checkMarkdownTables.php`](../../Build/Scripts/checkMarkdownTables.php)                     | no                     |
 | `checkRepositoryInitialization` | [`Build/Scripts/checkRepositoryInitialization.php`](../../Build/Scripts/checkRepositoryInitialization.php) | no                     |
 | `checkTestMethodsPrefix`        | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)             | no                     |
+| `lintTypescript`                | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                                 | no                     |
+| `typecheckJs`                   | [`Build/tsconfig.json`](../../Build/tsconfig.json)                                                         | no                     |
+| `checkJsBuildClean`             | [`Build/esbuild.mjs`](../../Build/esbuild.mjs)                                                             | no                     |
 
 ## PHPStan
 
@@ -82,6 +94,48 @@ nothing else may be silenced.
 TYPO3 exception codes are unix timestamps taken at the moment the exception is
 written, and must be unique across the code base. `checkExceptionCodes` finds
 both duplicates and exceptions thrown without a code.
+
+## BOM detection, and a gate that could not fail
+
+`checkBom` runs `file` over every file that is not generated or vendored and
+fails when one carries a UTF-8 byte order mark.
+
+> [!CAUTION]
+> **This gate passed everything until now, including a file that did carry a
+> BOM.** It grepped the output of `file` for the literal string
+> `UTF-8 Unicode (with BOM)`. `file` 5.47, the version in the container images,
+> answers
+>
+> ```
+> some/file.php: Unicode text, UTF-8 (with BOM) text
+> ```
+>
+> — the same words in the opposite order, so the pattern matched nothing, ever.
+> The gate was green because it found no offenders, and it found no offenders
+> because it could not recognize one. It now greps `(with BOM)` and has been
+> shown to **fail on a planted BOM and pass once the BOM is removed**.
+
+The general lesson is worth more than the fix: **a gate whose assertion depends
+on the exact wording of a third-party tool's output needs a test that proves it
+can still fail.** A green run of a check that cannot go red is
+indistinguishable, in every log and every pull request, from a green run of a
+check that works. The wording here has already changed once between `file`
+releases, which is why the pattern is now matched loosely — a run that
+occasionally also names a UTF-16 file is a far better failure mode than one that
+silently stops detecting anything, and UTF-16 has no business in this repository
+either.
+
+Proving it is two commands, and they are the ones that were run:
+
+```bash
+printf '\xef\xbb\xbfx' > Build/bom-probe.txt
+Build/Scripts/runTests.sh -s checkBom   # must fail, naming Build/bom-probe.txt
+rm Build/bom-probe.txt
+Build/Scripts/runTests.sh -s checkBom   # must pass again
+```
+
+The probe cannot live under `.agent/` — that directory is one of the paths the
+`find` skips, so a BOM planted there proves nothing.
 
 ## Test method naming
 
@@ -121,6 +175,41 @@ alone so a page can show an unformatted one as an example.
 Git-ignored files are skipped, and so are the symlinked agent instruction files,
 which are checked through their target.
 → [Documentation conventions](../Index.md#conventions-of-this-documentation)
+
+## Frontend asset gates
+
+Three gates and two helpers cover `Build/Sources/`. They run in
+`ghcr.io/typo3/core-testing-nodejs24:1.1` — the image TYPO3 core uses for its
+own JavaScript suites, **pinned rather than floating**, because a node major
+changing underneath a committed build artifact would fail a pull request that
+touched no JavaScript at all.
+
+| Suite               | Runs                                                                    | Purpose                                                                             |
+|---------------------|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| `lintTypescript`    | `npm run lint:fix`, or `lint` with `-n`                                 | eslint 9, typescript-eslint and the lit/web-component plugins. Mirrors `cgl`.       |
+| `typecheckJs`       | `npm run typecheck`                                                     | `tsc --noEmit`. Its own gate because esbuild emits without type checking.           |
+| `checkJsBuildClean` | Delete the artifacts, `npm ci && npm run build`, assert nothing changed | Proves the committed artifacts still match their sources.                           |
+| `buildJs`           | `npm ci && npm run build`                                               | Not a gate — the build itself. Run it after a source change and commit the result.  |
+| `npm`               | `npm "$@"` in `Build/`                                                  | Escape hatch, like the `composer` suite: `-s npm -- install --save-dev lit@latest`. |
+| `cleanJs`           | `rm -rf Build/node_modules Build/.cache`                                | Intermediates only, and wired into `clean`. Never touches `Resources/Public/`.      |
+
+Two properties set them apart from every other gate: **`-t` does not change what
+they do**, because they read `Build/Sources/` and `Resources/Public/` and never
+the installed core — and they **need no `composerUpdate`**, because they never
+read `.Build/`. They are therefore the only suites that may be run while the
+other core version's dependency set is installed, the single exception to the
+rule in [Dual core setup](dual-core-setup.md).
+
+`checkJsBuildClean` is the one that has to be understood rather than just run.
+The compiled assets below `Resources/Public/` are **committed files** — neither
+`composer require` nor a TER upload runs a node build, so they have to be in the
+package. That makes it possible to change a source, forget to rebuild, and ship
+an artifact that quietly goes on serving the previous behaviour: no PHP gate
+looks at those files, and a reviewer reading the diff sees a plausible source
+change. The gate deletes the artifacts, rebuilds them from scratch and fails if
+`git status` reports anything, which also catches a source that stopped
+producing an output.
+→ [Frontend assets](../frontend-edit/frontend-assets.md#artifacts-are-committed-and-that-makes-a-gate-mandatory)
 
 ## Repository initialization
 
@@ -177,24 +266,34 @@ gate behaves identically in CI and on a developer machine.
 The jobs are staged, cheapest and most likely to fail first:
 
 ```
-quality ─┐
-phpstan ─┤
-lint    ─┼─> unit ─> functional (SQLite) ─> functional (MySQL, MariaDB, Postgres)
-         │
-docs ────┘
+quality  ─┐
+phpstan  ─┤
+lint     ─┼─> unit ─> functional (SQLite) ─> functional (MySQL, MariaDB, Postgres)
+          │
+docs     ─┤
+assets   ─┘
 ```
 
-| Job                 | Matrix                                   | Runs                                        |
-|---------------------|------------------------------------------|---------------------------------------------|
-| `quality`           | lowest PHP, one core version             | The gates that inspect source files         |
-| `phpstan`           | lowest PHP × both core versions          | The one gate configured per core version    |
-| `lint`              | all PHP versions × both core versions    | `lintPhp`                                   |
-| `unit`              | edge PHP versions × both core versions   | `unit`, `unitRandom`                        |
-| `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                      |
-| `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database          |
-| `documentation`     | —                                        | `renderDocumentation`, uploads the artifact |
+| Job                 | Matrix                                   | Runs                                                    |
+|---------------------|------------------------------------------|---------------------------------------------------------|
+| `quality`           | lowest PHP, one core version             | The gates that inspect source files                     |
+| `phpstan`           | lowest PHP × both core versions          | The one gate configured per core version                |
+| `lint`              | all PHP versions × both core versions    | `lintPhp`                                               |
+| `unit`              | edge PHP versions × both core versions   | `unit`, `unitRandom`                                    |
+| `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                                  |
+| `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                      |
+| `documentation`     | —                                        | `renderDocumentation`, uploads the artifact             |
+| `frontend-assets`   | —                                        | `lintTypescript -n`, `typecheckJs`, `checkJsBuildClean` |
 
-Two decisions are worth knowing:
+`frontend-assets` is the only job with **no `composerUpdate` step at all**. Its
+suites read `Build/Sources/` and `Resources/Public/` and never `.Build/`, so the
+most expensive step in the workflow is simply absent — and for the same reason
+the job has no matrix: repeating it per PHP and core version would check the
+same TypeScript four times. It caches `.cache/.npm` keyed on
+`Build/package-lock.json` instead, and it is in the `needs` list of `ci-status`
+like every other job, where a skipped job counts as a failure.
+
+Two further decisions are worth knowing:
 
 - **The DBMS matrix is gated on SQLite.** It is the expensive part, sixteen jobs
   each starting a database container. Running it only after the same tests pass
@@ -294,5 +393,6 @@ Two consequences:
 
 - [Development environment](environment.md)
 - [Dual core setup](dual-core-setup.md)
+- [Frontend assets](../frontend-edit/frontend-assets.md)
 - [Testing](../testing/Index.md)
 - [Pull requests](../workflow/pull-requests.md)

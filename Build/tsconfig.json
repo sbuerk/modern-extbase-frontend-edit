@@ -1,0 +1,44 @@
+// TypeScript is installed for "tsc --noEmit" only: esbuild performs the emit and
+// does not type check, which is why "typecheckJs" is a suite of its own — a build
+// that is green and a type check that is red have to be distinguishable.
+//
+// tsconfig.json is JSONC, and both TypeScript and esbuild read the comments below.
+{
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "lib": [
+            "es2022",
+            "dom",
+            "dom.iterable"
+        ],
+        // No ambient @types packages. The sources run in a browser, not in node.
+        "types": [],
+
+        // Taken from the TYPO3 core tsconfig verbatim, and load bearing: this pair
+        // is the legacy decorator mode lit 3 requires. With standard class fields
+        // the field declaration overwrites the accessor a decorator installed, so
+        // "@property" silently does nothing instead of failing.
+        "experimentalDecorators": true,
+        "useDefineForClassFields": false,
+
+        // Deliberately different from core, which has "strict": false. Core carries
+        // years of legacy; a new extension has no reason to start relaxed.
+        "strict": true,
+
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "skipLibCheck": true,
+
+        "noEmit": true
+    },
+    "include": [
+        "Sources/TypeScript/**/*.ts"
+    ]
+}

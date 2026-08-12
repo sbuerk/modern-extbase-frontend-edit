@@ -9,28 +9,33 @@ supported core versions.
 > These pages document the **design and the reasoning behind it**, and the code
 > is landing against them one change at a time. The domain, the schema, the
 > ownership resolver, the two read plugins, the DTO/validation/mapping layer,
-> the write path and the seven JSON endpoints exist. What does not: the image
-> upload, and the JavaScript component that drives the endpoints. Where a page
-> describes code that does not exist yet, it says so.
+> the write path, the seven JSON endpoints and the frontend asset toolchain
+> exist. What does not: the image upload, and the JavaScript component that
+> drives the endpoints — the asset entry point is scaffolding, and no template
+> loads it yet. Where a page describes code that does not exist yet, it says so.
 >
-> Writing the code disproved three statements these pages made while they were
-> design only. All three are corrected **in place**, next to the reasoning they
+> Writing the code disproved four statements these pages made while they were
+> design only. All four are corrected **in place**, next to the reasoning they
 > replace, rather than collected in an errata list nobody reads:
 > the content object the endpoint `PAGE` calls and the need for
 > `config.no_cache` → [AJAX transport](ajax-transport.md#caching); what the
 > `true` default of `getPropertyFromAspect('workspace', 'isLive', true)` covers
-> → [Persistence and sorting](persistence-and-sorting.md#correction-what-the-true-default-actually-covers).
+> → [Persistence and sorting](persistence-and-sorting.md#correction-what-the-true-default-actually-covers);
+> and that a `.gitignore` entry is what keeps php-cs-fixer out of
+> `Build/node_modules` — it never was, because `ignoreVCSIgnored()` was reading
+> no `.gitignore` at all
+> → [Frontend assets](frontend-assets.md#correction-gitignore-was-never-what-kept-php-cs-fixer-out).
 
-| Page                                                  | Contents                                                                                      |
-|-------------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                  |
-| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                   |
-| [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.   |
-| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the seven endpoints, the request token.      |
-| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence lives.     |
-| [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers. |
-| [Image handling](image-handling.md)                   | The modern upload API, why the custom model is a read-side wrapper, replacement and cleanup.  |
-| [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain and the gates it needs.  |
+| Page                                                  | Contents                                                                                        |
+|-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                    |
+| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                     |
+| [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.     |
+| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the seven endpoints, the request token.        |
+| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence lives.       |
+| [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers.   |
+| [Image handling](image-handling.md)                   | The modern upload API, why the custom model is a read-side wrapper, replacement and cleanup.    |
+| [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain, the gates and the CI job. |
 
 ## The short version
 
@@ -86,7 +91,14 @@ supported core versions.
   one of the seven endpoints — it is a different transport with a different
   cleanup rule. → [AJAX transport](ajax-transport.md#the-seven-endpoints)
 - **Asset loading needs no version split.** Import maps behave identically in
-  the frontend on v13 and v14. → [Frontend assets](frontend-assets.md)
+  the frontend on v13 and v14, and `'dependencies' => ['core']` makes `lit`
+  resolvable from a frontend page — bundling a second copy would break custom
+  element registration, which is a correctness problem and not a payload one.
+  → [Frontend assets](frontend-assets.md)
+- **The compiled assets are committed, and one gate is what makes that safe.**
+  Neither composer nor TER runs a build step, so the artifacts have to ship —
+  and an artifact that drifts from its source is invisible to every other check.
+  → [Frontend assets](frontend-assets.md#artifacts-are-committed-and-that-makes-a-gate-mandatory)
 
 ## See also
 
