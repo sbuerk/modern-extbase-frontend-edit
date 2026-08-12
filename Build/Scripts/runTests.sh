@@ -371,6 +371,8 @@ Options:
             - unit (default): PHP unit tests
             - unitJs: TypeScript unit tests over Build/Sources/, run with "node --test"
             - unitRandom: PHP unit tests in random order, "-o <number>" to use a specific seed
+            - visualRegression: compare the surface against the committed baselines,
+              "-- --update-snapshots" to re-record them after an intended change
             - watchDocumentation: render the documentation and re-render it on every change,
               served on port 1337, a different port as first argument
 
@@ -508,6 +510,10 @@ Examples:
     # Run the browser based acceptance suite, playwright arguments after "--"
     ./Build/Scripts/runTests.sh -s acceptance
     ./Build/Scripts/runTests.sh -s acceptance -- --grep "cancel"
+
+    # Re-record the visual baselines after an intended styling change, then read
+    # the diff before committing it.
+    ./Build/Scripts/runTests.sh -s visualRegression -- --update-snapshots
 
     # Run functional tests on postgres 10
     ./Build/Scripts/runTests.sh -s functional -d postgres -i 10
@@ -820,6 +826,38 @@ case ${TEST_SUITE} in
             startAcceptanceInstance
             COMMAND=(/bin/sh -c 'cd Build/playwright && npm ci --no-audit --no-fund && npm run screenshots -- "$@"' screenshots "$@")
             ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name screenshot-documentation-${SUFFIX} \
+                -e HOME=${ROOT_DIR}/.cache \
+                -e NODE_PATH=${ROOT_DIR}/Build/playwright/node_modules \
+                -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
+                -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+                -e CHROME_SANDBOX=false \
+                ${IMAGE_PLAYWRIGHT} "${COMMAND[@]}"
+            SUITE_EXIT_CODE=$?
+        fi
+        ;;
+    visualRegression)
+        # Compares the surface against committed baseline images, one component
+        # per baseline.
+        #
+        # This **is** a gate, unlike "-s screenshotDocumentation", and the two are
+        # otherwise easy to confuse: this one asserts and fails, that one writes
+        # into the tracked tree and cannot fail. It runs in CI for the same
+        # reason - a visual suite nobody runs is decoration.
+        #
+        # Containerised with no host escape hatch, and here the reason is the
+        # whole mechanism rather than a nicety: the fonts come from the Playwright
+        # image, so a baseline recorded on a host disagrees with every machine
+        # that did not record it.
+        #
+        # Re-record after an intended change, and look at the diff before you do:
+        #   Build/Scripts/runTests.sh -s visualRegression -- --update-snapshots
+        if [ "${DBMS}" != "sqlite" ]; then
+            echo "The visual regression suite supports \"-d sqlite\" only." >&2
+            SUITE_EXIT_CODE=1
+        else
+            startAcceptanceInstance
+            COMMAND=(/bin/sh -c 'cd Build/playwright && npm ci --no-audit --no-fund && npm run visual -- "$@"' visual "$@")
+            ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name visual-regression-${SUFFIX} \
                 -e HOME=${ROOT_DIR}/.cache \
                 -e NODE_PATH=${ROOT_DIR}/Build/playwright/node_modules \
                 -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \

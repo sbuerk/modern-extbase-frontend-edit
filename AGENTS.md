@@ -261,6 +261,7 @@ Build/Scripts/runTests.sh -t 13 -s unit
 Build/Scripts/runTests.sh -t 13 -s unitRandom
 Build/Scripts/runTests.sh -t 13 -s functional -d sqlite
 Build/Scripts/runTests.sh -t 13 -s acceptance
+Build/Scripts/runTests.sh -t 13 -s visualRegression
 Build/Scripts/runTests.sh -t 13 -s composerValidate
 Build/Scripts/runTests.sh -t 13 -s checkBom
 Build/Scripts/runTests.sh -t 13 -s checkExceptionCodes
@@ -273,11 +274,19 @@ Build/Scripts/runTests.sh -t 14 -s composerUpdate
 # …
 ```
 
-`-s acceptance` is the exception to the "everything twice" rule: it drives a
-browser against a seeded TYPO3 instance and covers the client half of the edit
-plugin, which is the same JavaScript on both core versions. It runs once, on the
-version that is installed, and CI runs it on v13 only.
+`-s acceptance` and `-s visualRegression` are the exceptions to the "everything
+twice" rule: both drive a browser against a seeded TYPO3 instance and cover the
+client half of the edit plugin, which is the same JavaScript and the same
+stylesheet on both core versions. They run once, on the version that is
+installed, and CI runs them on v13 only.
 → [Acceptance tests](docs/testing/acceptance-tests.md)
+
+`-s visualRegression` compares the surface against committed baseline images. It
+**is** a gate, unlike `-s screenshotDocumentation`, which the next section
+covers. After an intended styling change, re-record with
+`-s visualRegression -- --update-snapshots` — and read the image diff in the
+report before you do, because re-recording without looking is the one thing that
+makes the suite worthless.
 
 Further:
 

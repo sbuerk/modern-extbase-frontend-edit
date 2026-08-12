@@ -12,7 +12,7 @@ name: "CI"
 #   quality ─┐                                  ┌─> functional (MySQL, MariaDB, …)
 #   phpstan ─┤                                  │
 #   lint    ─┼─> unit ─> functional (SQLite) ───┤
-#            │                                  └─> acceptance (browser)
+#            │                                  └─> acceptance ─> visual regression
 #   docs ────┘  (independent, for fast feedback on documentation changes)
 #
 # "ci-status" closes the graph. Every other job feeds into it, so there is one
@@ -383,6 +383,64 @@ jobs:
           retention-days: 5
           include-hidden-files: true
 
+  visual-regression:
+    name: "visual regression"
+    runs-on: ubuntu-22.04
+    # Behind the acceptance suite, not beside it. Both drive the same instance
+    # and pull the same two images, and a visual diff on a surface whose
+    # behaviour is already broken tells nobody anything they do not know.
+    needs: [ "acceptance" ]
+    # No matrix, for the reason the acceptance job gives: what this compares is
+    # the rendering of a stylesheet, which is the same on both core versions and
+    # every PHP version.
+    #
+    # Pinned to the same runner image as the acceptance job on purpose. The
+    # baselines are recorded inside the Playwright container, so the fonts are
+    # the container's — but the GPU-less rasteriser underneath is the runner's,
+    # and a baseline is only as portable as the pair.
+    steps:
+
+      - name: "Checkout"
+        uses: actions/checkout@v6
+
+      - name: "Cache composer downloads"
+        uses: actions/cache@v6
+        with:
+          path: ".cache/composer"
+          key: "composer-8.2-v13-${{ hashFiles('composer.json') }}"
+          restore-keys: |
+            composer-8.2-v13-
+            composer-8.2-
+
+      - name: "Cache npm downloads"
+        uses: actions/cache@v6
+        with:
+          path: ".cache/.npm"
+          key: "npm-acceptance-${{ hashFiles('Build/playwright/package-lock.json') }}"
+          restore-keys: "npm-acceptance-"
+
+      - name: "Prepare dependencies for TYPO3 v13"
+        run: "Build/Scripts/runTests.sh -b docker -t 13 -p 8.2 -s composerUpdate"
+
+      - name: "Compare the surface against the baselines"
+        run: "Build/Scripts/runTests.sh -b docker -t 13 -p 8.2 -d sqlite -s visualRegression"
+
+      # The expected, actual and diff images of every baseline that failed. This
+      # is the whole diagnostic - there is nothing in a log that an image diff
+      # does not say better - so it is worth keeping longer than a trace.
+      - name: "Upload the image diffs"
+        if: "failure()"
+        uses: actions/upload-artifact@v6
+        with:
+          name: "visual-regression-artifacts"
+          path: |
+            .Build/Web/typo3temp/var/tests/playwright-visual-reports/
+            .Build/Web/typo3temp/var/tests/playwright-visual-results/
+          compression-level: 9
+          if-no-files-found: "warn"
+          retention-days: 5
+          include-hidden-files: true
+
   frontend-assets:
     name: "frontend assets"
     runs-on: ubuntu-latest
@@ -436,6 +494,7 @@ jobs:
       - "functional-sqlite"
       - "functional-dbms"
       - "acceptance"
+      - "visual-regression"
       - "documentation"
       - "frontend-assets"
     steps:
