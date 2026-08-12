@@ -23,7 +23,21 @@ const controls = css`
         box-sizing: border-box;
     }
 
-    button {
+    /*
+     * "\`.file-picker\`" is a \`<label>\` wrapping a hidden \`<input type="file">\`,
+     * and it is here rather than in the image component because it is a control
+     * and this is the module that makes a control look like one.
+     *
+     * The native file input is the one form control whose box the browser owns:
+     * its button cannot be reached, and it draws "No file chosen" beside itself,
+     * which cannot be removed at all. That text was permanently wrong here — the
+     * component clears the input the moment a file is read, so it said "no file
+     * chosen" including immediately after one had been. A label wrapping the
+     * input keeps every native behaviour, including opening the picker on click
+     * and on Enter, and lets the control say what it does instead.
+     */
+    button,
+    .file-picker {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -43,12 +57,14 @@ const controls = css`
             border-color var(--frontend-edit-transition-duration) var(--frontend-edit-transition-easing);
     }
 
-    button:hover:not(:disabled) {
+    button:hover:not(:disabled),
+    .file-picker:not([data-disabled]):hover {
         border-color: var(--frontend-edit-color-border-strong);
         background-color: var(--frontend-edit-color-surface-sunken);
     }
 
-    button:active:not(:disabled) {
+    button:active:not(:disabled),
+    .file-picker:not([data-disabled]):active {
         border-color: var(--frontend-edit-color-accent);
     }
 
@@ -81,6 +97,7 @@ const controls = css`
         padding-inline: var(--frontend-edit-control-padding-block);
     }
 
+    .visually-hidden,
     button[data-icon-only] .button-label {
         position: absolute;
         width: 1px;
@@ -144,6 +161,16 @@ const controls = css`
         cursor: default;
     }
 
+    /*
+     * The label cannot carry ":disabled" — only the input inside it can, and
+     * ":has()" is above the browser floor the import map mechanism sets
+     * (Firefox needs 121, the floor is 108). The component states it instead.
+     */
+    .file-picker[data-disabled] {
+        opacity: var(--frontend-edit-busy-opacity);
+        cursor: default;
+    }
+
     input,
     select,
     textarea {
@@ -183,7 +210,12 @@ const controls = css`
     button:focus-visible,
     input:focus-visible,
     select:focus-visible,
-    textarea:focus-visible {
+    textarea:focus-visible,
+    /*
+     * The focus lands on the hidden input, not on the label, so the ring has to
+     * be drawn on the ancestor that is actually visible.
+     */
+    .file-picker:focus-within {
         outline: var(--frontend-edit-focus-width) solid var(--frontend-edit-focus-color);
         outline-offset: var(--frontend-edit-focus-offset);
     }

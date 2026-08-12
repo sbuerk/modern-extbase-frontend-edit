@@ -232,6 +232,19 @@
                 <source>Show</source>
             </trans-unit>
 
+            <!--
+                The file picker states which of the two things it does, because
+                choosing a file *is* the write - there is no apply step after it,
+                and a control reading "Choose" beside a stored image would
+                understate what pressing it costs.
+            -->
+            <trans-unit id="action.chooseImage">
+                <source>Choose image</source>
+            </trans-unit>
+            <trans-unit id="action.replaceImage">
+                <source>Replace image</source>
+            </trans-unit>
+
             <!-- Section headings of the two child collections. -->
             <trans-unit id="section.address">
                 <source>Addresses</source>

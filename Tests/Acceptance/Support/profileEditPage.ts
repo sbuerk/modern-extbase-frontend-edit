@@ -288,6 +288,20 @@ export class ProfileEditPage {
     }
 
     /**
+     * The control that opens the file dialog.
+     *
+     * A `<label>` wrapping {@see imageControl}, not a button: the native input is
+     * the one control whose box the browser owns, and wrapping it is what allows
+     * the surface to say "Choose image" or "Replace image" where the browser
+     * would draw "Choose File · No file chosen" — text that was permanently
+     * wrong here, because the component clears the input the moment it reads a
+     * file.
+     */
+    public get imagePicker(): Locator {
+        return this.imageElement.locator('.file-picker');
+    }
+
+    /**
      * The `<img>` the component draws, i.e. the image as the surface believes
      * it to be right now.
      */

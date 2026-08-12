@@ -36,6 +36,11 @@ colour was written three times in three files.
 
 *   Buttons and controls share one box: the same height, border, radius and
     focus ring.
+*   The file control of the profile image is a button like every other control,
+    reading :guilabel:`Choose image` or :guilabel:`Replace image` rather than the
+    browser's :guilabel:`Choose File` and its permanent
+    :guilabel:`No file chosen` — which was untrue here, because the control is
+    emptied the moment a file is read.
 *   Every address and e-mail address is headed by its own type and first line,
     with the buttons that act on it on the same line. The heading is not a
     number: the records can be reordered, and a number would rename every entry

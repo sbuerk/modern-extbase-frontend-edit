@@ -33,6 +33,28 @@ const storedImageUrl = /^\/fileadmin\/user_upload\/profiles\/profile-image-[0-9a
 const fixtureImageSize = 72;
 
 test.describe('The profile image', (): void => {
+    test('the picker says which of the two things it will do', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        // Choosing a file *is* the write — there is no apply step after it — so
+        // the control has to state which write it is. "Choose image" beside a
+        // stored portrait would understate what pressing it costs.
+        await expect(surface.imagePicker).toHaveText('Choose image');
+
+        await surface.uploadImage();
+        await expect(surface.enhancedImage).toBeVisible();
+        await expect(surface.imagePicker).toHaveText('Replace image');
+
+        await surface.removeImage();
+        await expect(surface.imagePicker).toHaveText('Choose image');
+    });
+
     test('an image uploaded in the browser is served by the server after a reload', async ({
         page,
         loginAs,
