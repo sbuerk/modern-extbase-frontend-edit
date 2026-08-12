@@ -94,9 +94,9 @@ the host site keeps the voice.
 There is also no web font, and there could not be one: `font-src` is not declared
 in `Configuration/ContentSecurityPolicies.php` and therefore falls back to
 `default-src`, so a font from another origin is refused by the policy the
-extension ships. That is the intended outcome, not an obstacle — see
-[the CSP changelog entry](../../Documentation/Changelog/1.0/Feature-ContentSecurityPolicy.rst),
-which is currently the only place the manual documents the policy.
+extension ships. That is the intended outcome, not an obstacle — the manual
+documents it in
+[Content Security Policy](../../Documentation/Configuration/ContentSecurityPolicy.rst).
 
 ## The measure
 

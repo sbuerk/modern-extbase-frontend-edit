@@ -192,8 +192,8 @@ the site keeps the voice.
     installation itself is unaffected; one from a font CDN is refused by the
     browser.
 
-    See :ref:`feature-content-security-policy` for what the policy declares, and
-    for how to relax or disable it.
+    See :ref:`configuration-csp` for what the policy declares, and for how to
+    relax or disable it.
 
 Dark colour schemes
 ===================
