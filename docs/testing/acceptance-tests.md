@@ -186,6 +186,32 @@ downloading a second set.
 do not live next to the manifest that installs the runner; the alternative is a
 `node_modules` in the repository root, i.e. a third `package.json`.
 
+## The specs are linted and type checked like everything else
+
+They are TypeScript, they are `strict`, and they are held to the same house
+rules as the shipped modules — `lintTypescript` and `typecheckJs` cover
+`Tests/Acceptance/` and `Build/playwright/*.ts` along with `Build/Sources/` and
+`Build/Tests/`. Two consequences are worth knowing before adding a spec:
+
+- **The lit and web-component plugins do not apply here**, and the browser
+  globals are not in scope. A spec reaches into the page through
+  `page.evaluate()`, whose callback is serialised — what it uses inside runs in
+  the browser, not in this program.
+- **`typecheckJs` installs this manifest too**, because a type check of code
+  whose dependency is absent is not a type check. `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`
+  keeps the browsers out of it; only the runner is installed. The third `tsc`
+  project is [`Build/playwright/tsconfig.json`](../../Build/playwright/tsconfig.json),
+  which reaches `@playwright/test` through a `paths` mapping for the same reason
+  the run needs `NODE_PATH`.
+
+The one specifier deliberately left unresolved is the `await import('lit')`
+inside `ProgressiveEnhancement.spec.ts`: the page's import map resolves it, and
+that is the assertion. It is declared in
+[`Tests/Acceptance/pageRealmModules.d.ts`](../../Tests/Acceptance/pageRealmModules.d.ts),
+which says there why installing `lit` next to the runner would have defeated the
+spec.
+→ [Both gates cover every TypeScript tree](../frontend-edit/frontend-assets.md#both-gates-cover-every-typescript-tree-including-the-acceptance-suite)
+
 ## Selecting elements in a shadow root
 
 Playwright's CSS engine pierces open shadow roots, so the selectors read like

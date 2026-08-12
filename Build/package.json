@@ -11,10 +11,10 @@
     "scripts": {
         "build": "node esbuild.mjs",
         "build:dev": "node esbuild.mjs --dev",
-        "lint": "eslint",
-        "lint:fix": "eslint --fix",
+        "lint": "cd .. && eslint --config Build/eslint.config.mjs Build/Sources Build/Tests Build/playwright Tests/Acceptance Build/esbuild.mjs Build/eslint.config.mjs",
+        "lint:fix": "npm run lint -- --fix",
         "test": "node --import ./Tests/TypeScript/sourceResolve.mjs --test",
-        "typecheck": "tsc --noEmit && tsc --noEmit --project Tests/TypeScript/tsconfig.json"
+        "typecheck": "tsc --noEmit && tsc --noEmit --project Tests/TypeScript/tsconfig.json && tsc --noEmit --project playwright/tsconfig.json"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.0",

@@ -224,6 +224,52 @@ type gate; what the lit and web-component plugins add are the mistakes a
 compiler does not see — legacy `lit` imports, reflected native attributes,
 listeners without teardown, constructor parameters on a custom element.
 
+### Both gates cover every TypeScript tree, including the acceptance suite
+
+There are four of them, and they do not all live under `Build/`:
+
+| Tree                        | What it is                   | eslint gets               | `tsc` project             |
+|-----------------------------|------------------------------|---------------------------|---------------------------|
+| `Build/Sources/TypeScript/` | the shipped modules          | browser globals, lit + wc | `Build/tsconfig.json`     |
+| `Build/Tests/TypeScript/`   | the `unitJs` suite           | node + browser globals    | `Build/Tests/TypeScript/` |
+| `Tests/Acceptance/`         | the Playwright specs         | node globals              | `Build/playwright/`       |
+| `Build/playwright/*.ts`     | the Playwright configuration | node globals              | `Build/playwright/`       |
+
+The last two were outside both gates until the toolchain was pointed at them,
+and each tool needed a different thing to reach them.
+
+**eslint refuses to lint a file above the base path of its configuration.** The
+base path is the directory of the configuration file when eslint found it by
+searching upwards, and the directory eslint was *started in* when the file is
+named with `--config` (`eslint/lib/config/config-loader.js:534-547`). The `lint`
+script therefore changes into the repository root and names the configuration
+explicitly, and every `files` pattern in it is relative to the repository root
+rather than to `Build/`. A per-object `basePath` does not help — it narrows the
+scope of one config object and cannot widen the run — and moving the
+configuration to the repository root does not work either: its plugin imports
+resolve through `node_modules` directories above *it*, and the only manifest in
+this repository sits next to it in `Build/`.
+
+**TypeScript needed the dependency to exist.** A spec imports `@playwright/test`,
+which is installed from `Build/playwright/package.json` and deliberately not
+from a `node_modules` at the repository root — so nothing is resolvable by
+walking upwards from `Tests/Acceptance/`. The run closes that gap with
+`NODE_PATH`; the third project closes it with a `paths` mapping, and the
+`typecheckJs` suite installs that manifest as well, with
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` so the several hundred megabytes of browser
+binaries stay out of a type check.
+
+One import is deliberately **not** resolved. `ProgressiveEnhancement.spec.ts`
+calls `await import('lit')` inside a `page.evaluate()` callback, which the
+browser executes and the page's import map resolves — the assertion being that
+it resolves at all. Installing `lit` next to the runner would make that check
+pass against *our* copy, i.e. hide exactly the drift the spec exists to catch, so
+`Tests/Acceptance/pageRealmModules.d.ts` declares the specifier as a shorthand
+ambient module instead. Its exports are `any`, which is what this program
+truthfully knows about a module the page supplies; the spec reads the result
+through explicit casts and asserts on `typeof`. The sources project is unaffected
+and still resolves the real `lit`.
+
 Deliberately deferred, and named as gaps rather than hidden: **real-browser**
 JavaScript tests (`@web/test-runner` needs a ~700 MB Chrome image and a
 hand-written import map), and stylelint 16 — to be added if and when the CSS
@@ -516,15 +562,15 @@ Each suite gets `-e HOME=${ROOT_DIR}/.cache` so npm's cache lands in the
 caches live there and
 [not under `.Build/`](../development/quality-gates.md#the-composer-cache).
 
-| Suite               | Runs                                                                          | Purpose                                                                                                                  |
-|---------------------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `buildJs`           | `npm ci && npm run build` in `Build/`                                         | Compiles TypeScript and CSS into `Resources/Public/`. Run after every source change, and commit the result.              |
-| `checkJsBuildClean` | Delete the artifacts, `npm ci && npm run build`, assert `git status` is empty | The gate that makes committed artifacts trustworthy. CI critical.                                                        |
-| `lintTypescript`    | `npm run lint:fix`, or `lint` when `-n` is given                              | eslint 9 with typescript-eslint and the lit/wc plugins. Mirrors `cgl`, which fixes by default and only checks with `-n`. |
-| `typecheckJs`       | `npm run typecheck`                                                           | `tsc --noEmit` over the sources *and* over `Build/Tests/TypeScript/`, which is a second project.                         |
-| `unitJs`            | `npm ci && npm test`, which is `node --test`                                  | The logic modules, covered without a browser. Arguments after `--`, e.g. `-- --test-name-pattern 'cancel'`.              |
-| `npm`               | `npm "$@"` with the working directory set to `Build/`                         | Escape hatch, mirroring the existing `composer` suite: `-s npm -- install --save-dev lit@latest`.                        |
-| `cleanJs`           | `rm -rf Build/node_modules Build/.cache`                                      | Intermediates only. It never removes `Resources/Public/` — those are committed files.                                    |
+| Suite               | Runs                                                                          | Purpose                                                                                                                                              |
+|---------------------|-------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `buildJs`           | `npm ci && npm run build` in `Build/`                                         | Compiles TypeScript and CSS into `Resources/Public/`. Run after every source change, and commit the result.                                          |
+| `checkJsBuildClean` | Delete the artifacts, `npm ci && npm run build`, assert `git status` is empty | The gate that makes committed artifacts trustworthy. CI critical.                                                                                    |
+| `lintTypescript`    | `npm run lint:fix`, or `lint` when `-n` is given                              | eslint 9 with typescript-eslint and the lit/wc plugins, over every TypeScript tree. Mirrors `cgl`, which fixes by default and only checks with `-n`. |
+| `typecheckJs`       | `npm run typecheck`                                                           | `tsc --noEmit` over three projects: the sources, `Build/Tests/TypeScript/` and the acceptance suite.                                                 |
+| `unitJs`            | `npm ci && npm test`, which is `node --test`                                  | The logic modules, covered without a browser. Arguments after `--`, e.g. `-- --test-name-pattern 'cancel'`.                                          |
+| `npm`               | `npm "$@"` with the working directory set to `Build/`                         | Escape hatch, mirroring the existing `composer` suite: `-s npm -- install --save-dev lit@latest`.                                                    |
+| `cleanJs`           | `rm -rf Build/node_modules Build/.cache`                                      | Intermediates only. It never removes `Resources/Public/` — those are committed files.                                                                |
 
 `cleanJs` is also wired into `clean`, next to the existing
 `cleanCacheFiles()`/`cleanTestFiles()`. That `checkJsBuildClean` deletes

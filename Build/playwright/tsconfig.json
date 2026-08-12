@@ -1,0 +1,44 @@
+// The type check of the acceptance suite: the specs in "Tests/Acceptance/" and
+// the Playwright configuration next to this file, which are one island across
+// two directories.
+//
+// It inherits every strictness option from "../tsconfig.json" and changes two
+// things.
+//
+// "types": ["node"], because a spec imports "node:fs", "node:path" and
+// "node:sqlite" — the same reason "Build/Tests/TypeScript/tsconfig.json" gives,
+// and the same reason this is a third project rather than a wider "include" in
+// the first one. The sources say "types": [] and mean it: the modules run in a
+// browser, and pulling the node ambient types into their program would let a
+// source file use "process" and still type check.
+//
+// "paths", because TypeScript resolves a bare import by walking "node_modules"
+// upwards from the **importing file**, and a spec in "Tests/Acceptance/" walks
+// past nothing that has one — the runner is installed here, from the manifest
+// next to this file, and deliberately not in a "node_modules" at the repository
+// root. That is the same gap "runTests.sh" closes for the run itself with
+// NODE_PATH; a compiler option is what closes it for the type check. Paths
+// without "baseUrl" are resolved relative to this file (TypeScript 4.4+).
+//
+// The consequence is that "Build/playwright/node_modules" has to exist before
+// this project can be checked, which is why the "typecheckJs" suite installs
+// that manifest as well.
+//
+// Run by "npm run typecheck" in "Build/", which checks all three projects.
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "types": [
+            "node"
+        ],
+        "paths": {
+            "@playwright/test": [
+                "./node_modules/@playwright/test"
+            ]
+        }
+    },
+    "include": [
+        "./*.ts",
+        "../../Tests/Acceptance/**/*.ts"
+    ]
+}
