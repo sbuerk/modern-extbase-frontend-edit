@@ -5,8 +5,9 @@ A *fixture extension* is a minimal TYPO3 extension that exists only inside
 and is loaded by functional tests to provide test doubles, additional TCA,
 service overrides or a plugin to render.
 
-The template ships one, `example-fixture`, to prove the mechanism works and to
-serve as the starting point for real ones.
+One is shipped, `workspace-fixture`. It puts a frontend sub-request into the
+workspace a test asked for, which is what makes the workspace guard testable at
+all, and it is the starting point for further ones.
 
 ## Why load them by composer package name
 
@@ -18,7 +19,7 @@ repository root:
 
 ```php
 protected array $testExtensionsToLoad = [
-    'Tests/Functional/Fixtures/Extensions/example-fixture',
+    'Tests/Functional/Fixtures/Extensions/workspace-fixture',
 ];
 ```
 
@@ -30,7 +31,7 @@ extension itself declares:
 
 ```php
 protected array $testExtensionsToLoad = [
-    'tests/example-fixture',
+    'tests/workspace-fixture',
 ];
 ```
 
@@ -101,64 +102,57 @@ such — see
 ## Layout of a fixture extension
 
 ```
-Tests/Functional/Fixtures/Extensions/example-fixture/
+Tests/Functional/Fixtures/Extensions/workspace-fixture/
 ├── composer.json
-├── ext_localconf.php
-├── ext_tables.sql
 ├── Classes/
-│   ├── Controller/
-│   │   └── HelloController.php
-│   ├── Domain/
-│   │   ├── Model/
-│   │   │   └── Greeting.php
-│   │   └── Repository/
-│   │       └── GreetingRepository.php
-│   └── Service/
-│       ├── DummyService.php
-│       └── DummyServiceInterface.php
-├── Configuration/
-│   ├── Services.php
-│   ├── TCA/
-│   │   ├── Overrides/
-│   │   │   └── tt_content.php
-│   │   └── tx_examplefixture_domain_model_greeting.php
-│   └── TypoScript/
-│       └── setup.typoscript
-└── Resources/
-    └── Private/
-        └── Templates/
-            └── Hello/
-                └── Index.html
+│   └── Middleware/
+│       └── WorkspaceAspectFromTestingContext.php
+└── Configuration/
+    ├── RequestMiddlewares.php
+    └── Services.php
 ```
 
-A fixture extension is a normal extension: `ext_localconf.php`, `ext_tables.sql`
-and the TCA are loaded in the test instance exactly as they would be in a real
-installation. Two parts of it exist for the tests of later sections:
+A fixture extension is a normal extension: `ext_localconf.php`, `ext_tables.sql`,
+the TCA and — as here — `Configuration/RequestMiddlewares.php` are read in the
+test instance exactly as they would be in a real installation. A fixture can
+therefore carry a table with an Extbase model and repository of its own, a
+plugin to render, or a service that replaces one the container would otherwise
+resolve — everything a real extension can do, without any of it reaching a
+production installation.
 
-- `Classes/Controller/`, `Configuration/TCA/Overrides/`,
-  `Configuration/TypoScript/` and `Resources/` hold the Extbase plugin the
-  [site based test](site-based-tests.md) renders.
-- `Classes/Domain/`, `Configuration/TCA/tx_examplefixture_*` and `ext_tables.sql`
-  hold the table, model and repository the
-  [environment state test](environment-state.md) queries.
+This one does none of that. It registers a single frontend middleware,
+[`WorkspaceAspectFromTestingContext`](../../Tests/Functional/Fixtures/Extensions/workspace-fixture/Classes/Middleware/WorkspaceAspectFromTestingContext.php),
+which sets the `workspace` aspect of the shared `Context` from the workspace id
+the test passed in its `InternalRequestContext` — and nothing else. Its docblock
+states why the handling of the testing framework itself cannot do that here, and
+what the middleware does **not** simulate. A fixture that stands in for a
+mechanism has to say where the stand-in ends, or a test will eventually claim
+the missing part.
 
-Note the table name: Extbase derives it from the **class name of the model**,
-not from the extension key. `TESTS\ExampleFixture\Domain\Model\Greeting` becomes
-`tx_examplefixture_domain_model_greeting` — the vendor part is dropped and the
-rest lower cased. The extension key `tests_example_fixture` does not appear in
-it.
+A fixture that does carry a table has one thing worth knowing about the table
+name: Extbase derives it from the **class name of the model**, not from the
+extension key. This extension is the illustration —
+`SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Profile` becomes
+`tx_modernextbasefrontendedit_domain_model_profile`, the vendor part dropped and
+the rest lower cased, and the extension key `modern_extbase_frontend_edit` does
+not appear in it.
 
-`ext_tables.sql` declares the own fields only. TYPO3 derives `uid`, `pid`,
-`deleted`, the language fields and the workspace fields from the TCA, so
-declaring them by hand is redundant and drifts.
+The `ext_tables.sql` that goes with such a table declares nothing the TCA
+already describes. TYPO3 derives the columns from it — the system fields and,
+since Feature #101553, the business columns as well — and an explicit definition
+always wins over the derived one, so a repeated `pid` or `sys_language_uid`
+additionally suppresses the index that would have been generated with it. The
+[`ext_tables.sql`](../../ext_tables.sql) of this extension is what that leaves:
+the two columns whose derived definition differs between v13 and v14, and
+nothing else.
 
-The TCA also carries the one core version switch of the fixture — `searchFields`
-exists on v13 and was removed on v14. Configuration cannot use the `Core13/` and
-`Core14/` split, so it is applied to the array before returning it; see
+Configuration of a fixture extension is held to the same rules as configuration
+of the extension itself: it cannot use the `Core13/` and `Core14/` split,
+because TYPO3 loads it from a fixed path, so a core version difference is
+applied to the finished array before it is returned. See
 [Core version aware code](../architecture/core-version-aware-code.md#configuration-is-the-exception).
-A fixture extension is held to the same rules as the extension itself here.
 
-The [`composer.json`](../../Tests/Functional/Fixtures/Extensions/example-fixture/composer.json)
+The [`composer.json`](../../Tests/Functional/Fixtures/Extensions/workspace-fixture/composer.json)
 is what turns the directory into a package the plugin can find. It needs a name,
 the `typo3-cms-extension` type, an extension key, a `version` — nothing resolves
 one for a package that is not installed — and the autoload configuration to be
@@ -166,17 +160,17 @@ adopted:
 
 ```json
 {
-    "name": "tests/example-fixture",
+    "name": "tests/workspace-fixture",
     "type": "typo3-cms-extension",
     "version": "1.0.0-dev",
     "autoload": {
         "psr-4": {
-            "TESTS\\ExampleFixture\\": "Classes/"
+            "TESTS\\WorkspaceFixture\\": "Classes/"
         }
     },
     "extra": {
         "typo3/cms": {
-            "extension-key": "tests_example_fixture"
+            "extension-key": "tests_workspace_fixture"
         }
     }
 }
@@ -184,17 +178,25 @@ adopted:
 
 No `ext_emconf.php` is needed: the test instance is built in composer mode.
 
-[`Configuration/Services.php`](../../Tests/Functional/Fixtures/Extensions/example-fixture/Configuration/Services.php)
+[`Configuration/Services.php`](../../Tests/Functional/Fixtures/Extensions/workspace-fixture/Configuration/Services.php)
 is deliberately generic and does nothing but register the classes of the
 fixture, exactly as a real extension would. Services are wired with
 [dependency injection attributes](../architecture/dependency-injection.md) on
-the classes themselves; the dummy service uses the same interface plus default
-implementation pattern as the extension:
+the classes themselves, and the middleware is the one service here:
 
 ```php
-#[AsAlias(id: DummyServiceInterface::class, public: true)]
-final readonly class DummyService implements DummyServiceInterface
+#[Autoconfigure(public: true)]
+final readonly class WorkspaceAspectFromTestingContext implements MiddlewareInterface
 ```
+
+Publishing it is deliberate, and the class says why:
+`MiddlewareDispatcher::lazy()` resolves the target through the container and
+falls back to `GeneralUtility::makeInstance()` — without constructor injection
+— when `ContainerInterface::has()` answers `false`. A framework constraint is
+exactly the case the [rule that services are
+private](../architecture/dependency-injection.md#rules) makes room for. A
+fixture extension does not get to relax that rule; it states its exception like
+any other code here.
 
 A fixture extension is **not** core version aware. There is no `Core13/` and
 `Core14/` split — if a fixture needs to behave differently per core version,
@@ -205,15 +207,22 @@ that belongs in the test, not in the fixture.
 [`Tests/Functional/FixturePackagesTest.php`](../../Tests/Functional/FixturePackagesTest.php)
 has the wiring as its subject, not the fixture:
 
-| Assertion                                             | What breaks without it                                            |
-|-------------------------------------------------------|-------------------------------------------------------------------|
-| The extension is loaded under `tests/example-fixture` | The `adoptFixtureExtensions()` call in the bootstrap.             |
-| The extension is loaded under `tests_example_fixture` | The extension key registration.                                   |
-| `DummyServiceInterface` resolves from the container   | The `Configuration/Services.php` of the fixture is not processed. |
-| `getExtensionKey()` returns its static result         | The adopted `autoload` configuration.                             |
+| Assertion                                               | What breaks without it                                |
+|---------------------------------------------------------|-------------------------------------------------------|
+| The extension is loaded under `tests/workspace-fixture` | The `adoptFixtureExtensions()` call in the bootstrap. |
+| The extension is loaded under `tests_workspace_fixture` | The extension key registration.                       |
 
-That last assertion is why a static return value is enough: the point is that
-the class was found and instantiated, not what it computes.
+Both spellings are asserted because they resolve differently and only one of
+them is exercised anywhere else: every other test loading a fixture extension
+names it by its composer package name, so nothing but this test would notice if
+resolution by extension key broke.
+
+That the adopted `autoload` configuration works is not asserted here and does
+not need to be. The two tests loading the fixture for its behaviour —
+[`ProfileAjaxWorkspaceTest`](../../Tests/Functional/Frontend/ProfileAjaxWorkspaceTest.php)
+and [`ProfileEditPluginTest`](../../Tests/Functional/Frontend/ProfileEditPluginTest.php)
+— cannot pass unless the middleware class is found, and it is found only
+through the `autoload` section the composer plugin adopted.
 
 ## Adding a fixture extension
 
@@ -228,7 +237,7 @@ the class was found and instantiated, not what it computes.
    ```php
    protected array $testExtensionsToLoad = [
        'sbuerk/modern-extbase-frontend-edit',
-       'tests/example-fixture',
+       'tests/workspace-fixture',
    ];
    ```
 

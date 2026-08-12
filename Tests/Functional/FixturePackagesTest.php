@@ -6,8 +6,6 @@ namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use TESTS\ExampleFixture\Service\DummyService;
-use TESTS\ExampleFixture\Service\DummyServiceInterface;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 
 /**
@@ -15,10 +13,17 @@ use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
  *
  * The subject of these tests is the wiring, not the fixture extension: that a
  * fixture extension below "Tests/Functional/Fixtures/Extensions/" can be named
- * in $testExtensionsToLoad by its composer package name, that its classes are
- * autoloaded and that its "Configuration/Services.php" is processed. The dummy
- * service is only the visible end of that chain, which is why asserting its
- * static result is enough.
+ * in $testExtensionsToLoad by its composer package name and is then loaded
+ * under both identifiers TYPO3 and composer know it by.
+ *
+ * Both spellings are asserted because they are resolved differently and only
+ * one of them is exercised elsewhere: every other test in this repository that
+ * loads a fixture extension names it by its composer package name, so nothing
+ * but this test would notice if resolution by extension key broke.
+ *
+ * The wiring under test is the bootstrap of the functional suite, which adopts
+ * every fixture package before the first test runs — see
+ * "Build/phpunit/FunctionalTestsBootstrap.php".
  */
 final class FixturePackagesTest extends AbstractFunctionalTestCase
 {
@@ -29,13 +34,13 @@ final class FixturePackagesTest extends AbstractFunctionalTestCase
      */
     protected array $testExtensionsToLoad = [
         'sbuerk/modern-extbase-frontend-edit',
-        'tests/example-fixture',
+        'tests/workspace-fixture',
     ];
 
     public static function fixtureExtensionIdentifiers(): \Generator
     {
-        yield 'composer package name: tests/example-fixture' => ['identifier' => 'tests/example-fixture'];
-        yield 'extension key: tests_example_fixture' => ['identifier' => 'tests_example_fixture'];
+        yield 'composer package name: tests/workspace-fixture' => ['identifier' => 'tests/workspace-fixture'];
+        yield 'extension key: tests_workspace_fixture' => ['identifier' => 'tests_workspace_fixture'];
     }
 
     #[DataProvider('fixtureExtensionIdentifiers')]
@@ -47,20 +52,5 @@ final class FixturePackagesTest extends AbstractFunctionalTestCase
             sprintf('%s::%s()', ExtensionManagementUtility::class, 'isLoaded'),
             $identifier,
         ));
-    }
-
-    #[Test]
-    public function serviceConfigurationOfFixtureExtensionIsProcessed(): void
-    {
-        $this->assertInstanceOf(DummyService::class, $this->get(DummyServiceInterface::class));
-    }
-
-    #[Test]
-    public function dummyServiceOfFixtureExtensionIsAutoloaded(): void
-    {
-        $subject = $this->get(DummyServiceInterface::class);
-        $this->assertInstanceOf(DummyServiceInterface::class, $subject);
-
-        $this->assertSame('tests_example_fixture', $subject->getExtensionKey());
     }
 }

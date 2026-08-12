@@ -67,16 +67,18 @@ dropped.
    `#[AsAlias]`:
 
    ```php
-   #[AsAlias(id: ExampleInterface::class, public: true)]
-   final readonly class Example extends AbstractExample
+   #[AsAlias(id: RendererInterface::class)]
+   final readonly class Renderer extends AbstractRenderer
    {
    }
    ```
 
-See [`Classes/Example/`](../../Classes/Example),
-[`Core13/Example/`](../../Core13/Example) and
-[`Core14/Example/`](../../Core14/Example) for the complete example shipped with
-the skeleton.
+The third step is what the version split adds; the first two are worth having on
+their own.
+[`FrontendUserProfileOwnershipResolver`](../../Classes/Security/FrontendUserProfileOwnershipResolver.php)
+uses them without being version aware at all: consumers type hint
+`ProfileOwnershipResolverInterface`, and an installation that stores ownership
+differently replaces the one class registering itself for it.
 
 ## Configuration is the exception
 
@@ -115,13 +117,12 @@ Dropping the option instead of guarding it is not the same thing: v14 removed it
 and warns when it is present, but v13 still evaluates it and searches *nothing*
 without it. Removing it silently changes behaviour on v13.
 
-The complete example is
-[`Configuration/TCA/tx_examplefixture_domain_model_greeting.php`](../../Tests/Functional/Fixtures/Extensions/example-fixture/Configuration/TCA/tx_examplefixture_domain_model_greeting.php)
-of the [fixture extension](../testing/fixture-extensions.md), and
-[`ext_localconf.php`](../../Tests/Functional/Fixtures/Extensions/example-fixture/ext_localconf.php)
-next to it shows the better outcome where one exists: passing
-`PLUGIN_TYPE_CONTENT_ELEMENT` explicitly is valid on both versions, so no switch
-is needed at all. Look for that first.
+No configuration file of this extension carries such a switch at the moment, and
+[`ext_localconf.php`](../../ext_localconf.php) shows why that is the outcome to
+aim for: naming `PLUGIN_TYPE_CONTENT_ELEMENT` explicitly in `configurePlugin()`
+is the one spelling that is correct on both versions, so the difference
+disappears instead of being guarded. Its comment says what each version does
+with the parameter when it is left out. Look for that first.
 
 ## Tooling and tests
 
@@ -131,21 +132,28 @@ is needed at all. Look for that first.
   `Tests/*/Core14/*`. Analysing the sources of the other core version would
   report false positives about API that does not exist there. See
   [Quality gates](../development/quality-gates.md).
-- **Tests** mirror the same layout: `Tests/Unit/Core13/`, `Tests/Unit/Core14/`,
-  `Tests/Functional/Core13/` and `Tests/Functional/Core14/`. Every core version
-  aware test class carries the PHPUnit group of the core versions it must
-  **not** run on:
+- **Tests** mirror the same layout where a whole test class is version aware:
+  `Tests/Unit/Core13/`, `Tests/Unit/Core14/`, `Tests/Functional/Core13/` and
+  `Tests/Functional/Core14/` — the directories the PHPStan `excludePaths` above
+  reserve. None of them exists at the moment, because nothing here needs a test
+  class per core version yet. What is in use is the other half of the mechanism:
+  a test carries the PHPUnit group of the core versions it must **not** run on,
+  on the class or on the single test method that is affected:
 
   ```php
   #[Group('not-core-14')]
-  final class ExampleTest extends UnitTestCase
+  #[Test]
+  public function runsAgainstTheLowestSupportedMajorVersion(): void
   {
   }
   ```
 
   `Build/Scripts/runTests.sh` passes `--exclude-group not-core-<version>` for
   the selected core version, so those tests are skipped automatically on the
-  other one.
+  other one. That is how
+  [`ExtensionCoreVersionCompatTestsTrait`](../../Tests/ExtensionCoreVersionCompatTestsTrait.php)
+  proves a suite really ran against the core version it was asked for: of its
+  two version assertions, exactly one survives the exclusion.
 - Both core versions must be verified before opening a pull request, each after
   the matching `composerUpdate` — see
   [Dual core setup](../development/dual-core-setup.md) and

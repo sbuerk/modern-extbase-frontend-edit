@@ -14,7 +14,7 @@ Build/Scripts/runTests.sh -s unit
 Build/Scripts/runTests.sh -s unitRandom
 
 # A single class or method.
-Build/Scripts/runTests.sh -s unit -- --filter DummyTest
+Build/Scripts/runTests.sh -s unit -- --filter VersionCompatTest
 ```
 
 `unitRandom` exists to catch tests that depend on execution order. When it fails,
@@ -31,14 +31,14 @@ see [Dual core setup](../development/dual-core-setup.md).
 
   ```php
   #[Test]
-  public function getExtensionKeyReturnsExtensionKey(): void
+  public function bioDefaultsToAnEmptyStringAndIsNeverNullable(): void
   {
       // ...
   }
   ```
 
 - Method names describe the expected behaviour, not the mechanics:
-  `exampleReturnsCoreVersionAwareValue()`, not `testExample()`.
+  `collectionsAreInitializedAndEmptyOnConstruction()`, not `testConstructor()`.
 - Every test asserts something. A test without an assertion is risky and
   therefore a failure. When the behaviour under test is "this does not throw",
   say so with `self::expectNotToPerformAssertions()` instead of leaving the
@@ -65,10 +65,14 @@ version they must **not** run on:
 
 ```php
 #[Group('not-core-14')]
-final class ExampleTest extends UnitTestCase
+final class SomeServiceTest extends UnitTestCase
 {
 }
 ```
+
+Neither directory exists at the moment, for the same reason `Core13/` and
+`Core14/` hold nothing but a `.gitkeep`: no class below them yet. Both are
+created together with the first implementation that needs them.
 
 See [Dual core setup](../development/dual-core-setup.md#test-grouping).
 
@@ -85,11 +89,21 @@ A class using `#[Required]` method injection is constructed and injected by hand
 in a unit test — there is no container:
 
 ```php
-$subject = new Example();
+$subject = new SomeService();
 $subject->injectTypo3Version(new Typo3Version());
 
-$this->assertSame('Example implementation for TYPO3 v13', $subject->example());
+$this->assertSame('expected', $subject->someMethod());
 ```
+
+That sample is hypothetical, and deliberately so: no class in `Classes/` uses
+method injection at the moment. The one abstract class there,
+[`AbstractEditRepository`](../../Classes/Domain/Repository/Edit/AbstractEditRepository.php),
+states in its docblock why it needs no `inject*()` method — an abstract class
+must not use constructor injection, because its constructor is part of the API
+of every extending class, and this one has no collaborators beyond those
+`Repository` already receives that way. The pattern is what an abstract class
+*with* dependencies uses, so how to test one is worth knowing before the first
+appears — see [Class design](../architecture/class-design.md).
 
 If wiring itself is what needs verification, that belongs in a
 [functional test](functional-tests.md), where the real container is available.

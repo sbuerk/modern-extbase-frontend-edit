@@ -4,8 +4,15 @@ Site based tests set up a real site configuration with several languages and
 issue frontend sub-requests against it, so rendering, routing and language
 resolution can be asserted end to end.
 
-[`Tests/Functional/SiteBasedRenderingTest.php`](../../Tests/Functional/SiteBasedRenderingTest.php)
-is the worked example: one page tree, three languages, three requests.
+[`Tests/Functional/AbstractProfileTestCase.php`](../../Tests/Functional/AbstractProfileTestCase.php)
+is the worked example: one page tree, one site, two languages.
+[`Tests/Functional/Frontend/AbstractProfilePluginTestCase.php`](../../Tests/Functional/Frontend/AbstractProfilePluginTestCase.php)
+adds the TypoScript and the request helpers on top of it, and the plugin tests
+below it — [`ProfileListPluginTest`](../../Tests/Functional/Frontend/ProfileListPluginTest.php),
+[`ProfileShowPluginTest`](../../Tests/Functional/Frontend/ProfileShowPluginTest.php),
+[`ProfileEditPluginTest`](../../Tests/Functional/Frontend/ProfileEditPluginTest.php)
+and [`ProfilePluginSiteSetTest`](../../Tests/Functional/Frontend/ProfilePluginSiteSetTest.php)
+— assert rendered output.
 
 ## Why a package instead of the core trait
 
@@ -74,7 +81,6 @@ against:
 protected const LANGUAGE_PRESETS = [
     'EN' => ['id' => 0, 'title' => 'English', 'locale' => 'en_US.UTF8'],
     'DE' => ['id' => 1, 'title' => 'German', 'locale' => 'de_DE.UTF8'],
-    'FR' => ['id' => 2, 'title' => 'French', 'locale' => 'fr_FR.UTF8'],
 ];
 ```
 
@@ -129,28 +135,36 @@ $this->writeSiteConfiguration(
 
 ### 3. The page tree
 
-The tree is imported from a CSV data set,
-[`Tests/Functional/Fixtures/Database/SiteWithThreeLanguages.csv`](../../Tests/Functional/Fixtures/Database/SiteWithThreeLanguages.csv):
+The tree is imported from CSV data sets —
+[`ProfileSite.csv`](../../Tests/Functional/Fixtures/Database/ProfileSite.csv)
+for the two root pages, and
+[`ProfilePlugins.csv`](../../Tests/Functional/Fixtures/Database/ProfilePlugins.csv)
+for the pages the plugins sit on:
 
-| uid | pid | language | `l10n_parent` | slug       |
-|-----|-----|----------|---------------|------------|
-| 1   | 0   | EN (0)   | –             | `/`        |
-| 2   | 0   | DE (1)   | 1             | `/`        |
-| 3   | 0   | FR (2)   | 1             | `/`        |
-| 10  | 1   | EN (0)   | –             | `/hello`   |
-| 11  | 1   | DE (1)   | 10            | `/hallo`   |
-| 12  | 1   | FR (2)   | 10            | `/bonjour` |
+| uid | pid | language | `l10n_parent` | slug            |
+|-----|-----|----------|---------------|-----------------|
+| 1   | 0   | EN (0)   | –             | `/`             |
+| 2   | 0   | DE (1)   | 1             | `/`             |
+| 3   | 1   | EN (0)   | –             | `/profiles`     |
+| 4   | 1   | EN (0)   | –             | `/edit-profile` |
+| 5   | 1   | EN (0)   | –             | `/elsewhere`    |
 
 Two things are worth copying from it:
 
 - **Translations of a page keep the `pid` of the original**, they are not
-  children of it. The relation is `l10n_parent` plus `sys_language_uid`.
-- **Slugs are translated.** The language base is prepended by the router, so
-  page 11 is reachable as `https://acme.com/de/hallo`. A fixture reusing the
-  default language slug in every language would never notice a routing bug.
+  children of it. The relation is `l10n_parent` plus `sys_language_uid` — page 2
+  above is the translation of page 1 and sits next to it, not below it.
+- **Slugs are translated.** The language base is prepended by the router, so a
+  German `/hallo` below a `https://acme.com/de/` base is reachable as
+  `https://acme.com/de/hallo`. This fixture does not exercise that: the only
+  translated page in it is the root page, whose slug is `/` in either language,
+  and no subpage is translated. A fixture that reuses the default language slug
+  in every language would never notice a routing bug, so a test about routing
+  has to translate them.
 
-The content elements are in the same file, one per language, with `l18n_parent`
-pointing at the default language record — note the `l18n` spelling, `tt_content`
+The `tt_content` records placing the plugins are in `ProfilePlugins.csv` as
+well, and none of them is translated. When one is, the pointer at the default
+language record is `l18n_parent` — note the `l18n` spelling, `tt_content`
 differs from `pages` here.
 
 Finally the root page needs TypoScript, which is where the base test case comes
@@ -158,74 +172,95 @@ in:
 
 ```php
 $this->setUpFrontendRootPage(
-    1,
-    ['setup' => ['EXT:tests_example_fixture/Configuration/TypoScript/setup.typoscript']],
+    self::STORAGE_PAGE_ID,
+    [],
+    ['config' => 'config.tx_extbase.persistence.storagePid = ' . self::STORAGE_PAGE_ID . LF],
 );
 ```
+
+The second argument takes TypoScript **files**, as
+`['setup' => ['EXT:my_extension/Configuration/TypoScript/setup.typoscript']]`;
+the third takes the fields of the generated `sys_template` record directly,
+which is what the call above uses and what
+[`AbstractProfilePluginTestCase`](../../Tests/Functional/Frontend/AbstractProfilePluginTestCase.php)
+extends with an `include_static_file` and the plugin constants. Its second
+flavour writes no `sys_template` record at all and passes `false` as the fourth
+argument, because a site set based site gets its TypoScript from the site
+configuration instead. Which of the two a test uses is one overridable setup
+method, so the fixtures and the request helpers are shared —
+`ProfilePluginSiteSetTest` overrides nothing else.
 
 ## The request
 
 ```php
-$response = $this->executeFrontendSubRequest(new InternalRequest('https://acme.com/de/hallo'));
+$response = $this->executeFrontendSubRequest(new InternalRequest('https://acme.com/'), $context);
 
 $this->assertSame(200, $response->getStatusCode());
-$this->assertStringContainsString('[DE] Hello SiteBasedTestTrait', (string)$response->getBody());
+$this->assertStringContainsString('<h2>Profiles</h2>', (string)$response->getBody());
 ```
 
 The sub-request runs the real frontend in the same process — routing, TypoScript,
 Extbase and Fluid included. Asserting the status code alone proves little; assert
 on rendered content.
 
-The example uses a data provider with one case per language, keyed so a failure
-names the language:
+The `InternalRequestContext` is the second half of the request. It carries what
+cannot be expressed in a URL — the frontend user id a session is simulated for,
+and the workspace id — and `renderUri()` of
+[`AbstractProfilePluginTestCase`](../../Tests/Functional/Frontend/AbstractProfilePluginTestCase.php)
+is where the profile suite assembles it. Passing no user id is not the same as
+passing `0`: one is a visitor without a session, the other a session of user
+`0`, and several assertions turn on the difference.
+
+A language dependent test adds a data provider with one case per language, keyed
+so a failure names the language:
 
 ```php
-yield '1 DE -> [DE] Hello SiteBasedTestTrait' => [
-    'url' => 'https://acme.com/de/hallo',
-    'expectedContent' => '[DE] Hello SiteBasedTestTrait',
+yield '1 DE -> the translated record only' => [
+    'languageId' => 1,
+    'expectedShortnames' => ['translated-de'],
 ];
 ```
 
-## What renders the marker
+That key is quoted from
+[`LanguageOverlayTest`](../../Tests/Functional/Domain/Repository/LanguageOverlayTest.php)
+rather than from a rendering test, and the distinction is a real gap: the site
+written here has two languages, but every sub-request the suite issues asks for
+the default one. Language resolution is therefore asserted **below** the
+rendering, on the repository, through the built environment — see
+[Environment state](environment-state.md). A test that asserts translated
+*output* still has to be written, and it needs translated page slugs and
+translated `tt_content` records in the fixture first.
 
-The [fixture extension](fixture-extensions.md) contains a small Extbase plugin
-whose only job is to make the resolved language visible in the response body.
-Its controller reads the site language from the request attribute:
+## What renders the plugin
 
-```php
-$language = $this->request->getAttribute('language');
-
-$this->view->assign(
-    'languageKey',
-    $language instanceof SiteLanguage
-        ? strtoupper($language->getLocale()->getLanguageCode())
-        : 'UNRESOLVED',
-);
-```
-
-The request attribute is used rather than the language aspect because it behaves
-identically in TYPO3 v13 and v14 — a fixture extension should not need
-[core version aware code](../architecture/core-version-aware-code.md).
-
-Two details of the plugin registration are worth knowing, both of them the
-reason it works on both core versions unchanged:
+Nothing stands in for the subject here: what a sub-request renders is the plugin
+registration of [`ext_localconf.php`](../../ext_localconf.php) and the `CType` of
+[`Configuration/TCA/Overrides/tt_content.php`](../../Configuration/TCA/Overrides/tt_content.php),
+exactly as an installation would use them. Three details of that registration
+are worth knowing, all of them the reason it works on both core versions
+unchanged:
 
 - `ExtensionUtility::configurePlugin()` is called with
   `PLUGIN_TYPE_CONTENT_ELEMENT` explicitly, and it has to be. TYPO3 v13 still
   defaults to `list_type` and **triggers a deprecation** for it; v14 removed
-  that plugin content element and throws an `\InvalidArgumentException` for
-  anything but `CType`. Naming `CType` is the one call correct on both. Omitting
-  it would not fail silently either: the deprecation turns the v13 run red,
-  because [the suites fail on deprecations](phpunit-configuration.md#strictness-policy).
-  See the changelog entry `Important-105538-ListTypeAndSubTypes.rst` shipped
-  with `typo3/cms-core`.
+  that plugin content element, no longer defines the constant, and throws an
+  `\InvalidArgumentException` for anything but `CType`. Naming `CType` is the
+  one call correct on both. Omitting it would not fail silently either: the
+  deprecation turns the v13 run red, because [the suites fail on
+  deprecations](phpunit-configuration.md#strictness-policy). `ext_localconf.php`
+  carries the file and line of both versions next to the call.
 - `Configuration/TCA/Overrides/tt_content.php` passes **no** plugin type:
-  `ExtensionUtility::registerPlugin()` reads it back from what `configurePlugin()`
-  registered, and `ext_localconf.php` is loaded before the TCA overrides.
+  `ExtensionUtility::registerPlugin()` reads it back on v13 from what
+  `configurePlugin()` registered, and on v14 the parameter is gone. The order
+  that makes the v13 lookup succeed is the natural one — `ext_localconf.php` is
+  loaded before the TCA overrides.
 - The generated rendering definition is `=< lib.contentElement`, which comes from
-  EXT:fluid_styled_content. That extension is not a dependency here, so the
-  fixture TypoScript overrides `tt_content.testsexamplefixture_hello` with a
-  plain `EXTBASEPLUGIN` content object instead of pulling one in.
+  EXT:fluid_styled_content and from nothing in `cms-core`, `cms-frontend` or
+  `cms-extbase`. That is why this extension requires it, and why
+  `AbstractProfilePluginTestCase` loads it into the test instance rather than
+  defining a substitute `lib.contentElement` in test TypoScript: the substitute
+  would make the tests green while removing the piece of the chain they exist to
+  cover.
 
 ## See also
 

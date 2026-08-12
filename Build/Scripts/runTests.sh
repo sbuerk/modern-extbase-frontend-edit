@@ -423,7 +423,7 @@ Examples:
     ./Build/Scripts/runTests.sh -s unit -x
 
     # Run a single functional test class on sqlite, phpunit arguments after "--"
-    ./Build/Scripts/runTests.sh -s functional -d sqlite -- --filter DummyTest
+    ./Build/Scripts/runTests.sh -s functional -d sqlite -- --filter ExtensionLoadedTest
 
     # Run the browser based acceptance suite, playwright arguments after "--"
     ./Build/Scripts/runTests.sh -s acceptance

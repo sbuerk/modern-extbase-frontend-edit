@@ -13,7 +13,7 @@ extending classes:
 ```php
 use Symfony\Contracts\Service\Attribute\Required;
 
-abstract readonly class AbstractExample implements ExampleInterface
+abstract readonly class AbstractRenderer implements RendererInterface
 {
     /** @phpstan-ignore property.uninitializedReadonly */
     protected Typo3Version $typo3Version;
@@ -26,6 +26,13 @@ abstract readonly class AbstractExample implements ExampleInterface
     }
 }
 ```
+
+That class is an illustration and not a shipped one: the only abstract class of
+this extension,
+[`AbstractEditRepository`](../../Classes/Domain/Repository/Edit/AbstractEditRepository.php),
+has no dependencies of its own and therefore no `inject*()` method — its
+docblock says so, because "there is none" and "the rule does not apply" look the
+same from the outside.
 
 Concrete (`final`) classes have no such problem and use plain **constructor
 injection**, ideally with promoted properties.
@@ -105,9 +112,8 @@ Extbase requires mutable properties and a no-argument constructor, because the
 data mapper assigns properties by reflection on an instance it creates without
 calling the constructor. So an Extbase model is neither `readonly` nor
 constructor-injected — but it is still a data object, and it still carries
-`#[Exclude]`. The skeleton's own
-[`Greeting`](../../Tests/Functional/Fixtures/Extensions/example-fixture/Classes/Domain/Model/Greeting.php)
-model shows both.
+`#[Exclude]`. The [`Profile`](../../Classes/Domain/Model/Profile.php) model
+shows both.
 
 See [Dependency injection](dependency-injection.md#rules).
 
@@ -128,8 +134,7 @@ Both are ignored by their identifier, as shown in the example above. **This is
 required and absolutely fine here**: it is the only way to combine the two rules
 this repository holds — a constructor kept free for extending classes, and a
 `readonly` hierarchy — and PHP itself still guarantees the immutability that
-`readonly` promises. The pattern is verified by the skeleton's own
-[`AbstractExample`](../../Classes/Example/AbstractExample.php).
+`readonly` promises.
 
 Do **not** take this as a licence to silence PHPStan elsewhere. The ignores are
 acceptable **only** for a property that is
