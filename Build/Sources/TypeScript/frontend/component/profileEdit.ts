@@ -57,9 +57,9 @@ import { css, html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import type { ChildRecord, ChildType, ProfileRecord } from '../model/types.js';
-import { childTypes } from '../model/types.js';
-import type { RecordTarget } from '../model/recordTarget.js';
+import type { ChildRecord, ChildType, ProfileRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import { childTypes } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import type { RecordTarget } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
 import {
     childTarget,
     isNewChildTarget,
@@ -67,9 +67,9 @@ import {
     profileTarget,
     targetKey,
     targetScope,
-} from '../model/recordTarget.js';
-import type { FieldDefinition } from '../model/fieldDefinitions.js';
-import { fieldsOf, fieldsOfChild, initialValues } from '../model/fieldDefinitions.js';
+} from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
+import type { FieldDefinition } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/fieldDefinitions.js';
+import { fieldsOf, fieldsOfChild, initialValues } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/fieldDefinitions.js';
 import {
     childrenOf,
     childUids,
@@ -79,9 +79,9 @@ import {
     movedChildOrder,
     parseProfileRecord,
     recordValues,
-} from '../model/profileRecord.js';
-import { imageField } from '../model/imageEdit.js';
-import type { EditMap, RecordEdit } from '../model/editState.js';
+} from '@sbuerk/modern-extbase-frontend-edit/frontend/model/profileRecord.js';
+import { imageField } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js';
+import type { EditMap, RecordEdit } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js';
 import {
     applyErrors,
     beginFieldEdit,
@@ -97,13 +97,13 @@ import {
     isBusy,
     setBusy,
     setDraft,
-} from '../model/editState.js';
-import type { LabelMap } from '../model/labels.js';
-import { actionLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from '../model/labels.js';
-import { readJson } from '../model/json.js';
-import type { EndpointAction } from '../api/endpoints.js';
-import { parseEndpoints } from '../api/endpoints.js';
-import type { Payload, RequestBody } from '../api/payload.js';
+} from '@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js';
+import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
+import { actionLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
+import { readJson } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/json.js';
+import type { EndpointAction } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/endpoints.js';
+import { parseEndpoints } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/endpoints.js';
+import type { Payload, RequestBody } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js';
 import {
     addChildPayload,
     fieldPayload,
@@ -113,11 +113,11 @@ import {
     removeImagePayload,
     reorderPayload,
     visibilityPayload,
-} from '../api/payload.js';
-import type { EndpointResult } from '../api/response.js';
-import { ProfileEndpointClient } from '../api/client.js';
-import './editField.js';
-import './editImage.js';
+} from '@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js';
+import type { EndpointResult } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/response.js';
+import { ProfileEndpointClient } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/client.js';
+import '@sbuerk/modern-extbase-frontend-edit/frontend/component/editField.js';
+import '@sbuerk/modern-extbase-frontend-edit/frontend/component/editImage.js';
 
 /**
  * What the focus mechanism needs of a rendered control, and all it needs.

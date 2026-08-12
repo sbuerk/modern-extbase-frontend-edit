@@ -26,9 +26,9 @@ import type {
     EmailRecord,
     ProfileImageRecord,
     ProfileRecord,
-} from './types.js';
-import type { RecordTarget } from './recordTarget.js';
-import { fieldsOf } from './fieldDefinitions.js';
+} from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import type { RecordTarget } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
+import { fieldsOf } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/fieldDefinitions.js';
 
 /**
  * Reads an unknown value as a profile document, or answers `null`.

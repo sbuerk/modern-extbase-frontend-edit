@@ -21,8 +21,8 @@ import {
     removeImagePayload,
     reorderPayload,
     visibilityPayload,
-} from '../../../Sources/TypeScript/api/payload.js';
-import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
+} from '../../../Sources/TypeScript/frontend/api/payload.js';
+import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/frontend/model/recordTarget.js';
 
 describe('fieldPayload', (): void => {
     it('sends the submitted field and nothing else', (): void => {

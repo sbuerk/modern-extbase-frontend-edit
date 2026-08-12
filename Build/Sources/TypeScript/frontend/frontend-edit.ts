@@ -17,9 +17,9 @@
  * page means a second `ReactiveElement` registry and a duplicate
  * `customElements.define()`.
  */
-import { markAssetsLoaded } from './documentState.js';
-import './component/profileEdit.js';
+import { markAssetsLoaded } from '@sbuerk/modern-extbase-frontend-edit/frontend/documentState.js';
+import '@sbuerk/modern-extbase-frontend-edit/frontend/component/profileEdit.js';
 
 markAssetsLoaded(document.documentElement);
 
-export { assetsLoadedClass, markAssetsLoaded } from './documentState.js';
+export { assetsLoadedClass, markAssetsLoaded } from '@sbuerk/modern-extbase-frontend-edit/frontend/documentState.js';

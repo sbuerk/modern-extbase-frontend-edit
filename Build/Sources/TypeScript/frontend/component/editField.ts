@@ -24,9 +24,9 @@
 import { css, html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import type { FieldDefinition } from '../model/fieldDefinitions.js';
-import type { LabelMap } from '../model/labels.js';
-import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from '../model/labels.js';
+import type { FieldDefinition } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/fieldDefinitions.js';
+import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
+import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 
 /**
  * The controls a field can be edited with, as far as focus and value reading

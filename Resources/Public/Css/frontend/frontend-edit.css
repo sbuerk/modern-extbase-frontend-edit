@@ -1,0 +1,17 @@
+/* Generated from Build/Sources/Css — do not edit. */
+/* Sources/Css/frontend/frontend-edit.css */
+:root {
+  --frontend-edit-outline-color: #0a7bd4;
+  --frontend-edit-outline-width: 1px;
+}
+.frontend-edit-loaded modern-extbase-frontend-edit-profile {
+  display: block;
+  outline: var(--frontend-edit-outline-width) dashed var(--frontend-edit-outline-color);
+  outline-offset: 2px;
+}
+.frontend-edit-loaded modern-extbase-frontend-edit-profile:focus-within {
+  outline-style: solid;
+}
+.frontend-edit-loaded modern-extbase-frontend-edit-profile:not(:defined) {
+  outline: none;
+}

@@ -10,7 +10,7 @@
  * A target never carries the profile uid. That one is a property of the whole
  * document, not of the addressed record, and it comes from the state.
  */
-import type { ChildType } from './types.js';
+import type { ChildType } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
 
 export interface ProfileTarget {
     readonly child: null;

@@ -14,7 +14,7 @@
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import type { ProfileRecord } from '../../../Sources/TypeScript/model/types.js';
+import type { ProfileRecord } from '../../../Sources/TypeScript/frontend/model/types.js';
 import {
     childUids,
     displayName,
@@ -24,8 +24,8 @@ import {
     parseProfileRecord,
     recordOf,
     recordValues,
-} from '../../../Sources/TypeScript/model/profileRecord.js';
-import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
+} from '../../../Sources/TypeScript/frontend/model/profileRecord.js';
+import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/frontend/model/recordTarget.js';
 import { profileDocument, profileDocumentWith } from '../profileDocument.js';
 
 function parsed(document: unknown = profileDocument): ProfileRecord {

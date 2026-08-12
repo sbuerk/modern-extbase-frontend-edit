@@ -18,8 +18,8 @@
  * publishes the rule set, which is a schema API this proof of concept does not
  * need.
  */
-import type { ChildType } from './types.js';
-import type { RecordTarget } from './recordTarget.js';
+import type { ChildType } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import type { RecordTarget } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
 
 /**
  * How a field is edited.
