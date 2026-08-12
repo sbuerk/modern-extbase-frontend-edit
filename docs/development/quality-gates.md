@@ -60,7 +60,7 @@ Build/Scripts/runTests.sh -s checkJsBuildClean
 | `checkRepositoryInitialization` | [`Build/Scripts/checkRepositoryInitialization.php`](../../Build/Scripts/checkRepositoryInitialization.php) | no                     |
 | `checkTestMethodsPrefix`        | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)             | no                     |
 | `lintTypescript`                | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                                 | no                     |
-| `typecheckJs`                   | [`Build/tsconfig.json`](../../Build/tsconfig.json)                                                         | no                     |
+| `typecheckJs`                   | [`Build/tsconfig.json`](../../Build/tsconfig.json) and the two projects extending it                       | no                     |
 | `unitJs`                        | [`Build/package.json`](../../Build/package.json), `Build/Tests/TypeScript/`                                | no                     |
 | `checkJsBuildClean`             | [`Build/esbuild.mjs`](../../Build/esbuild.mjs)                                                             | no                     |
 

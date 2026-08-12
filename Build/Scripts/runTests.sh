@@ -282,13 +282,13 @@ Options:
             - composerValidate: "composer validate --strict" of the root composer.json
             - functional: PHP functional tests
             - lintPhp: PHP linting
-            - lintTypescript: eslint over Build/Sources/, fixes by default, "-n" to only check
+            - lintTypescript: eslint over every TypeScript tree, fixes by default, "-n" to only check
             - npm: "npm" with all remaining arguments dispatched, run in Build/
             - phpstan: phpstan analyze
             - phpstanGenerateBaseline: regenerate phpstan baseline, handy after phpstan updates
             - renderDocumentation: render the extension documentation into Documentation-GENERATED-temp
             - setVersion: apply a version across the repository, "-- <version> <type>"
-            - typecheckJs: "tsc --noEmit" over Build/Sources/, which the build does not do
+            - typecheckJs: "tsc --noEmit" over every TypeScript tree, which the build does not do
             - unit (default): PHP unit tests
             - unitJs: TypeScript unit tests over Build/Sources/, run with "node --test"
             - unitRandom: PHP unit tests in random order, "-o <number>" to use a specific seed
@@ -297,10 +297,13 @@ Options:
 
         The six frontend suites - buildJs, checkJsBuildClean, lintTypescript, npm,
         typecheckJs and unitJs - run in a node container and are the only ones that are
-        core version independent: they inspect Build/Sources/, Build/Tests/ and
-        Resources/Public/ and never the installed core, so "-t" does not change what they
-        do. They also need no composerUpdate, which makes them the only suites that are
-        safe to run while the other core version's dependency set is installed.
+        core version independent: they inspect Build/Sources/, Build/Tests/,
+        Build/playwright/, Tests/Acceptance/ and Resources/Public/ and never the
+        installed core, so "-t" does not change what they do. lintTypescript and
+        typecheckJs cover every one of those trees; the other four are about the shipped
+        assets and stop at Build/Sources/. They also need no composerUpdate, which makes
+        them the only suites that are safe to run while the other core version's
+        dependency set is installed.
 
     -b <docker|podman>
         Container environment:
@@ -946,8 +949,16 @@ case ${TEST_SUITE} in
     typecheckJs)
         # Its own suite precisely because esbuild does not type check: without this the
         # build succeeds on TypeScript that does not compile.
-        COMMAND="cd Build && npm ci && npm run typecheck"
-        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name typecheck-js-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"
+        #
+        # The acceptance manifest is installed as well, because the third project
+        # checks the specs and those import "@playwright/test" - a type check of code
+        # whose dependency is absent is not a type check. Only the runner is installed:
+        # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD keeps the browser binaries, which are a
+        # several hundred megabyte download and which nothing here starts, out of this
+        # suite. The acceptance suite itself sets the same variable and gets its
+        # browsers from its image instead.
+        COMMAND="cd Build && npm ci && npm --prefix playwright ci --no-audit --no-fund && npm run typecheck"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name typecheck-js-${SUFFIX} -e HOME=${ROOT_DIR}/.cache -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"
         SUITE_EXIT_CODE=$?
         ;;
     unit)
