@@ -703,6 +703,51 @@ translates anything starting with `LLL:` and returns everything else verbatim,
 so no `$extensionName` argument is needed — and that argument is precisely what
 changed between v13 and v14.
 
+### How the three rules are covered
+
+Each rule is exercised through the endpoint, by a file that breaks that rule and
+nothing else, and the assertion is the **error code** rather than the status: all
+three rules and the two core adds answer `422` under the same field name, so
+"something refused this" is what a test of a single rule must not settle for.
+
+| Test                                                             | Payload                                                    | Expected code                                           |
+|------------------------------------------------------------------|------------------------------------------------------------|---------------------------------------------------------|
+| `aRejectedUploadIsRefusedAndStoresNothing`                       | three files with a wrong type or extension                 | field name only                                         |
+| `anImageLargerThanTheConfiguredMaximumIsRefusedAndStoresNothing` | the fixture PNG padded to `MAXIMUM_FILE_SIZE` + 1 byte     | `1708595755`, `FileSizeValidator`                       |
+| `anImagePastADimensionBoundIsRefusedAndStoresNothing`            | `profile-image-too-wide.png`, `profile-image-too-tall.png` | `1715964044` / `1715964045`, `ImageDimensionsValidator` |
+
+The two dimension fixtures are 5001 px on one edge and a single pixel on the
+other, which keeps them a few hundred bytes and keeps each of them breaking
+exactly one bound — a 5001 by 5001 image would break both at once and could not
+tell a missing `maxHeight` from a missing `maxWidth`.
+
+Two properties of that arrangement are worth stating rather than discovering:
+
+- **The size test follows the bound; it does not pin it.** Its payload is
+  computed from `MAXIMUM_FILE_SIZE`, so raising the constant raises the payload
+  and the test stays green. It proves the rule is applied, not that the value is
+  5 MB. The dimension tests do pin their bound, because their fixtures cannot
+  follow it — raise `MAXIMUM_EDGE` and they fail until new fixtures are made.
+- **The size rule is what keeps a large upload an answer instead of a crash.**
+  Delete it and the padded file is not refused, reaches
+  `ResourceStorage::assureFileUploadPermissions()` and throws `UploadSizeException`
+  1322110041 — the test environment's `upload_max_filesize` is 2 MB, below our
+  5 MB bound. That is a statement about the *test* environment: through a browser
+  PHP refuses the body before `$_FILES` exists, and `getMaxUploadFileSize()`
+  reads nothing but those two ini settings
+  (`cms-core/Classes/Utility/GeneralUtility.php:2004-2016`), so the branch is
+  unreachable from a real request. It is still the sharpest available
+  demonstration that our bound is evaluated first.
+
+What a request cannot show is covered next to it. `Tests/Unit/Validation/ProfileImageUploadRulesTest`
+pins that `validators()` hands out **fresh** instances — a cached one would
+answer the second upload of a session with the errors of the first, and every
+functional test of a single request would still pass — and that every option name
+survives `setOptions()`, which throws 1379981890 for a key the installed core
+version does not declare. `Tests/Functional/Validation/ValidationMessageTest`
+collects the upload rules alongside the rule sets, so all five message keys are
+proven to resolve and every rule is proven to name a message of its own.
+
 ### One core message cannot be overridden on v14.3
 
 > [!IMPORTANT]

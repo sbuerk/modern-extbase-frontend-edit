@@ -515,8 +515,21 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
      */
     protected function fixtureImageBytes(): string
     {
-        $bytes = file_get_contents(__DIR__ . '/../Fixtures/Files/' . self::IMAGE_FILE_NAME);
-        $this->assertIsString($bytes);
+        return $this->fixtureFileBytes(self::IMAGE_FILE_NAME);
+    }
+
+    /**
+     * The bytes of any committed fixture file, by name.
+     *
+     * The same "read from the extension, not from the instance" rule as above,
+     * and the reason the generalized form exists: the files that exercise the
+     * dimension rule are images whose *size in pixels* is the point, so they
+     * cannot be produced by padding or truncating the one image above.
+     */
+    protected function fixtureFileBytes(string $fileName): string
+    {
+        $bytes = file_get_contents(__DIR__ . '/../Fixtures/Files/' . $fileName);
+        $this->assertIsString($bytes, sprintf('The fixture file "%s" exists and is readable.', $fileName));
 
         return $bytes;
     }
@@ -649,6 +662,32 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
         }
 
         return $codes;
+    }
+
+    /**
+     * The `message` of every entry of an error envelope.
+     *
+     * The counterpart of {@see errorCodes()}: the code says which rule refused
+     * the request, the message is what the user is shown for it, and a rule
+     * whose message never resolved answers with a code and an empty string.
+     *
+     * @return list<string>
+     */
+    protected function errorMessages(ResponseInterface $response): array
+    {
+        $body = $this->jsonBody($response);
+        $this->assertArrayHasKey('errors', $body);
+        $this->assertIsArray($body['errors']);
+
+        $messages = [];
+        foreach ($body['errors'] as $error) {
+            $this->assertIsArray($error);
+            $this->assertArrayHasKey('message', $error);
+            $this->assertIsString($error['message']);
+            $messages[] = $error['message'];
+        }
+
+        return $messages;
     }
 
     /**

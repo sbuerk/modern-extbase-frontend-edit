@@ -8,6 +8,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Http\Message\ResponseInterface;
+use SBUERK\ModernExtbaseFrontendEdit\Validation\ProfileImageUploadRules;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * The image endpoints, exercised by request: upload, replacement, removal, and
@@ -68,6 +70,17 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * would report the same number for an implementation that inserted two rows.
      */
     private const FIRST_UPLOADED_FILE_UID = 3;
+
+    /**
+     * The error code `FileSizeValidator` raises for a file above `maximum`.
+     *
+     * The codes below are the identity of the rule that refused a request. They
+     * are asserted rather than the count of errors alone, because the three
+     * upload rules and the two core adds all answer `422` under the same field
+     * name — "something refused this" is exactly what a test of a single rule
+     * must not settle for.
+     */
+    private const FILE_SIZE_EXCEEDED = 1708595755;
 
     #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
@@ -440,6 +453,129 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
             array_values(array_unique($this->errorFields($response))),
             'Every message is keyed by the property name the client knows the control as.',
         );
+    }
+
+    /**
+     * A file past {@see ProfileImageUploadRules::MAXIMUM_FILE_SIZE} is refused
+     * by the size rule alone, and nothing reaches the storage.
+     *
+     * The file is a valid PNG with trailing bytes rather than a large blob of
+     * junk, and that is what makes the assertion about the error **code** worth
+     * making: the detected media type is still `image/png` and the extension
+     * still matches it, so the only rule left to fail is the size one. A test
+     * that uploaded 5 MB of random bytes named `portrait.png` would be refused
+     * three times over and would still pass with the size rule deleted.
+     *
+     * The bound is read from the constant rather than written out here. It is
+     * the validator's own spelling of a size, so the test follows the shipped
+     * configuration instead of pinning a second copy of it.
+     */
+    #[Test]
+    public function anImageLargerThanTheConfiguredMaximumIsRefusedAndStoresNothing(): void
+    {
+        $snapshot = $this->recordSnapshot();
+        $stored = $this->storedUploadFileNames();
+
+        $image = $this->fixtureImageBytes();
+        $maximum = GeneralUtility::getBytesFromSizeMeasurement(ProfileImageUploadRules::MAXIMUM_FILE_SIZE);
+        $this->assertGreaterThan(
+            strlen($image),
+            $maximum,
+            'The fixture image is below the bound, so padding it is what puts it above.',
+        );
+
+        $response = $this->sendUploadRequest(
+            uid: self::OWNED_PROFILE_UID,
+            frontendUserId: self::OWNER_FRONTEND_USER_ID,
+            contents: $image . str_repeat("\0", $maximum + 1 - strlen($image)),
+        );
+
+        $this->assertSame($stored, $this->storedUploadFileNames(), 'The upload folder gained no file.');
+        $this->assertSame($snapshot, $this->recordSnapshot(), 'Nothing was indexed and nothing was referenced.');
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(
+            [self::FILE_SIZE_EXCEEDED],
+            $this->errorCodes($response),
+            'The size rule is the only rule this file breaks.',
+        );
+
+        // The bound is rendered into the sentence by core's `formatSize()`,
+        // whose decimal separator follows the active locale — hence the prefix
+        // rather than the whole sentence. What this asserts is that the message
+        // is ours: without the `exceedMessage` option the user would be shown
+        // the untranslated default of the core validator.
+        $this->assertStringStartsWith(
+            'The image is too large. Choose one of at most ',
+            $this->errorMessages($response)[0],
+        );
+    }
+
+    /**
+     * Images whose pixel dimensions break the rule, and what each of them has
+     * to be answered with.
+     *
+     * Both fixtures are 5001 pixels — one over the bound the rules configure —
+     * on exactly one edge and a single pixel on the other, which is what keeps
+     * them a few hundred bytes and keeps each of them breaking exactly one of
+     * the two bounds. A single 5001 by 5001 image would break both at once and
+     * could not tell a missing `maxHeight` from a missing `maxWidth`.
+     *
+     * The expected codes are core's, `1715964044` for `maxWidth` and
+     * `1715964045` for `maxHeight` — see {@see FILE_SIZE_EXCEEDED} for why the
+     * code is asserted at all.
+     *
+     * @return \Generator<string, array{fixtureFileName: string, expectedErrorCode: int, expectedMessage: string}>
+     */
+    public static function imagesBreakingADimensionBound(): \Generator
+    {
+        yield 'wider than the bound' => [
+            'fixtureFileName' => 'profile-image-too-wide.png',
+            'expectedErrorCode' => 1715964044,
+            'expectedMessage' => 'The image is too wide. It can be at most 5000 pixels wide.',
+        ];
+        yield 'taller than the bound' => [
+            'fixtureFileName' => 'profile-image-too-tall.png',
+            'expectedErrorCode' => 1715964045,
+            'expectedMessage' => 'The image is too tall. It can be at most 5000 pixels high.',
+        ];
+    }
+
+    /**
+     * An image past a dimension bound is refused by that bound alone, and
+     * nothing reaches the storage.
+     *
+     * Both fixtures are valid PNGs of a few hundred bytes, so the media type,
+     * the extension and the size rules all pass and the dimension rule is the
+     * only one that can produce the expected code. The number in the message is
+     * the bound the rule was configured with — `translateErrorMessage()` fills
+     * it in from the option — so a sentence naming 5000 pixels is evidence that
+     * the option arrived, not just that some dimension error occurred.
+     */
+    #[DataProvider('imagesBreakingADimensionBound')]
+    #[Test]
+    public function anImagePastADimensionBoundIsRefusedAndStoresNothing(
+        string $fixtureFileName,
+        int $expectedErrorCode,
+        string $expectedMessage,
+    ): void {
+        $snapshot = $this->recordSnapshot();
+        $stored = $this->storedUploadFileNames();
+
+        $response = $this->sendUploadRequest(
+            uid: self::OWNED_PROFILE_UID,
+            frontendUserId: self::OWNER_FRONTEND_USER_ID,
+            contents: $this->fixtureFileBytes($fixtureFileName),
+        );
+
+        $this->assertSame($stored, $this->storedUploadFileNames(), 'The upload folder gained no file.');
+        $this->assertSame($snapshot, $this->recordSnapshot(), 'Nothing was indexed and nothing was referenced.');
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(
+            [$expectedErrorCode],
+            $this->errorCodes($response),
+            'The broken bound is the only rule this image breaks.',
+        );
+        $this->assertSame($expectedMessage, $this->errorMessages($response)[0]);
     }
 
     /**
