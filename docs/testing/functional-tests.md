@@ -84,7 +84,7 @@ itself has to be repeated:
 ```php
 protected array $testExtensionsToLoad = [
     'sbuerk/modern-extbase-frontend-edit',
-    'tests/example-fixture',
+    'tests/workspace-fixture',
 ];
 ```
 
@@ -101,7 +101,7 @@ Additionally:
 
 - Assert against the container through `$this->get()` when verifying wiring.
   `$this->getContainer()->has()` answers whether a service is registered at all,
-  which is what the core version aware tests use to prove the *other* version's
+  which is what a core version aware test uses to prove the *other* version's
   implementation is absent.
 - Import records with `importCSVDataSet()` or a DataHandler scenario rather than
   writing SQL.
@@ -110,21 +110,26 @@ Additionally:
 
 ## Core version aware functional tests
 
-Mirroring the source layout, they live in `Tests/Functional/Core13/` and
+Mirroring the source layout, they belong in `Tests/Functional/Core13/` and
 `Tests/Functional/Core14/` and carry the group of the core version they must
-**not** run on:
+**not** run on. A test for a v13 only implementation would read:
 
 ```php
 #[Group('not-core-14')]
-final class ExampleTest extends AbstractFunctionalTestCase
+final class SomeServiceTest extends AbstractFunctionalTestCase
 {
     #[Test]
-    public function interfaceIsAliasedToCoreVersionAwareImplementation(): void
+    public function theInterfaceIsAliasedToTheImplementationOfThisCoreVersion(): void
     {
-        $this->assertInstanceOf(Example::class, $this->get(ExampleInterface::class));
+        $this->assertInstanceOf(SomeService::class, $this->get(SomeServiceInterface::class));
     }
 }
 ```
+
+Neither directory exists at the moment, and that is not an omission: nothing
+below `Classes/` has needed a version specific implementation yet, so there is
+nothing for such a test to assert. The directory is created together with the
+first test that goes into it.
 
 See [Dual core setup](../development/dual-core-setup.md#test-grouping).
 

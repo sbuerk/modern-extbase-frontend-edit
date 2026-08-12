@@ -92,6 +92,25 @@ core version aware code is exactly where mistakes happen.
 | `Build/phpunit/*.xml`                 | No — one configuration for both.                   |
 | `.github/workflows/ci.yml`            | No — the core version is a matrix dimension.       |
 
+### `Core13/` and `Core14/` carry a `.gitkeep`, and it is load bearing
+
+Both directories hold nothing but a `.gitkeep` at the moment: this extension has
+no version specific implementation yet. **Do not delete them for being empty.**
+Two gates take the directory paths without checking whether they exist first:
+
+- [`Build/phpstan/Core13/phpstan.neon`](../../Build/phpstan/Core13/phpstan.neon)
+  lists `../../../Core13` under `paths`, and PHPStan aborts at startup on a
+  path that is not there.
+- [`Build/php-cs-fixer/config.php`](../../Build/php-cs-fixer/config.php) passes
+  both directories to Symfony's `Finder::in()`, which throws a
+  `DirectoryNotFoundException`.
+
+Both are satisfied by the directory existing, which is all a `.gitkeep` buys —
+git does not carry an empty directory on its own.
+[`Configuration/Services.php`](../../Configuration/Services.php) guards with
+`is_dir()` and is unaffected either way, and composer does not validate a PSR-4
+target directory at all.
+
 ## Test grouping
 
 `Build/Scripts/runTests.sh` passes `--exclude-group not-core-<version>` to
@@ -99,13 +118,24 @@ PHPUnit. A test that must not run on TYPO3 v14 therefore declares:
 
 ```php
 #[Group('not-core-14')]
-final class ExampleTest extends UnitTestCase
+#[Test]
+public function runsAgainstTheLowestSupportedMajorVersion(): void
 {
 }
 ```
 
 Note the inverted logic: the group names the core version the test must **not**
 run on, so a test without any group runs everywhere.
+
+The attribute works on a class as well as on a method, and the two live
+examples are methods:
+[`Tests/ExtensionCoreVersionCompatTestsTrait.php`](../../Tests/ExtensionCoreVersionCompatTestsTrait.php)
+declares one for each bound of the supported range, which is what proves a
+suite ran against the core version it was asked for. The class level form
+belongs on a test whose whole subject only exists on one version, and the
+`Core13/` and `Core14/` test directories in the table above are where such a
+class goes. Neither directory exists at the moment — nothing has needed one
+yet, and an empty directory is not something git carries.
 
 ## See also
 

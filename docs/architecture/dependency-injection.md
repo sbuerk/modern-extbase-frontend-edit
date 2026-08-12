@@ -37,10 +37,17 @@ is selecting the core version aware directory to register — see
 
   ```php
   #[Autoconfigure(public: true)]
-  final readonly class Dummy
+  final readonly class WorkspaceAspectFromTestingContext
   {
   }
   ```
+
+  That is the only published service in this repository — a middleware of the
+  [workspace fixture extension](../../Tests/Functional/Fixtures/Extensions/workspace-fixture/Classes/Middleware/WorkspaceAspectFromTestingContext.php),
+  because `MiddlewareDispatcher::lazy()` falls back to
+  `GeneralUtility::makeInstance()`, without constructor injection, when the
+  container answers that it does not have the service. Everything else stays
+  private, and the tests construct what they cannot fetch.
 
 - **Register a default implementation of an interface with `#[AsAlias]`**, so
   consumers depend on the interface. This is what makes the core version aware

@@ -15,8 +15,15 @@ builds such an environment, applies it, and restores the previous state
 afterwards. In this repository it is a **development dependency** used by
 functional tests; in a real extension it is just as useful in production code.
 
-The worked example is
-[`Tests/Functional/Domain/Repository/GreetingRepositoryTest.php`](../../Tests/Functional/Domain/Repository/GreetingRepositoryTest.php).
+The worked examples are
+[`Tests/Functional/Domain/Repository/LanguageOverlayTest.php`](../../Tests/Functional/Domain/Repository/LanguageOverlayTest.php),
+which asserts what a language context changes, and
+[`EnvironmentStateTest.php`](../../Tests/Functional/Domain/Repository/EnvironmentStateTest.php)
+next to it, which asserts the two properties of the built environment the first
+one cannot see. Both reach it through
+[`AbstractProfileTestCase`](../../Tests/Functional/AbstractProfileTestCase.php),
+whose docblock states why every repository call of the profile suite runs inside
+a frontend environment in the first place.
 
 ## The three types you deal with
 
@@ -49,17 +56,23 @@ $this->get(StateManagerInterface::class)->execute(
 
 `execute()` backs the current environment up, applies the built one, runs the
 closure and restores the backup **in every case**, including when the closure
-throws. That is the whole reason to prefer it over the lower level calls.
+throws. That is the whole reason to prefer it over the lower level calls, and
+that the restore really happens is asserted rather than assumed:
+`EnvironmentStateTest::environmentIsRestoredAfterExecute()` reads
+`$GLOBALS['TYPO3_REQUEST']` before the call and compares it afterwards.
 
-It returns `void`, so a result is captured by reference:
+It returns `void`, so a result is captured by reference — here through
+`executeInFrontendContext()`, the wrapper of `AbstractProfileTestCase` around
+the call above:
 
 ```php
-$messages = [];
-$this->executeInLanguageContext(1, function () use (&$messages): void {
-    foreach ($this->get(GreetingRepository::class)->findAllInLanguageContext() as $greeting) {
-        $messages[] = $greeting->getMessage();
+$shortnames = [];
+$this->executeInFrontendContext(function () use (&$shortnames): void {
+    foreach ($this->get(ProfileRepository::class)->findAll() as $profile) {
+        $shortnames[] = $profile->getShortname();
     }
-});
+    sort($shortnames);
+}, $languageId);
 ```
 
 `bootstrap()`, `apply()`, `backup()` and `restore()` are available for cases
@@ -84,34 +97,36 @@ using `apply()` directly, otherwise leaves a populated environment behind. The
 next test then starts in a state nobody configured, which produces failures that
 move when tests are reordered — the kind `unitRandom` exists to expose.
 
-## What the fixture asserts
+## What the data set proves
 
-The [fixture extension](fixture-extensions.md) carries a table, an Extbase model
-and a repository for exactly this purpose. The data set is deliberately
-asymmetric:
+Both tests query the profile table of this extension, and the data set they
+import,
+[`Tests/Functional/Fixtures/Database/TranslatedProfiles.csv`](../../Tests/Functional/Fixtures/Database/TranslatedProfiles.csv),
+is deliberately asymmetric:
 
-| Record | Language                 | Message       |
-|--------|--------------------------|---------------|
-| 1      | EN (0)                   | `Hello`       |
-| 2      | EN (0)                   | `Hello again` |
-| 3      | DE (1), translation of 1 | `Hallo`       |
-| 4      | FR (2), translation of 1 | `Bonjour`     |
+| Record | Language                  | Shortname       |
+|--------|---------------------------|-----------------|
+| 20     | EN (0)                    | `translated`    |
+| 21     | DE (1), translation of 20 | `translated-de` |
+| 22     | EN (0)                    | `untranslated`  |
 
-The second greeting has no translation, and the site languages use
-`fallbackType: 'strict'`. So the expected result differs per language:
+Profile 22 has no translation, and the DE language of the site written by
+`AbstractProfileTestCase` uses `fallbackType: 'strict'`. So the expected result
+differs per language:
 
-| Language context | `findAllInLanguageContext()` |
-|------------------|------------------------------|
-| EN (0)           | `Hello`, `Hello again`       |
-| DE (1)           | `Hallo`                      |
-| FR (2)           | `Bonjour`                    |
+| Language context | `ProfileRepository::findAll()` |
+|------------------|--------------------------------|
+| EN (0)           | `translated`, `untranslated`   |
+| DE (1)           | `translated-de`                |
 
 An asymmetric data set matters: had every record been translated, a test that
 never applied a language context at all would still have produced a plausible
 looking result.
 
-The second repository method is the counterpart — it pins the language aspect
-and is therefore *not* affected by the environment:
+A query pinning the language aspect itself is the counterpart — it is *not*
+affected by the environment, and `EnvironmentStateTest` asserts exactly that by
+running this query inside a DE context and expecting the two default language
+records back:
 
 ```php
 $query->getQuerySettings()->setLanguageAspect(
@@ -129,9 +144,11 @@ off the language *filter* but not the overlay.
 
 A test asserting language behaviour can pass for the wrong reason. The cheapest
 proof is to remove the environment and see the right things break — replacing
-`execute()` with a plain call of the closure makes the DE and FR cases fail,
-while EN keeps passing because it *is* the default language. Whenever such a
-test is written, run that probe once.
+`executeInFrontendContext()` with a plain call of the closure makes the DE case
+fail, while EN keeps passing because it *is* the default language. Whenever such
+a test is written, run that probe once; the docblock of `LanguageOverlayTest`
+records it, so the next reader does not have to rediscover which case is the
+meaningful one.
 
 ## See also
 

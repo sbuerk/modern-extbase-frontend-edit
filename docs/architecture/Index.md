@@ -1,8 +1,10 @@
 # Architecture
 
-How the code base is organised and which design rules apply to it. These are the
-rules the skeleton itself follows — the shipped `Example` classes exist to
-demonstrate them and are meant to be deleted once real code arrives.
+How the code base is organised and which design rules apply to it. This
+extension is a proof of concept, and these are the rules it holds itself to —
+each page states one of them together with the reasoning behind it, because a
+rule whose reason is not written down is followed until the first person is in a
+hurry.
 
 | Page                                                        | Contents                                                                                                                                                |
 |-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|

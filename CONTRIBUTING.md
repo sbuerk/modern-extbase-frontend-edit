@@ -72,7 +72,7 @@ Build/Scripts/runTests.sh -s unitRandom
 Build/Scripts/runTests.sh -s functional -d sqlite
 
 # A single class or method — note the "--" separator.
-Build/Scripts/runTests.sh -s functional -d sqlite -- --filter DummyTest
+Build/Scripts/runTests.sh -s functional -d sqlite -- --filter ExtensionLoadedTest
 
 # Browser based acceptance tests, against a TYPO3 instance this suite seeds.
 Build/Scripts/runTests.sh -s acceptance
