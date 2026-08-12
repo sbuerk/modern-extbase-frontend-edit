@@ -264,6 +264,48 @@ surface, row-level actions are the case where an icon alone is understood, and i
 is the treatment the TYPO3 backend gives the equivalent controls in a record
 list. Everything else keeps icon *and* text.
 
+## The file input is a label wrapping a hidden input
+
+`<input type="file">` is the one form control whose box the browser owns. Its
+inner button cannot be reached from a stylesheet — `::file-selector-button`
+reaches *a* button but not the layout around it — and it draws **"No file
+chosen"** beside itself, which cannot be removed at all.
+
+Here that text was not merely ugly, it was **permanently false**: the component
+clears the input the moment it reads a file, so the control said "no file chosen"
+including immediately after one had been chosen and uploaded.
+
+The fix is the standard one, and it is worth knowing why each half is needed:
+
+```html
+<label class="file-picker" ?data-disabled="…">
+    <input class="field-control visually-hidden" type="file" …>
+    <svg class="icon" aria-hidden="true">…</svg>
+    <span class="button-label">Choose image</span>
+</label>
+```
+
+- **The input is hidden, not replaced.** Every native behaviour stays — the
+  dialog opens on click and on Enter, the file lands in `FormData`, and
+  Playwright's `setInputFiles()` still finds a real `input[type=file]`. A button
+  that called `.click()` on a hidden input would be re-implementing the platform.
+- **It is `visually-hidden`, not `display: none`.** A `display: none` input is
+  not focusable, and the control would drop out of the tab order entirely. The
+  ring is drawn on the label with `:focus-within`, because the focus lands on the
+  input inside it.
+- **The label states which write it performs** — `Choose image`, or
+  `Replace image` once one is stored. Picking a file *is* the write here; there
+  is no apply step, and `Choose` beside a stored portrait would understate what
+  pressing it costs.
+- **`data-disabled` rather than `:has(input:disabled)`.** A `<label>` cannot
+  carry `:disabled`, and `:has()` is above the browser floor the import map
+  mechanism sets — Firefox needs 121, the floor is 108. The component states the
+  condition it already knows.
+
+`.file-picker` is styled in `controls.ts` alongside `button`, not in the image
+component: it is a control, and that is the module that makes a control look like
+one.
+
 ## Class names are structural, not presentational
 
 `.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by

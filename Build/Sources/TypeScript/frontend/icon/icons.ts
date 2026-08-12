@@ -50,6 +50,7 @@ export type IconName =
     | 'cancel'
     | 'add'
     | 'remove'
+    | 'chooseImage'
     | 'moveUp'
     | 'moveDown'
     | 'hide'
@@ -76,6 +77,13 @@ const shapes: Readonly<Record<IconName, SVGTemplateResult>> = {
         <path d="M9.5 6.5v-2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" />
         <path d="M6.5 6.5l.9 12.1a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.1" />
         <path d="M10 10.5v6M14 10.5v6" />
+    `,
+    // An upload rather than a picture: what the control does is send a file, and
+    // the image beside it already says what kind of file is wanted.
+    chooseImage: svg`
+        <path d="M12 15.5V3.5" />
+        <path d="M7.5 8L12 3.5 16.5 8" />
+        <path d="M4 15.5v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
     `,
     moveUp: svg`<path d="M5.5 14.5L12 8l6.5 6.5" />`,
     moveDown: svg`<path d="M5.5 9.5L12 16l6.5-6.5" />`,

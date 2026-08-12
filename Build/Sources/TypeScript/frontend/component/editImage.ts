@@ -134,16 +134,22 @@ export class EditImageElement extends LitElement {
                 <div class="field-body">
                     ${this.renderImage()}
                     <span class="field-actions">
-                        <input
-                            class="field-control"
-                            type="file"
-                            accept="${imageAccept}"
-                            aria-labelledby="label"
-                            aria-invalid="${messages.length > 0 ? 'true' : 'false'}"
-                            aria-describedby="${messages.length > 0 ? 'errors' : nothing}"
-                            ?disabled="${this.busy}"
-                            @change="${this.onSelect}"
-                        />
+                        <label class="file-picker" ?data-disabled="${this.busy}">
+                            <input
+                                class="field-control visually-hidden"
+                                type="file"
+                                accept="${imageAccept}"
+                                aria-labelledby="label"
+                                aria-invalid="${messages.length > 0 ? 'true' : 'false'}"
+                                aria-describedby="${messages.length > 0 ? 'errors' : nothing}"
+                                ?disabled="${this.busy}"
+                                @change="${this.onSelect}"
+                            />
+                            ${icon('chooseImage')}
+                            <span class="button-label">
+                                ${this.text(actionLabelKey(this.image === null ? 'chooseImage' : 'replaceImage'))}
+                            </span>
+                        </label>
                         <button
                             type="button"
                             data-variant="danger"

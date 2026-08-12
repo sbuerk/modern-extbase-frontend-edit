@@ -216,6 +216,11 @@ on the surface: choosing a file uploads it straight away, and
 nothing to cancel, because there is nothing to look at between picking a file
 and having uploaded it.
 
+The control therefore says which of the two things it is about to do:
+:guilabel:`Choose image` while there is none, and :guilabel:`Replace image`
+once one is stored. Pressing it opens the file dialog of the operating system,
+and the file is on its way the moment one is picked.
+
 A replaced or removed image is deleted from the file storage as well, not only
 from the record — unless something else on the site still references that file,
 in which case it is kept.

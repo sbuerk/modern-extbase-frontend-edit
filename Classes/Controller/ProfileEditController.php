@@ -151,6 +151,8 @@ final class ProfileEditController extends ActionController
         'action.moveDown',
         'action.hide',
         'action.show',
+        'action.chooseImage',
+        'action.replaceImage',
         // Section headings, `section.<scope>` — sectionLabelKey().
         'section.address',
         'section.email',
