@@ -156,8 +156,7 @@ Three things follow from that layout:
    set's `setup.typoscript` is the file that maps them onto
    `plugin.tx_modernextbasefrontendedit.*`. The keys are prefixed with the
    compact extension key rather than a hand-written camel-cased name, because
-   that is the same token the Extbase TypoScript namespace is built from and it
-   is rewritten on repository initialization.
+   that is the same token the Extbase TypoScript namespace is built from.
 2. **The defaults live in one place.** `settings.definitions.yaml` declares them
    for the set; `addTypoScriptConstants()` declares them for the classic path.
    `setup.typoscript` repeats no value.

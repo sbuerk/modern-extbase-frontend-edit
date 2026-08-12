@@ -10,9 +10,8 @@ require_once __DIR__ . '/MarkdownTableFormatter.php';
 
 /**
  * Quality gate over the Markdown tables of "./*.md" and "docs/". The algorithm
- * lives in "MarkdownTableFormatter.php", which is dependency free so that
- * "initializeRepository.sh" can use it in a repository where nothing is
- * installed yet; this file adds the file traversal and the reporting.
+ * lives in "MarkdownTableFormatter.php"; this file adds the file traversal and
+ * the reporting.
  *
  * Run "--fix" to rewrite the files instead of only reporting them:
  *

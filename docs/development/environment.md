@@ -52,38 +52,37 @@ hosted runners, not of this repository.
 
 ## Suites
 
-| Suite                           | Purpose                                                                       |
-|---------------------------------|-------------------------------------------------------------------------------|
-| `unit`                          | PHP unit tests (default suite).                                               |
-| `unitRandom`                    | Unit tests in random order.                                                   |
-| `functional`                    | PHP functional tests.                                                         |
-| `cgl`                           | Coding guidelines, fix in place or check with `-n`.                           |
-| `phpstan`                       | Static analysis.                                                              |
-| `phpstanGenerateBaseline`       | Regenerate the PHPStan baseline of the selected core version.                 |
-| `lintPhp`                       | PHP linting.                                                                  |
-| `checkBom`                      | UTF-8 files must not contain a BOM.                                           |
-| `checkExceptionCodes`           | Duplicate or missing exception codes.                                         |
-| `checkMarkdownTables`           | Markdown tables must be formatted, `-- --fix` formats them.                   |
-| `checkRepositoryInitialization` | `initializeRepository.sh` rewrites every identifier.                          |
-| `checkTestMethodsPrefix`        | Test methods must not start with `test`.                                      |
-| `lintTypescript`                | eslint over every TypeScript tree, fixes in place, `-n` checks.               |
-| `typecheckJs`                   | `tsc --noEmit` over every TypeScript tree, which the asset build does not do. |
-| `unitJs`                        | TypeScript unit tests, run with `node --test`.                                |
-| `buildJs`                       | Compile `Build/Sources/` into `Resources/Public/`.                            |
-| `checkJsBuildClean`             | The committed artifacts must match `Build/Sources/`.                          |
-| `npm`                           | `npm` with all remaining arguments, run in `Build/`.                          |
-| `composer`                      | `composer` with all remaining arguments dispatched.                           |
-| `composerInstall`               | `composer install`.                                                           |
-| `composerUpdate`                | `composer update` for the core version given with `-t`.                       |
-| `composerValidate`              | `composer validate --strict` of the root `composer.json`.                     |
-| `renderDocumentation`           | Render `Documentation/` into `Documentation-GENERATED-temp/`.                 |
-| `setVersion`                    | Apply a version, `-- <version> <type>`.                                       |
-| `watchDocumentation`            | Serve `Documentation/`, re-rendering on every change.                         |
-| `clean`                         | Remove build, cache, rendered documentation and test files.                   |
-| `cleanCache`                    | Cache files and folders only.                                                 |
-| `cleanJs`                       | `Build/node_modules` and `Build/.cache` only.                                 |
-| `cleanRenderedDocumentation`    | `Documentation-GENERATED-temp/` only.                                         |
-| `cleanTests`                    | Test related files and folders only.                                          |
+| Suite                        | Purpose                                                                       |
+|------------------------------|-------------------------------------------------------------------------------|
+| `unit`                       | PHP unit tests (default suite).                                               |
+| `unitRandom`                 | Unit tests in random order.                                                   |
+| `functional`                 | PHP functional tests.                                                         |
+| `cgl`                        | Coding guidelines, fix in place or check with `-n`.                           |
+| `phpstan`                    | Static analysis.                                                              |
+| `phpstanGenerateBaseline`    | Regenerate the PHPStan baseline of the selected core version.                 |
+| `lintPhp`                    | PHP linting.                                                                  |
+| `checkBom`                   | UTF-8 files must not contain a BOM.                                           |
+| `checkExceptionCodes`        | Duplicate or missing exception codes.                                         |
+| `checkMarkdownTables`        | Markdown tables must be formatted, `-- --fix` formats them.                   |
+| `checkTestMethodsPrefix`     | Test methods must not start with `test`.                                      |
+| `lintTypescript`             | eslint over every TypeScript tree, fixes in place, `-n` checks.               |
+| `typecheckJs`                | `tsc --noEmit` over every TypeScript tree, which the asset build does not do. |
+| `unitJs`                     | TypeScript unit tests, run with `node --test`.                                |
+| `buildJs`                    | Compile `Build/Sources/` into `Resources/Public/`.                            |
+| `checkJsBuildClean`          | The committed artifacts must match `Build/Sources/`.                          |
+| `npm`                        | `npm` with all remaining arguments, run in `Build/`.                          |
+| `composer`                   | `composer` with all remaining arguments dispatched.                           |
+| `composerInstall`            | `composer install`.                                                           |
+| `composerUpdate`             | `composer update` for the core version given with `-t`.                       |
+| `composerValidate`           | `composer validate --strict` of the root `composer.json`.                     |
+| `renderDocumentation`        | Render `Documentation/` into `Documentation-GENERATED-temp/`.                 |
+| `setVersion`                 | Apply a version, `-- <version> <type>`.                                       |
+| `watchDocumentation`         | Serve `Documentation/`, re-rendering on every change.                         |
+| `clean`                      | Remove build, cache, rendered documentation and test files.                   |
+| `cleanCache`                 | Cache files and folders only.                                                 |
+| `cleanJs`                    | `Build/node_modules` and `Build/.cache` only.                                 |
+| `cleanRenderedDocumentation` | `Documentation-GENERATED-temp/` only.                                         |
+| `cleanTests`                 | Test related files and folders only.                                          |
 
 The six node based suites — `lintTypescript`, `typecheckJs`, `unitJs`,
 `buildJs`, `checkJsBuildClean` and `npm` — run in a node container and ignore

@@ -13,16 +13,9 @@ declare(strict_types=1);
  * an example.
  *
  * This file carries the algorithm alone and **requires nothing**, neither the
- * composer autoloader nor an installed dependency set. Two callers rely on
- * that:
- *
- *   - "checkMarkdownTables.php", the quality gate, which adds the file
- *     traversal and the reporting on top of it.
- *   - "initializeRepository.sh", which reformats the tables it just widened by
- *     rewriting the template identifiers — in a fresh repository, where nothing
- *     is installed yet.
- *
- * Keep it dependency free.
+ * composer autoloader nor an installed dependency set. Keep it that way:
+ * "checkMarkdownTables.php", the quality gate, is what adds the file traversal,
+ * the reporting and the composer dependencies those need on top of it.
  *
  * See the documentation conventions in "docs/Index.md".
  */

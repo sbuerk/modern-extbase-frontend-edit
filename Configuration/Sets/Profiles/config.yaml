@@ -5,10 +5,9 @@
 # though, so the classic TypoScript registered in "ext_localconf.php" ships
 # alongside and carries the same defaults.
 #
-# The directory name below "Configuration/Sets/" is arbitrary and deliberately
-# carries no template identifier: the repository initialization rewrites file
-# *contents*, not paths. What identifies the set is the "name" below, which
-# follows the composer package name by convention and is rewritten with it.
+# The directory name below "Configuration/Sets/" is arbitrary and carries no
+# identifier of its own. What identifies the set is the "name" below, which
+# follows the composer package name by convention.
 #
 # The label and every settings label live in "labels.xlf" next to this file,
 # which core picks up automatically when no "label" key is given here

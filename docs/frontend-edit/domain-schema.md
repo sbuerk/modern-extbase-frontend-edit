@@ -17,10 +17,9 @@ asserted against a running database by
 
 ## The three tables
 
-Table names are prefixed `tx_modernextbasefrontendedit_domain_model_` and are
-rewritten on repository initialization. The *Column* column is what the schema
-analyzer generates — MySQL/MariaDB flavour — with no `ext_tables.sql` entry,
-unless the note says otherwise.
+Table names are prefixed `tx_modernextbasefrontendedit_domain_model_`. The
+*Column* column is what the schema analyzer generates — MySQL/MariaDB flavour —
+with no `ext_tables.sql` entry, unless the note says otherwise.
 
 | Table     | Field       | TCA `type`                           | Column                                   | Note                                                       |
 |-----------|-------------|--------------------------------------|------------------------------------------|------------------------------------------------------------|
@@ -401,8 +400,7 @@ reader looks — without suppressing anything.
 ## Complete TCA
 
 Labels reference `EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang_db.xlf`,
-which sits next to them. The identifiers are template identifiers and are
-rewritten on initialization.
+which sits next to them.
 
 Note that the language and access palettes have to be spelled out.
 `TcaPreparation::addSystemFieldsToShowitemTypes()` only processes `tt_content` on
