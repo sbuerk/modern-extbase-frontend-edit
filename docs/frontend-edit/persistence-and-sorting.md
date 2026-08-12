@@ -17,9 +17,10 @@ numbers from 13.4.34. Where no version is named, the code is the same in both.
 > the child `pid` and the orphan diff on the object graph and touches no
 > repository; `ProfilePersistenceService` is the single place in the extension
 > that calls `update()`, `remove()` or `persistAll()`; `WorkspaceGuard` refuses
-> while a workspace is active. The only item of the checklist at the end of this
-> page that is still open is the **file cleanup**, because the upload it belongs
-> to is not implemented — see [Image handling](image-handling.md).
+> while a workspace is active. The checklist at the end of this page is complete:
+> its last open item, the **file cleanup**, landed with the image upload as
+> `UnreferencedFileCleanupService` and the two image methods of
+> `ProfilePersistenceService` — see [Image handling](image-handling.md).
 
 ## The decision: `PersistenceManager`, not DataHandler
 
@@ -256,8 +257,10 @@ further Extbase attributes have the same problem, and they are collected in
 [Version neutral attributes](../architecture/version-neutral-attributes.md).
 
 Deleting the physical file behind a replaced reference is a separate concern
-with its own rule (delete only when exactly one reference remains) and is
-covered in [Image handling](image-handling.md).
+with its own rule — delete only when nothing except our own reference row points
+at the file — and is covered in
+[Image handling](image-handling.md#the-cleanup-and-the-safeguard-that-makes-it-safe),
+where the earlier wording of that rule is corrected as well.
 
 ## Hidden children never arrive through the parent
 
@@ -528,15 +531,15 @@ Everything in this table is behaviour `DataHandler` would have provided and the
 Extbase persistence layer does not. It was the acceptance checklist for the
 implementation; it is now the map of where each item ended up.
 
-**Every row but one is done.** The open row is the file cleanup, which belongs to
-the image upload and lands with it.
+**Every row is done.** The last one, the file cleanup, landed with the image
+upload.
 
 | Item                               | Why Extbase does not do it                                                                                         | What we build, and where it lives                                                                                     |
 |------------------------------------|--------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
 | Reordering a collection            | `ObjectStorage` has no reorder API; `attach()` on a contained object keeps its array position                      | `ChildCollectionSynchronizer::synchronize()` — detach-all, then re-attach in the intended order                       |
 | Writing `sorting` at all           | Only `foreign_sortby` on the parent column feeds `childSortByFieldName` (`ColumnMapFactory.php:130`)               | `foreign_sortby` on both collection columns, next to `ctrl.sortby` on the child tables                                |
 | Deleting orphans                   | Detach clears the parent pointer and sets `sorting = 0`; the row survives (`Backend.php:500-513`)                  | `synchronize()` returns the dropped children; `ProfilePersistenceService` calls `remove()` per child before the flush |
-| Deleting a replaced file reference | `#[Cascade]` on `HAS_ONE` only runs when the parent is removed, and is skipped entirely for `#[Lazy]`              | **Open.** Belongs to the upload path, with the file cleanup rule from the image handling page                         |
+| Deleting a replaced file reference | `#[Cascade]` on `HAS_ONE` only runs when the parent is removed, and is skipped entirely for `#[Lazy]`              | `ProfilePersistenceService::saveProfileImage()`/`removeProfileImage()`, guarded by `UnreferencedFileCleanupService`   |
 | Loading hidden children            | `DataMapper::getPreparedQuery()` builds fresh default query settings for relations                                 | `findAllByProfileUid()` on the child edit repositories; the parent's collection is never read for display             |
 | Finding a hidden record by uid     | `Backend::getObjectByIdentifier()` builds a fresh query and ignores `defaultQuerySettings`                         | `findByUidIncludingHidden()` and the owner constrained `findByUidAndProfileUidIncludingHidden()`                      |
 | Showing hidden but not expired     | `setIgnoreEnableFields(true)` alone drops `starttime`/`endtime`/`fe_group` as well                                 | `setEnableFieldsToBeIgnored(['disabled'])` alongside it, with `includeDeleted` left `false`                           |
@@ -606,7 +609,7 @@ ship the missing rule with it.
 ## See also
 
 - [Modern frontend editing](Index.md) — the other pages of this design.
-- [AJAX transport](ajax-transport.md) — the seven endpoints that drive this
+- [AJAX transport](ajax-transport.md) — the nine endpoints that drive this
   write path, and what each of them hands to it.
 - [Domain and schema](domain-schema.md) — where `ctrl.sortby` and
   `foreign_sortby` are actually configured, and the rest of the TCA.

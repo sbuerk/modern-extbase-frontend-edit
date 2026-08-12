@@ -248,6 +248,23 @@
             </trans-unit>
 
             <!--
+                The image. "field.profile.image" labels the file control and is
+                built the same way as every other field label.
+
+                "error.imageNotStored" is shown next to the server's own reason
+                when an upload is refused. It exists because a rejected upload
+                moves nothing into storage: the file is gone as far as the server
+                is concerned, and the surface has to say so rather than look as
+                though it is still holding it.
+            -->
+            <trans-unit id="field.profile.image">
+                <source>Portrait</source>
+            </trans-unit>
+            <trans-unit id="error.imageNotStored">
+                <source>The image was not stored. Please choose the file again.</source>
+            </trans-unit>
+
+            <!--
                 What a failed request says when it is not a validation failure.
 
                 The endpoint's own "message" is written for a developer and is
@@ -325,6 +342,48 @@
             </trans-unit>
             <trans-unit id="validation.email.email.tooLong">
                 <source>The e-mail address cannot be longer than %1$s characters.</source>
+            </trans-unit>
+
+            <!--
+                Image upload.
+
+                These are what a rejected upload shows, and they are keyed under
+                the field name "image" in the 422 body — the model property the
+                upload is configured for, which
+                "Validation\ProfileImageUploadRules::PROPERTY" spells once for
+                both sides.
+
+                None of them carries a placeholder for something the request
+                supplied. The core validators do pass the detected MIME type and
+                the submitted file extension as message arguments, and a message
+                without a conversion specification simply drops them; that is
+                deliberate, and it is the same rule the endpoint envelope
+                follows — nothing that was refused is echoed back.
+
+                The size and dimension messages do carry "%1$s". That argument
+                is the bound the extension configured, never a submitted value,
+                and naming the limit is the only way the sentence is actionable.
+
+                Two further validators are enforced by the core whether they are
+                configured or not — FileNameValidator and
+                FileExtensionMimeTypeConsistencyValidator. Their messages come
+                from "EXT:extbase/Resources/Private/Language/locallang.xlf" and
+                are not overridden here.
+            -->
+            <trans-unit id="validation.profile.image.mimeType">
+                <source>Choose a JPEG, PNG, GIF or WebP image.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.image.extension">
+                <source>The file name extension does not match the contents of the file. Choose a JPEG, PNG, GIF or WebP image.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.image.tooLarge">
+                <source>The image is too large. Choose one of at most %1$s.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.image.tooWide">
+                <source>The image is too wide. It can be at most %1$s pixels wide.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.image.tooTall">
+                <source>The image is too tall. It can be at most %1$s pixels high.</source>
             </trans-unit>
 
             <!--

@@ -3,14 +3,14 @@
 The third plugin, and the first one that writes. It renders the profile of the
 calling session as readable markup, hands a lit component four `data-`
 attributes, and the component turns that markup into an editing surface that
-talks to [the seven endpoints](ajax-transport.md#the-seven-endpoints) — six of
+talks to [the nine endpoints](ajax-transport.md#the-nine-endpoints) — eight of
 them, to be exact.
 
 Everything on the server side is
 `Classes/Controller/ProfileEditController.php`,
 `Classes/Http/ProfileDocumentFactory.php` and
 `Resources/Private/Templates/ProfileEdit/Edit.html`. Everything on the browser
-side is `Build/Sources/TypeScript/`, whose `component/` directory holds the two
+side is `Build/Sources/TypeScript/`, whose `component/` directory holds the three
 custom elements and whose `model/` and `api/` directories hold the logic that is
 covered without a browser.
 
@@ -52,11 +52,11 @@ because a missing tag and an unsubstituted placeholder are different defects.
 The template branches on two booleans the controller assigns and derives
 nothing:
 
-| `authenticated` | `profile` | What is rendered                                                                |
-|-----------------|-----------|---------------------------------------------------------------------------------|
-| `false`         | `null`    | One sentence: log in first. No element, no assets.                              |
-| `true`          | `null`    | A different sentence: you have no profile yet. No element, no assets.           |
-| `true`          | a profile | The custom element with its four attributes, the assets, and the image outside. |
+| `authenticated` | `profile` | What is rendered                                                                    |
+|-----------------|-----------|-------------------------------------------------------------------------------------|
+| `false`         | `null`    | One sentence: log in first. No element, no assets.                                  |
+| `true`          | `null`    | A different sentence: you have no profile yet. No element, no assets.               |
+| `true`          | a profile | The custom element with its four attributes and the assets. The image is inside it. |
 
 The two empty states are separate sentences on purpose. "Log in" and "you have
 no profile yet" are different instructions, and one vague sentence covering both
@@ -185,13 +185,36 @@ Two costs follow, and neither is hypothetical:
    inconsistency between the read view and the editing surface, and it is
    accepted rather than papered over.
 
-The same reasoning decides what stays *outside* the element: the profile image,
-because no endpoint manages it and nothing can make the rendered image disagree
-with the server. The name heading is inside for the opposite reason — the
-component edits the name, and a heading left outside would still show the value
-the page was loaded with after the first save. `Profile/Card` is deliberately
-not used here although it renders both; it bundles them, and this template needs
-them on different sides of the element.
+The same reasoning decides what goes *inside* the element, and the profile image
+is the case where the answer changed.
+
+> [!NOTE]
+> **Correction.** While no endpoint managed the image, this page and the
+> template both rendered it **outside** the element and said why: nothing could
+> make the served markup disagree with the server. With `uploadImage` and
+> `removeImage` in place, something can. Everything inside the element is
+> replaced when it upgrades, everything outside survives for the lifetime of the
+> page — so an image left outside would keep showing the file the page was
+> loaded with, next to a surface already showing the one that was just uploaded.
+> The page would disagree with itself about which image the profile has. The
+> image is therefore rendered inside, like the name heading and for the same
+> reason. → [Image handling](image-handling.md#the-image-is-rendered-inside-the-custom-element)
+
+The name heading was inside from the start on that reasoning: the component edits
+the name, and a heading left outside would still show the value the page was
+loaded with after the first save. `Profile/Card` is still deliberately not used
+here although it renders image and name together — it also renders the links that
+apply to a profile, which are not part of an editing surface, so this template
+renders its own heading and calls `Profile/Image` directly.
+
+The image is the one control on the surface with **no draft, no apply and no
+cancel**. A text field has three states and the middle one is what `Apply` and
+`Cancel` exist for; a file has two, because the thing a user wants to look at is
+the *stored* image and only the server can produce it. Picking a file is
+therefore the write, and Escape is not bound because there is no draft to
+discard. A rejected upload is the one case that needs a sentence of its own —
+nothing was moved into storage, so the file has to be picked again, and
+`error.imageNotStored` says so below whatever the server's validators reported.
 
 ## Degradation
 
@@ -318,7 +341,7 @@ required.
 | Attribute        | Fluid variable  | Content                                                                                          |
 |------------------|-----------------|--------------------------------------------------------------------------------------------------|
 | `data-profile`   | `profileJson`   | The profile document, as JSON. The same shape every endpoint answers with.                       |
-| `data-endpoints` | `endpointsJson` | One finished URL per action, as JSON. Six keys; `read` is deliberately absent.                   |
+| `data-endpoints` | `endpointsJson` | One finished URL per action, as JSON. Eight keys; `read` is deliberately absent.                 |
 | `data-token`     | `requestToken`  | The request token as a hash-signed JWT, sent back in `X-TYPO3-RequestToken`.                     |
 | `data-labels`    | `labelsJson`    | Every string the component renders, translated, as JSON. A key without a translation is omitted. |
 
@@ -334,8 +357,8 @@ plugin has no content element.
 → [URLs are generated server-side](ajax-transport.md#urls-are-generated-server-side)
 
 `read` is absent from the map on purpose, and its absence is a contract:
-`parseEndpoints()` refuses a map missing one of the six and accepts one carrying
-nothing else. The initial state is rendered into the markup and every write
+`parseEndpoints()` refuses a map missing one of the eight and accepts one
+carrying nothing else. The initial state is rendered into the markup and every write
 answers with the whole aggregate, so a component that could read separately
 would have a second way to learn the truth. Two ways is one too many.
 
@@ -346,14 +369,14 @@ TypeScript build can notice one that was never translated. The scope is part of
 a field key because `type` exists on both child collections and means a
 different thing in each.
 
-| Shape                            | Built by            | Keys                                                                                                                                              |
-|----------------------------------|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `field.<scope>.<name>`           | `fieldLabelKey()`   | `field.profile.shortname`, `.firstname`, `.lastname`, `.birthday`, `.bio`; `field.address.type`, `.line1`, `.line2`; `field.email.type`, `.email` |
-| `choice.<scope>.<field>.<value>` | `choiceLabelKey()`  | `choice.address.type.home`, `.work`, `.others`; `choice.email.type.private`, `.business`, `.others`                                               |
-| `action.<name>`                  | `actionLabelKey()`  | `action.edit`, `.apply`, `.cancel`, `.editRecord`, `.save`, `.add`, `.remove`, `.moveUp`, `.moveDown`, `.hide`, `.show`                           |
-| `section.<scope>`                | `sectionLabelKey()` | `section.address`, `section.email`                                                                                                                |
-| `state.<name>`                   | `stateLabelKey()`   | `state.hidden`                                                                                                                                    |
-| —                                | literal             | `error.request`, and optionally `error.request.403` and `error.request.409`                                                                       |
+| Shape                            | Built by            | Keys                                                                                                                                                        |
+|----------------------------------|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `field.<scope>.<name>`           | `fieldLabelKey()`   | `field.profile.shortname`, `.firstname`, `.lastname`, `.birthday`, `.bio`, `.image`; `field.address.type`, `.line1`, `.line2`; `field.email.type`, `.email` |
+| `choice.<scope>.<field>.<value>` | `choiceLabelKey()`  | `choice.address.type.home`, `.work`, `.others`; `choice.email.type.private`, `.business`, `.others`                                                         |
+| `action.<name>`                  | `actionLabelKey()`  | `action.edit`, `.apply`, `.cancel`, `.editRecord`, `.save`, `.add`, `.remove`, `.moveUp`, `.moveDown`, `.hide`, `.show`                                     |
+| `section.<scope>`                | `sectionLabelKey()` | `section.address`, `section.email`                                                                                                                          |
+| `state.<name>`                   | `stateLabelKey()`   | `state.hidden`                                                                                                                                              |
+| —                                | literal             | `profile.image.alt`, `error.imageNotStored`, `error.request`, and optionally `error.request.403` and `error.request.409`                                    |
 
 `ProfileEditController::LABEL_KEYS` spells the same list out, and the `id`
 attributes in `locallang.xlf` are that list letter for letter. It is written out
@@ -361,6 +384,23 @@ rather than derived precisely because the contract crosses two languages: making
 it one `grep` wide in both directions is the only check there is. This page is
 the third spelling and is kept in step by review, like every partial argument
 table.
+
+Three of the literal keys belong to the image and none of them is built from a
+scope, because none of them labels a field of a record in the way the others do:
+
+- `field.profile.image` labels the control, and is the one image key that *does*
+  come out of `fieldLabelKey()` — the image is addressed as a field by the error
+  machinery, since a `422` from the upload is keyed by the property name `image`.
+- `profile.image.alt` is the alternative text template, carrying one `%s`. The
+  component substitutes the name itself rather than taking a rendered string,
+  because the name changes while the surface is open and an alternative text
+  rendered once by the server would be the last thing anybody noticed had gone
+  stale. The fallback order is the partial's: the `alternative` stored on the
+  file reference wins, this sentence fills in.
+- `error.imageNotStored` is the "pick it again" notice. It is appended to the
+  server's own messages rather than replacing them — those say why the file was
+  refused, this one says what state the control is in — and a site that does not
+  translate it gets no empty bullet.
 
 `action.edit`/`action.apply` and `action.editRecord`/`action.save` are worded
 differently on purpose — the two editing modes sit next to each other on one
@@ -372,11 +412,11 @@ saved five.
 The split runs along one line: **`component/` may touch the DOM, nothing else
 may.**
 
-| Directory                | Contents                                                                | Covered by                               |
-|--------------------------|-------------------------------------------------------------------------|------------------------------------------|
-| `component/`             | The two lit elements: shadow DOM, events, focus, the request sequencing | Nothing automated — see the gap below    |
-| `model/`, `api/`         | Pure functions and one class: state, payloads, parsing, the client      | `-s unitJs`, `Build/Tests/TypeScript/`   |
-| `Classes/`, `Resources/` | The server half: the three states, the four attributes, the assets      | `-s functional`, `ProfileEditPluginTest` |
+| Directory                | Contents                                                                  | Covered by                               |
+|--------------------------|---------------------------------------------------------------------------|------------------------------------------|
+| `component/`             | The three lit elements: shadow DOM, events, focus, the request sequencing | Nothing automated — see the gap below    |
+| `model/`, `api/`         | Pure functions and one class: state, payloads, parsing, the client        | `-s unitJs`, `Build/Tests/TypeScript/`   |
+| `Classes/`, `Resources/` | The server half: the three states, the four attributes, the assets        | `-s functional`, `ProfileEditPluginTest` |
 
 Two mechanics make the second row possible and are worth knowing before adding a
 module:
@@ -406,13 +446,19 @@ as the other frontend suites, so it is core version independent and needs no
   usable `uid`, normalising a mistyped scalar, dropping an unusable child, and
   that `movedChildOrder()` always answers a permutation and never a partial list.
 - `payload` — that a field save carries exactly one field, that a child payload
-  names its child, that a cleared field stays an explicit `null`.
+  names its child, that a cleared field stays an explicit `null`, and that the
+  image upload body is a `FormData` carrying the two namespaced parts under the
+  names the endpoint reads them by.
+- `imageEdit` — that a reference without a public URL is not displayable and is
+  still removable, that the stored alternative text wins over the label, and
+  that the "pick it again" notice is appended once and never for an empty label.
 - `response` — the three outcomes, and that a `422` naming nothing degrades to
   the generic failure rather than leaving the user with no explanation.
 - `endpoints` — that an incomplete map is refused as a whole.
 - `client` — the verb, the media type, `credentials: 'same-origin'`, the token
   header, that each action goes to its own URL, and that neither a failed request
-  nor a non-JSON body throws.
+  nor a non-JSON body throws — including that a `FormData` body is sent with
+  **no** `Content-Type` header, so that the browser can add the boundary.
 
 ### What only a browser can cover, and what does
 
@@ -441,6 +487,12 @@ What is still open, and why:
   malformed `data-profile`, an `ajaxPageType` of `0`, an incomplete endpoint map
   and a missing request token each need a differently misconfigured instance,
   i.e. one seeded instance per condition.
+- **The whole image surface.** Picking a file, the upload round trip, the
+  replacement, the removal and the "pick it again" notice have no acceptance
+  spec. Playwright can set a file on an input, so this is a gap of effort rather
+  than of possibility; the server half is covered by the functional tests and the
+  decisions are covered by `imageEdit.test.ts`, but nothing yet drives the three
+  together in a browser.
 - **Focus onto the first field a `422` named**, as opposed to into a freshly
   opened control.
 - **The `<select>` value synchronisation in `updated()`**, which exists because a

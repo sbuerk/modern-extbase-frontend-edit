@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SBUERK\ModernExtbaseFrontendEdit\Controller;
 
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\UploadedFileInterface;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Mapper\AddressDataMapper;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Mapper\EmailDataMapper;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Mapper\ProfileDataMapper;
@@ -25,16 +26,20 @@ use SBUERK\ModernExtbaseFrontendEdit\Validation\AddressRuleSet;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\DtoValidator;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\EmailRuleSet;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\Exception\UnknownPropertyException;
+use SBUERK\ModernExtbaseFrontendEdit\Validation\ProfileImageUploadRules;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\ProfileRuleSet;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\RuleSetInterface;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\SecurityAspect;
 use TYPO3\CMS\Core\Context\UserAspect;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
+use TYPO3\CMS\Core\Resource\Enum\DuplicationBehavior;
 use TYPO3\CMS\Core\Security\RequestToken;
+use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Error\Result;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use TYPO3\CMS\Extbase\Mvc\Controller\FileUploadConfiguration;
 use TYPO3\CMS\Extbase\Mvc\View\JsonView;
 use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Frontend\Cache\CacheInstruction;
@@ -55,14 +60,25 @@ use TYPO3\CMS\Frontend\Cache\CacheInstruction;
  * `ServerRequestFactory` fills the parsed body from `$_POST` only
  * (`cms-core/Classes/Http/ServerRequestFactory.php:99-104`), so a request with
  * `Content-Type: application/json` has a `null` parsed body and Extbase sees no
- * arguments at all. Every action here therefore declares no argument, reads the
- * raw body and decodes it itself.
+ * arguments at all. Every JSON action here therefore declares no argument,
+ * reads the raw body and decodes it itself.
  *
  * **Say this out loud in review:** Extbase's property mapper and its validator
  * machinery never see this payload. `__trustedProperties` does not exist for a
  * JSON request, so the HMAC signed allow-list it normally builds does not exist
  * either. The defences are the ones written here and in the DTO layer, and
  * nowhere else.
+ *
+ * ## The one exception: the image upload
+ *
+ * {@see uploadImageAction()} is `multipart/form-data`, because a file cannot
+ * travel in a JSON body without base64. For a multipart request `$_POST` and
+ * `$_FILES` *are* populated, so Extbase's own property mapping and the modern
+ * upload API work normally — which is why that action, and only that action,
+ * declares an argument. What it does **not** do is let the request supply that
+ * argument's value: {@see initializeUploadImageAction()} writes the
+ * session-resolved profile into the request before mapping runs, so rule 1
+ * below holds there as well. The response is the same `JsonEnvelope` document.
  *
  * ## The four rules this class exists to enforce
  *
@@ -123,6 +139,30 @@ final class ProfileAjaxController extends ActionController
      */
     private const CHILD_ADDRESS = 'address';
     private const CHILD_EMAIL = 'email';
+
+    /**
+     * The name of the Extbase argument the image upload is mapped onto.
+     *
+     * It is `public` because it is part of the wire contract of the upload
+     * endpoint and cannot be derived by a client: the multipart field carrying
+     * the file has to be named
+     * `tx_modernextbasefrontendedit_ajax[profile][image]`, because
+     * `Argument::getUploadedFilesForProperty()` looks the property up inside
+     * the uploaded files of the argument (`Argument.php:226-244`) and the
+     * request builder namespaces those by plugin
+     * (`cms-extbase/Classes/Mvc/Web/RequestBuilder.php:101-110`). The property
+     * half of that path is `ProfileImageUploadRules::PROPERTY`.
+     */
+    public const UPLOAD_ARGUMENT = 'profile';
+
+    /**
+     * The multipart field naming the record to write to.
+     *
+     * Spelled the same as the `uid` key of the JSON payloads, so that the two
+     * transports address a record the same way. It is still only ever a
+     * **filter** on the set the session owns — see {@see resolveOwnedProfile()}.
+     */
+    public const UPLOAD_UID_FIELD = 'uid';
 
     /**
      * See the class docblock: this keeps `resolveView()` away from Fluid.
@@ -425,6 +465,252 @@ final class ProfileAjaxController extends ActionController
     }
 
     /**
+     * Configures the file upload of {@see uploadImageAction()} and resolves the
+     * record it writes to.
+     *
+     * ## Why the configuration is built here and not with `#[FileUpload]`
+     *
+     * The attribute has no spelling that is correct on both supported versions,
+     * and its failure mode on v13.4 is the worst kind. v13.4 has no
+     * `Extbase\Attribute\` namespace at all and its `ClassSchema` matches the
+     * `Annotation\` name only, so an attribute written with the v14 FQCN falls
+     * into `default => ''`, `Property::getFileUpload()` stays `null`, and
+     * `FileHandlingService` skips the property at `:130`. No exception, no
+     * warning, no log entry: the request succeeds and the image is simply
+     * absent. The array form is correct on both and answers with
+     * `E_USER_DEPRECATED` on v14, which this repository's suites fail on. The
+     * PHP API below is byte identical between the two versions and is also the
+     * only route to a validator the attribute cannot declare.
+     *
+     * This method is the right hook because of the order in
+     * `ActionController::processRequest()`:
+     * `initializeFileUploadConfigurationsFromRequest()` runs at `:368`,
+     * `initialize<Action>()` at `:370-375`, and argument mapping only at `:376`.
+     * The configuration is therefore in place before any data is mapped.
+     *
+     * ## The silent traps of the manual route
+     *
+     * Two of them are documented — in the changelog of Feature #103511 and in
+     * `docs/frontend-edit/image-handling.md`:
+     *
+     * - `FileUploadConfiguration`'s `duplicationBehavior` default is `RENAME`
+     *   (`FileUploadConfiguration.php:40`) where the attribute's is `REPLACE`
+     *   (`cms-extbase/Classes/Attribute/FileUpload.php`), so every example
+     *   written against the attribute behaves differently here. It is therefore
+     *   **set explicitly**, and it is set to `RENAME` — which is also the only
+     *   coherent choice next to `addRandomSuffix`: a random suffix guarantees
+     *   the target name does not exist, and `REPLACE` only ever fires when it
+     *   does (`cms-core/Classes/Resource/ResourceStorage.php:2061-2066`).
+     *   Replacement is handled by the explicit cleanup in
+     *   {@see ProfilePersistenceService::saveProfileImage()} instead.
+     * - `skipProperties()` is called by hand. On the attribute path
+     *   `FileHandlingService` does it for the caller (`:144`); without it the
+     *   property mapper would try to map the uploaded file onto the property as
+     *   well.
+     *
+     * There is a **third** trap, which neither the changelog nor
+     * `docs/frontend-edit/image-handling.md` names and which was found by
+     * running this endpoint: `allowProperties()` is required as well, and
+     * omitting it fails as silently as everything else on this path. The two
+     * calls look like opposites and are not — they are two independent lists on
+     * `PropertyMappingConfiguration`, and it is `shouldMap()` that decides
+     * whether the *upload* runs:
+     *
+     * ```php
+     * // cms-extbase/Classes/Service/FileHandlingService.php:375-382
+     * return $argument->getPropertyMappingConfiguration()->shouldMap($propertyName);
+     * ```
+     *
+     * `shouldMap()` answers from `$propertiesToBeMapped`, which
+     * `allowProperties()` fills, and falls back to `mapUnknownProperties`
+     * (`PropertyMappingConfiguration.php:98-114`). `skipProperties()` fills a
+     * different array, `$propertiesToSkip`, which only `shouldSkip()` reads and
+     * which the property *mapper* consults. In an ordinary Fluid form the
+     * allow-list is filled for us — `MvcPropertyMappingConfigurationService`
+     * derives it from the HMAC signed `__trustedProperties` field the form
+     * rendered — and a request that carries no such field, which is every
+     * request this controller answers, therefore allows nothing at all. The
+     * uploaded file is then discarded without an error, the response is a
+     * perfectly ordinary `200`, and the image is simply absent.
+     *
+     * Allowing the property is not a hole here. The property mapper never runs
+     * for this argument at all, because its value is already a `Profile`
+     * instance by the time mapping starts — see below.
+     *
+     * ## The record still comes from the session
+     *
+     * This is the one action of this controller that has an Extbase argument,
+     * and that argument must not be property mapped from the request: an
+     * `__identity` in the body is exactly the client supplied uid rule 1 of the
+     * class docblock forbids. So the resolved profile is written into the
+     * request *before* mapping runs, and `mapRequestArgumentsToControllerArguments()`
+     * hands it to `setArgumentValue()`, which short circuits for a value that is
+     * already an instance of the argument type (`ActionController.php:884-888`)
+     * — the property mapper is never invoked for this argument at all.
+     *
+     * Overwriting the request argument is necessary rather than tidy: the
+     * uploaded files are merged into the request parameters by the request
+     * builder (`cms-extbase/Classes/Mvc/Web/RequestBuilder.php:114`), so
+     * `hasArgument('profile')` is true for every well formed upload and the
+     * mapper would otherwise take the multipart body as the argument value.
+     *
+     * Reassigning `$this->request` is the one piece of state this method
+     * changes, and it is confined to this request and this action.
+     */
+    protected function initializeUploadImageAction(): void
+    {
+        $this->assertMultipartPostRequest();
+        $this->assertRequestToken();
+        $this->assertAuthenticated();
+        $this->assertLiveWorkspace();
+        $this->assertSingleUploadedImage();
+
+        $this->request = $this->request->withArgument(
+            self::UPLOAD_ARGUMENT,
+            $this->resolveOwnedProfile([self::UPLOAD_UID_FIELD => $this->uploadedUid()], true)
+        );
+
+        $configuration = new FileUploadConfiguration(ProfileImageUploadRules::PROPERTY);
+        $configuration->setUploadFolder($this->imageUploadFolder());
+        // Required: this action exists to receive a file, and a request without
+        // one is a client error rather than a save of nothing. Clearing the
+        // image is removeImageAction().
+        $configuration->setRequired();
+        // `setMaxFiles()` is deliberately **not** called, and `assertSingleUploadedImage()`
+        // above is what enforces "one file" instead. `maxFiles` does not count
+        // the upload — it counts the upload *plus what the property already
+        // holds*, minus the registered deletions:
+        //
+        //   // FileHandlingServiceConfiguration.php:221
+        //   if ((count($uploadedFiles) + $currentAmount - $fileDeletionCount) > $configuration->getMaxFiles())
+        //
+        // With `maxFiles = 1` a profile that already has an image can therefore
+        // never receive a new one: 1 + 1 - 0 > 1, and every replacement answers
+        // `422`. The only way to satisfy it is to register a deletion in the
+        // same request — the `@delete` flow, which this extension does not use
+        // because it deletes a `sys_file` without checking who else references
+        // it. Verified by running a replacement against this endpoint.
+
+        // `RENAME`, set explicitly although it is also this class's default —
+        // see the first trap in the docblock. Together with the random suffix
+        // it is the only coherent pair; replacement is handled afterwards by
+        // the guarded cleanup instead.
+        $configuration->setDuplicationBehavior(DuplicationBehavior::RENAME);
+        $configuration->setAddRandomSuffix(true);
+        foreach ((new ProfileImageUploadRules())->validators() as $validator) {
+            $configuration->addValidator($validator);
+        }
+        // Called here rather than left to `mapUploadedFilesToArgumentForProperty()`
+        // at `:237`, so that a misconfigured upload folder fails at the line
+        // that configured it instead of deep inside `callActionMethod()`.
+        $configuration->ensureValidConfiguration(FileReference::class);
+
+        $argument = $this->arguments->getArgument(self::UPLOAD_ARGUMENT);
+        $argument->getFileHandlingServiceConfiguration()->addFileUploadConfiguration($configuration);
+        $argument->getPropertyMappingConfiguration()
+            ->allowProperties(ProfileImageUploadRules::PROPERTY)
+            ->skipProperties(ProfileImageUploadRules::PROPERTY);
+    }
+
+    /**
+     * Stores the uploaded image on the profile of the calling session.
+     *
+     * This is the only endpoint of this controller that is **not** a JSON
+     * request. A file cannot travel in a JSON body without base64, which costs a
+     * third more bytes and holds the whole file in memory twice, so the request
+     * is a `multipart/form-data` `POST` to the same page type. Everything else
+     * is unchanged: the request token still travels in `X-TYPO3-RequestToken`,
+     * and the response is the same {@see JsonEnvelope} document every other
+     * endpoint answers with.
+     *
+     * The multipart shape has one consequence worth stating in review. The
+     * media type check of {@see assertPostRequest()} is a second, independent
+     * CSRF barrier for the JSON endpoints, because a cross origin `<form>`
+     * cannot produce `application/json`. It *can* produce
+     * `multipart/form-data`, so that barrier does not exist here and the
+     * request token is the only one. It is enough — the token is a hash signed
+     * JWT bound to a nonce cookie this browser holds, and an attacker cannot
+     * read it — but it is the only one, and weakening the token check would
+     * therefore cost more here than anywhere else in this class.
+     *
+     * By the time this body runs, Extbase has already validated the file and
+     * moved it into storage (`ActionController::callActionMethod()` at `:461`
+     * and `:467`). Nothing is moved on a validation failure: mapping is inside
+     * the `!hasErrors()` branch, and {@see errorAction()} answers instead.
+     *
+     * The `$profile` argument is the record {@see initializeUploadImageAction()}
+     * resolved from the session. It is not, and cannot be, a record the request
+     * named.
+     */
+    public function uploadImageAction(Profile $profile): ResponseInterface
+    {
+        $this->profilePersistenceService->saveProfileImage($profile);
+
+        return $this->respondWith($profile);
+    }
+
+    /**
+     * Clears the image of the profile of the calling session.
+     *
+     * JSON like every other endpoint — there is nothing to upload, so there is
+     * nothing multipart about it — and idempotent: removing an image that is
+     * already absent answers `200` with the same document rather than an error
+     * about a state the caller already reached.
+     *
+     * The deletion of the previous file goes through the same guarded path a
+     * replacement does. The built-in `@delete` flow is not used anywhere in this
+     * extension; it deletes the `sys_file` without checking whether anything
+     * else references it, and deleting a `sys_file` hard-deletes every
+     * `sys_file_reference` pointing at it — see
+     * {@see \SBUERK\ModernExtbaseFrontendEdit\Domain\Persistence\UnreferencedFileCleanupService}.
+     */
+    public function removeImageAction(): ResponseInterface
+    {
+        $payload = $this->beginWrite();
+        $profile = $this->resolveOwnedProfile($payload, true);
+
+        $this->profilePersistenceService->removeProfileImage($profile);
+
+        return $this->respondWith($profile);
+    }
+
+    /**
+     * Answers a failed argument validation with the `422` every other rejected
+     * write of this extension answers with.
+     *
+     * Extbase calls this instead of the action when `Arguments::validate()`
+     * reported errors (`ActionController::callActionMethod()` at `:461-483`),
+     * which for this controller can only be the file upload validation of
+     * {@see uploadImageAction()} — every other action declares no argument at
+     * all, so `$this->arguments` is empty and `validate()` cannot fail.
+     *
+     * The inherited implementation is replaced rather than extended. It forwards
+     * to the referring request or renders a flattened message as **HTML** with
+     * status `400` (`ActionController.php:591-606`), and a client that always
+     * parses JSON cannot read either. `400` would also be the wrong status: it
+     * is what Extbase's own `errorAction()` uses, and the Extbase bootstrap
+     * clears the page cache for it (`cms-extbase/Classes/Core/Bootstrap.php`),
+     * so a user picking the wrong file must not produce it.
+     *
+     * The results are merged at the **root** of a fresh `Result` rather than
+     * taken from `Arguments::validate()`, which nests them one level deeper
+     * under the argument name (`Arguments.php:231`). Merging per argument drops
+     * that level, so the flattened key is `image` — the name of the model
+     * property, which is what `FileHandlingServiceConfiguration` keyed the
+     * errors under (`:194`, `:217`, `:230`, `:241`) and what the client knows
+     * the field as.
+     */
+    protected function errorAction(): ResponseInterface
+    {
+        $result = new Result();
+        foreach ($this->arguments as $argument) {
+            $result->merge($argument->getValidationResults());
+        }
+
+        $this->failWith(422, $this->jsonEnvelope->validationErrors($result));
+    }
+
+    /**
      * Sets the hidden state of one child.
      *
      * `hidden` is not a property of any DTO and no mapper can write it, so this
@@ -516,6 +802,125 @@ final class ProfileAjaxController extends ActionController
         if ($mediaType !== 'application/json') {
             $this->fail(400, 1786495902, 'This endpoint accepts a JSON request body only.');
         }
+    }
+
+    /**
+     * `POST` with a multipart body, or nothing — the transport of the upload
+     * endpoint.
+     *
+     * `POST` for the same reason as everywhere else here, plus one that is
+     * specific to uploads: `FileHandlingService` ignores any other method
+     * outright (`:77-79`), so a `PUT` would answer `200` having stored nothing.
+     *
+     * The media type is checked because the endpoint cannot work without it —
+     * `$_POST` and `$_FILES`, and therefore the parsed body and the uploaded
+     * files of the PSR-7 request, are only populated for a multipart or form
+     * encoded body — and refusing it here produces a JSON error instead of an
+     * empty upload that looks like a client bug.
+     *
+     * Unlike {@see assertPostRequest()}, this check is **not** a CSRF barrier:
+     * a cross origin `<form>` can produce `multipart/form-data`. The request
+     * token is the only barrier on this endpoint, which is stated in
+     * {@see uploadImageAction()} where it matters.
+     */
+    private function assertMultipartPostRequest(): void
+    {
+        if ($this->request->getMethod() !== 'POST') {
+            $this->fail(405, 1786496002, 'This endpoint accepts POST requests only.', ['Allow' => 'POST']);
+        }
+
+        $mediaType = strtolower(trim(explode(';', $this->request->getHeaderLine('Content-Type'))[0]));
+        if ($mediaType !== 'multipart/form-data') {
+            $this->fail(400, 1786496003, 'This endpoint accepts a multipart/form-data request body only.');
+        }
+    }
+
+    /**
+     * Refuses an upload carrying more than one file for the image property.
+     *
+     * This is what `setMaxFiles(1)` cannot express — see the comment at the
+     * configuration for why. Without it a client sending `image[]` with several
+     * parts would have every one of them validated and only the first one
+     * stored (`FileHandlingService.php:280-284` takes `$uploadedFiles[0]`),
+     * which is a request that half succeeded and reported nothing.
+     *
+     * Sending **no** file is deliberately not refused here: that is what
+     * `minFiles` is for, and it produces a `422` keyed by the `image` field —
+     * the answer a client can show next to the control that produced it, rather
+     * than a bare `400`.
+     *
+     * The uploaded files are read off the request rather than off the argument,
+     * because `Argument::setUploadedFiles()` only happens in
+     * `mapRequestArgumentsToControllerArguments()`, which runs after this. The
+     * request's own array is already namespaced down to the plugin
+     * (`RequestBuilder.php:101-110`), so `[<argument>][<property>]` is the whole
+     * path.
+     */
+    private function assertSingleUploadedImage(): void
+    {
+        $uploaded = $this->request->getUploadedFiles()[self::UPLOAD_ARGUMENT][ProfileImageUploadRules::PROPERTY]
+            ?? null;
+        $count = match (true) {
+            $uploaded instanceof UploadedFileInterface => 1,
+            is_array($uploaded) => count($uploaded),
+            default => 0,
+        };
+
+        if ($count > 1) {
+            $this->malformed(1786496006, 'The upload accepts exactly one file.');
+        }
+    }
+
+    /**
+     * The record uid submitted with the upload.
+     *
+     * A multipart body carries no types — every field arrives as a string — so
+     * this is the one place in this controller where the decimal spelling of a
+     * uid is accepted. It is still the *only* spelling: a value with a sign, a
+     * leading zero or surrounding whitespace is refused rather than cast,
+     * because the value selects a record and accepting two spellings of it is
+     * how a check and a lookup end up disagreeing about what was addressed.
+     *
+     * The result is handed to {@see resolveOwnedProfile()} as an ordinary
+     * payload, so a uid that is not in the owned set answers with the uniform
+     * `404` exactly like every other request.
+     */
+    private function uploadedUid(): int
+    {
+        if (!$this->request->hasArgument(self::UPLOAD_UID_FIELD)) {
+            $this->malformed(1786496004, 'The "uid" of the addressed record is missing.');
+        }
+
+        $uid = $this->request->getArgument(self::UPLOAD_UID_FIELD);
+        if (!is_string($uid) || preg_match('/^[1-9][0-9]*$/', $uid) !== 1) {
+            $this->malformed(1786496005, '"uid" has to be a positive integer.');
+        }
+
+        return (int)$uid;
+    }
+
+    /**
+     * The storage folder uploaded images are moved into.
+     *
+     * A site setting rather than a constant, because the storage of an
+     * installation is not this extension's to assume — but with a default, so
+     * that a site which configures nothing still works. The value has to be a
+     * combined storage identifier; `FileUploadConfiguration::ensureValidConfiguration()`
+     * throws 1711801071 for anything else, and
+     * {@see initializeUploadImageAction()} calls it early so that a typo in the
+     * site configuration surfaces at once.
+     *
+     * The folder itself is created on first use — `createUploadFolderIfNotExist`
+     * defaults to `true` and is left there.
+     */
+    private function imageUploadFolder(): string
+    {
+        $folder = $this->settings['imageUploadFolder'] ?? '';
+        if (!is_string($folder) || trim($folder) === '') {
+            return ProfileImageUploadRules::DEFAULT_UPLOAD_FOLDER;
+        }
+
+        return trim($folder);
     }
 
     /**

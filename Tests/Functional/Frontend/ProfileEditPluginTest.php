@@ -99,6 +99,18 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
      *
      * @var list<string>
      */
+    /**
+     * Every action the component expects a URL for.
+     *
+     * The list is asserted exactly, not as a subset, and that is the point of
+     * it: the component parses the endpoint map all or nothing, so one missing
+     * entry does not degrade the surface, it stops the element enhancing at
+     * all. A silently un-enhanced page is the failure nobody notices, so an
+     * action added on the server without a URL rendered for it has to turn this
+     * test red rather than pass as "close enough".
+     *
+     * @var list<string>
+     */
     private const ENDPOINT_ACTIONS = [
         'save',
         'saveField',
@@ -106,6 +118,8 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
         'removeChild',
         'reorderChildren',
         'setChildVisibility',
+        'uploadImage',
+        'removeImage',
     ];
 
     protected function setUp(): void

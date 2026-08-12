@@ -98,6 +98,8 @@ final class ProfileEditController extends ActionController
         'removeChild',
         'reorderChildren',
         'setChildVisibility',
+        'uploadImage',
+        'removeImage',
     ];
 
     /**
@@ -128,6 +130,7 @@ final class ProfileEditController extends ActionController
         'field.address.line2',
         'field.email.type',
         'field.email.email',
+        'field.profile.image',
         // Select item labels, `choice.<scope>.<field>.<value>` — choiceLabelKey().
         'choice.address.type.home',
         'choice.address.type.work',
@@ -152,6 +155,14 @@ final class ProfileEditController extends ActionController
         'section.email',
         // Record states the surface shows and cannot change — stateLabelKey().
         'state.hidden',
+        // The alternative text of the image. The component substitutes the name
+        // itself rather than taking the rendered string, so the alt text follows
+        // a name the visitor has just changed without a round trip for it.
+        'profile.image.alt',
+        // Shown when an upload was refused. Nothing is moved into storage on a
+        // rejected upload, so the file really does have to be chosen again — the
+        // surface must not look as though it still holds it.
+        'error.imageNotStored',
         // The sentence shown for a failure that is not a validation failure.
         // Only `error.request` has to exist; the two status specific ones are
         // the failures a user can act on, and `requestErrorText()` prefers them

@@ -152,12 +152,12 @@ Simultaneous edits overwrite each other
     warning, no merge and no "this record was changed meanwhile" answer. Where
     that matters, treat a profile as edited by one person at a time.
 
-The profile image cannot be changed here
-    The image is shown but not editable. Uploading a file is a different kind of
-    request with its own failure cases and its own rule for cleaning up the file
-    behind a replaced image, and it is a release of its own rather than a
-    control bolted onto this surface. Use the backend to set or replace a
-    profile image.
+The profile image is set and removed without a save step
+    The image is part of this surface, and it behaves unlike every other field
+    on it: picking a file uploads it straight away, so there is no
+    :guilabel:`Apply` and nothing to cancel. What may be uploaded, where the
+    files are stored and what happens to a replaced one is described in
+    :ref:`feature-profile-image-upload`.
 
 The birthday is edited in the technical date format
     The profile display formats the birthday according to the installation's

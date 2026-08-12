@@ -24,15 +24,10 @@ use PHPUnit\Framework\Attributes\Test;
  *   {@see showReturnsPageNotFoundWhenTheProfileArgumentIsMissing()} covers
  *   `showPageNotFoundIfRequiredArgumentIsMissingException`.
  *
- * ## What is deliberately not covered here
- *
- * The `Profile/Image` partial and the `profile.image.alt` label it is passed:
- * no fixture profile carries a profile image, so the partial renders into an
- * empty string and every assertion below holds with the partial gone. Covering
- * it needs `sys_file` and `sys_file_reference` fixtures plus a file on disk in
- * the test instance, which belongs with the change that owns the image handling
- * rather than with the plugins. Until then this is a stated gap, not a covered
- * case.
+ * The `Profile/Image` partial is covered from here as well. It needs a FAL
+ * fixture and a real file in the test instance, which
+ * {@see \SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\ProfileImageFixtureTrait}
+ * provides for every plugin test.
  */
 final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
 {
@@ -221,6 +216,80 @@ final class ProfileShowPluginTest extends AbstractProfilePluginTestCase
             ['first@example.org', 'second@example.org'],
             $this->renderedInOrder('#<a href="mailto:([^"]+)"#s', $body),
         );
+    }
+
+    /**
+     * The `Profile/Image` partial, rendered for the profile that carries an
+     * image with a metadata record.
+     *
+     * The dimension attributes are asserted because they are written behind an
+     * `f:if` each: they are `NULL` for a file without image metadata, and an
+     * `f:if` that always renders would emit `width=""`, which is invalid HTML
+     * and which the second half of this pair
+     * ({@see \SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend\ProfileListPluginTest::listRendersNoDimensionAttributesForAnImageWithoutMetadata()})
+     * is what makes falsifiable.
+     */
+    #[Test]
+    public function showRendersTheProfileImage(): void
+    {
+        $body = (string)$this->renderShowPlugin(self::IMAGE_PROFILE_UID)->getBody();
+
+        $this->assertStringContainsString(
+            '<figure class="modern-extbase-frontend-edit-profile-image">',
+            $body,
+        );
+        $this->assertStringContainsString('src="' . self::IMAGE_RENDERED_URL . '"', $body);
+        $this->assertStringContainsString('width="' . self::IMAGE_WIDTH . '"', $body);
+        $this->assertStringContainsString('height="' . self::IMAGE_HEIGHT . '"', $body);
+        $this->assertStringContainsString(
+            '<figcaption>' . self::IMAGE_REFERENCE_TITLE . '</figcaption>',
+            $body,
+        );
+    }
+
+    /**
+     * The `profile.image.alt` label, asserted by its **text**.
+     *
+     * This is the assertion the partial exists for and the one that is easy to
+     * get wrong: a missing `trans-unit` renders as an empty string, so an
+     * `alt=""` is what a broken label produces — valid HTML, a passing test,
+     * and an image with no alternative text. The fixture reference of this
+     * profile deliberately carries no `alternative` of its own, which is what
+     * makes the label the value that ends up in the attribute at all.
+     */
+    #[Test]
+    public function showResolvesTheAlternativeTextLabelForAnImageWithoutOne(): void
+    {
+        $body = (string)$this->renderShowPlugin(self::IMAGE_PROFILE_UID)->getBody();
+
+        $this->assertStringContainsString(
+            'alt="Portrait of ' . self::IMAGE_PROFILE_NAME . '"',
+            $body,
+        );
+    }
+
+    /**
+     * A profile without an image renders no image markup, and renders.
+     *
+     * `getProfileImage()` returns `null` there, and the partial is asked to
+     * render regardless — the guard is inside it. The status code is asserted
+     * together with the absence, because "no `<figure>` in the body" is also
+     * true of an exception page.
+     */
+    #[Test]
+    public function showRendersNoImageMarkupForAProfileWithoutAnImage(): void
+    {
+        $response = $this->renderShowPlugin(self::ADA_PROFILE_UID);
+
+        $this->assertSame(200, $response->getStatusCode());
+
+        $body = (string)$response->getBody();
+        $this->assertStringContainsString('Ada Lovelace', $body);
+        $this->assertStringNotContainsString(
+            '<figure class="modern-extbase-frontend-edit-profile-image">',
+            $body,
+        );
+        $this->assertStringNotContainsString('<img', $body);
     }
 
     #[Test]

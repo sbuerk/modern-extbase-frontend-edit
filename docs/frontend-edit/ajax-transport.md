@@ -10,7 +10,7 @@ contract that follows from it.
 
 > [!NOTE]
 > **This is code now.** The page type is registered in `ext_localconf.php`, the
-> seven endpoints live in `Classes/Controller/ProfileAjaxController.php`, and the
+> nine endpoints live in `Classes/Controller/ProfileAjaxController.php`, and the
 > envelope in `Classes/Http/JsonEnvelope.php`. Two statements this page made
 > while it was design only turned out to be wrong when the code was written, and
 > both are corrected below: the content object the `PAGE` calls, and
@@ -296,6 +296,11 @@ second, independent reason: a cross-origin `<form>` can only produce
 insisting on `application/json` costs a browser a preflight it will not send.
 That is a cheap CSRF barrier and it does **not** replace the request token.
 
+The image upload is the one endpoint the second half does not apply to. It
+insists on `multipart/form-data`, which a cross origin form *can* produce, so
+its media type check exists because the endpoint cannot work without one — not
+as a barrier. → [The one endpoint that is not JSON](#the-one-endpoint-that-is-not-json)
+
 ### A JSON body is invisible to Extbase
 
 TYPO3 fills the parsed body from `$_POST`, plus urlencoded `PUT`/`PATCH`/
@@ -354,16 +359,17 @@ Validation failures are **`422`, not `400`**. `400` is Extbase's own
 — `Bootstrap.php:223-232`). A user mistyping a field must not evict the page
 cache.
 
-| Situation                                                          | Status | Reason                                                                             |
-|--------------------------------------------------------------------|--------|------------------------------------------------------------------------------------|
-| Read or write succeeded                                            | `200`  | the only sub-300 status a frontend plugin can produce                              |
-| Malformed JSON, wrong type, unknown field, non-JSON `Content-Type` | `400`  | genuinely malformed request; matches Extbase's `errorAction()`                     |
-| No or invalid request token, or a write without a login            | `403`  | a statement about the caller, never about a record                                 |
-| Record absent, or not part of the caller's owned set               | `404`  | deliberately not distinguished from "forbidden"                                    |
-| Any verb other than `POST`                                         | `405`  | sent with an `Allow: POST` header; see [POST for everything](#post-for-everything) |
-| A write issued while a workspace is active                         | `409`  | authenticated and authorised — it is the session state that makes it unanswerable  |
-| Well-formed request, domain validation failed                      | `422`  | the field-level case, distinguishable from `400` by the client                     |
-| Rate limit exceeded                                                | `429`  | **not implemented.** v14 `#[RateLimit]` only; no equivalent on v13                 |
+| Situation                                                       | Status | Reason                                                                             |
+|-----------------------------------------------------------------|--------|------------------------------------------------------------------------------------|
+| Read or write succeeded                                         | `200`  | the only sub-300 status a frontend plugin can produce                              |
+| Malformed JSON, wrong type, unknown field, wrong `Content-Type` | `400`  | genuinely malformed request; matches Extbase's `errorAction()`                     |
+| No or invalid request token, or a write without a login         | `403`  | a statement about the caller, never about a record                                 |
+| Record absent, or not part of the caller's owned set            | `404`  | deliberately not distinguished from "forbidden"                                    |
+| Any verb other than `POST`                                      | `405`  | sent with an `Allow: POST` header; see [POST for everything](#post-for-everything) |
+| A write issued while a workspace is active                      | `409`  | authenticated and authorised — it is the session state that makes it unanswerable  |
+| Well-formed request, domain validation failed                   | `422`  | the field-level case, distinguishable from `400` by the client                     |
+| Well-formed upload, a file validator refused it                 | `422`  | same status, same shape, keyed by the field name `image`                           |
+| Rate limit exceeded                                             | `429`  | **not implemented.** v14 `#[RateLimit]` only; no equivalent on v13                 |
 
 `405` and `409` were missing from this table while it was design only, and both
 are real answers of the implementation. The `409` is deliberately not a `403`:
@@ -397,13 +403,15 @@ token — was rejected for the extra request and for the operational sharpness o
 the nonce pool: size 5, 900 s expiry (`NoncePool.php:25-33`), so a long editing
 session or a sixth tab starts evicting nonces.
 
-## The seven endpoints
+## The nine endpoints
 
-All seven are `POST` to the same `typeNum` URL with
-`Content-Type: application/json`, distinguished by the Extbase action in the
-query string — `tx_modernextbasefrontendedit_ajax[controller]=ProfileAjax` and
+All nine are `POST` to the same `typeNum` URL, distinguished by the Extbase
+action in the query string —
+`tx_modernextbasefrontendedit_ajax[controller]=ProfileAjax` and
 `…[action]=save`, both part of the cHash. Every write carries the
-`X-TYPO3-RequestToken` header.
+`X-TYPO3-RequestToken` header. Eight of them are
+`Content-Type: application/json`; `uploadImage` is `multipart/form-data`, for
+the reason [below](#the-one-endpoint-that-is-not-json).
 
 `child` is the discriminator that decides whether a payload addresses the
 profile itself or one of its two collections. It is a closed set — `address` or
@@ -420,6 +428,8 @@ the API or it does not, and answering "no such record" would be an odd way to sa
 | `removeChild`        | `uid`, `child`, `childUid`                     | Removes one child *and deletes the row* — a detach alone would orphan it. |
 | `reorderChildren`    | `uid`, `child`, `order`                        | Puts a collection into the submitted order.                               |
 | `setChildVisibility` | `uid`, `child`, `childUid`, `hidden`           | Sets the `hidden` flag of one child to an explicit boolean.               |
+| `uploadImage`        | multipart: one file part, one `uid` part       | Stores the uploaded profile image, replacing the previous one.            |
+| `removeImage`        | `uid`                                          | Clears the profile image. Idempotent.                                     |
 
 Four properties of that surface are decisions rather than accidents:
 
@@ -439,13 +449,33 @@ Four properties of that surface are decisions rather than accidents:
   changed a single field, so a client that patched its own state cannot drift and
   a client that moved a child gets the resulting order back with it.
 
-**Image upload is deliberately not one of these seven.** It is a different
-transport — `multipart/form-data`, not a JSON body — a different failure surface
-and a different cleanup rule for the file behind a replaced reference. Bolting it
-onto an endpoint set whose entire contract is "JSON in, JSON out" would make
-every rule on this page conditional. It is a change of its own, and until it
-lands the profile image is a backend-only field.
-→ [Image handling](image-handling.md)
+### The one endpoint that is not JSON
+
+> [!NOTE]
+> **Correction.** An earlier revision of this page argued that image upload was
+> deliberately *not* one of these endpoints, because bolting a different
+> transport onto a set whose contract is "JSON in, JSON out" would make every
+> rule here conditional. The transport is indeed different; the conclusion was
+> wrong. Exactly one rule turned out to be conditional — the media type of the
+> request — and every other rule on this page holds for the upload unchanged.
+
+A file cannot travel in a JSON body without base64, which inflates the payload
+by a third and holds the whole file in memory twice. `uploadImage` is therefore
+a `multipart/form-data` `POST`, and `removeImage` — which uploads nothing — is
+ordinary JSON.
+
+What that costs is stated where it is decided rather than buried here: the media
+type check of the JSON endpoints is a second, independent CSRF barrier, because
+a cross origin `<form>` cannot produce `application/json`. It **can** produce
+`multipart/form-data`, so on that one endpoint the request token is the only
+barrier. It is enough — the token is a hash signed JWT bound to a nonce cookie
+this browser holds — but it is the only one, and weakening the token check
+would cost more there than anywhere else.
+
+What it does not cost is the answer. Both actions respond with the same
+`JsonEnvelope` document as every other endpoint, so the component applies all
+nine through one path.
+→ [Image handling](image-handling.md#the-two-endpoints)
 
 ### The wire format
 
@@ -499,7 +529,8 @@ that child's own DTO — so nothing about the parent can be written through it:
 { "uid": 42, "child": "email", "order": [9, 7, 8] }
 ```
 
-**Success**, `200` — the same document from all seven:
+**Success**, `200` — the same document from all nine, the multipart upload
+included:
 
 ```json
 {
@@ -511,6 +542,19 @@ that child's own DTO — so nothing about the parent can be written through it:
     "birthday": "1815-12-10",
     "bio": "",
     "hidden": false,
+    "image": {
+      "uid": 3,
+      "fileUid": 11,
+      "publicUrl": "/fileadmin/user_upload/profiles/ada-3f2ac1.jpg",
+      "name": "ada-3f2ac1.jpg",
+      "extension": "jpg",
+      "mimeType": "image/jpeg",
+      "size": 48213,
+      "title": "",
+      "alternative": "",
+      "width": 600,
+      "height": 800
+    },
     "addresses": [
       { "uid": 7, "type": "home", "line1": "1 Marylebone Road", "line2": "", "hidden": false }
     ],
@@ -526,6 +570,14 @@ of the request — a client that trusts its own optimistic update will drift.
 `birthday` is `""` for "no birthday", matching the DTO default, and its format is
 pinned by `ProfileData::BIRTHDAY_FORMAT` so that what is read back is spelled
 exactly like what may be written.
+
+`image` is `null` when the profile has none — a valid state, not an error — and
+otherwise carries scalars only, derived from the file reference on every call so
+that nothing in the document holds a FAL object graph. Its two uids answer
+different questions and both are exposed for that reason: `uid` identifies *this
+usage* of the file, the `sys_file_reference` row, while `fileUid` identifies the
+file itself. A client that wants to notice "the image was replaced" compares the
+second. → [Image handling](image-handling.md)
 
 > [!NOTE]
 > **The profile's own `hidden` flag is readable and not writable.** It is in the
@@ -724,16 +776,16 @@ Consequences for this extension:
 - [Modern frontend editing](Index.md) — the other pages of this design.
 - [Plugins and the Fluid layer](plugins-and-fluid.md) — the same
   `configurePlugin()` rule applied to the two read plugins.
-- [The edit plugin](edit-plugin.md) — the client that calls six of these seven
+- [The edit plugin](edit-plugin.md) — the client that calls eight of these nine
   endpoints, and why it never calls `read`.
 - [Authorization](authorization.md) — who may edit which record, and why the
   request token does not answer that.
 - [DTOs and validation](dto-and-validation.md) — why rules are data rather than
   attributes, and what fills the `errors` array.
 - [Persistence and sorting](persistence-and-sorting.md) — what Extbase writes
-  and what it refuses to, and what the seven endpoints hand to the write path.
-- [Image handling](image-handling.md) — the upload that is deliberately not one
-  of the seven endpoints.
+  and what it refuses to, and what the nine endpoints hand to the write path.
+- [Image handling](image-handling.md) — the two image endpoints, the upload
+  rules and the guarded cleanup of a replaced file.
 - [Core version aware code](../architecture/core-version-aware-code.md) — why
   the v14-only attributes are a directory, not an `if`.
 - [Dependency injection](../architecture/dependency-injection.md) — why

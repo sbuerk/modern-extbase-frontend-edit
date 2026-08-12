@@ -22,6 +22,7 @@ plugin.tx_modernextbasefrontendedit {
         showPageUid = {$modernextbasefrontendedit.showPageUid}
         editPageUid = {$modernextbasefrontendedit.editPageUid}
         ajaxPageType = {$modernextbasefrontendedit.ajaxPageType}
+        imageUploadFolder = {$modernextbasefrontendedit.imageUploadFolder}
     }
     view.formatToPageTypeMapping.json = {$modernextbasefrontendedit.ajaxPageType}
 }

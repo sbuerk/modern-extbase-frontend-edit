@@ -37,6 +37,13 @@
             <trans-unit id="settings.description.modernextbasefrontendedit.ajaxPageType">
                 <source>The page type the editing endpoints answer on. Change it only when another extension on this site already uses this number.</source>
             </trans-unit>
+
+            <trans-unit id="settings.modernextbasefrontendedit.imageUploadFolder">
+                <source>Image upload folder</source>
+            </trans-unit>
+            <trans-unit id="settings.description.modernextbasefrontendedit.imageUploadFolder">
+                <source>The folder uploaded profile images are stored in, as a combined storage identifier such as "1:/user_upload/profiles/". It is created on the first upload.</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

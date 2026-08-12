@@ -154,11 +154,12 @@ A profile cannot be hidden or published from the frontend
     from hiding one of its e-mail addresses — it needs a rule about who may make
     a record public — and that rule is not part of this release. Use the backend.
 
-The profile image cannot be uploaded or replaced
-    The image is a backend-only field for now. Uploading is a different
-    transport — a file upload, not a JSON document — with its own failure cases
-    and its own rule for cleaning up the file behind a replaced image, and it is
-    a release of its own rather than an eighth endpoint bolted onto a JSON API.
+The profile image is written by two endpoints of its own
+    Uploading is a different transport — a file upload, not a JSON document —
+    with its own failure cases and its own rule for cleaning up the file behind
+    a replaced image, so it is not one of the seven described here. The two
+    endpoints that do it ship in the same release and are described in
+    :ref:`feature-profile-image-upload`.
 
 No rate limiting
     The endpoints are not rate limited. TYPO3 v14 offers an Extbase level

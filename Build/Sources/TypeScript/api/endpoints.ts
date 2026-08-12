@@ -19,7 +19,9 @@ export type EndpointAction =
     | 'addChild'
     | 'removeChild'
     | 'reorderChildren'
-    | 'setChildVisibility';
+    | 'setChildVisibility'
+    | 'uploadImage'
+    | 'removeImage';
 
 /**
  * The actions the component calls.
@@ -28,6 +30,13 @@ export type EndpointAction =
  * markup by the same request that rendered the profile, and every write answers
  * with the whole aggregate, so nothing the component does ever needs to read
  * separately.
+ *
+ * `uploadImage` is the one entry whose request is not a JSON body — it is a
+ * `multipart/form-data` POST. That changes what the client sends and nothing
+ * else: the URL is built the same way, the request token travels in the same
+ * header, and the answer is the same document.
+ * → {@see ../api/payload.ts} for the body, {@see ../api/client.ts} for the
+ * content type.
  */
 export const endpointActions: readonly EndpointAction[] = [
     'save',
@@ -36,6 +45,8 @@ export const endpointActions: readonly EndpointAction[] = [
     'removeChild',
     'reorderChildren',
     'setChildVisibility',
+    'uploadImage',
+    'removeImage',
 ];
 
 export type EndpointMap = Readonly<Record<EndpointAction, string>>;

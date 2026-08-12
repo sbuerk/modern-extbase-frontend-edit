@@ -36,6 +36,11 @@
  *   value in `profile`, which is what "cancel restores the last server known
  *   value" means once one save has already succeeded.
  *
+ * The image adds one flag, `imageRejected`, and deliberately nothing else. It is
+ * not an edit session: a file has no draft to keep, so what has to be remembered
+ * about a failed upload is not a value but the fact that the file is gone and
+ * has to be picked again.
+ *
  * ## The data it needs
  *
  * Four attributes, all rendered by the Fluid template — there is no inline
@@ -68,12 +73,14 @@ import { fieldsOf, fieldsOfChild, initialValues } from '../model/fieldDefinition
 import {
     childrenOf,
     childUids,
+    displayName,
     fieldValue,
     isChildHidden,
     movedChildOrder,
     parseProfileRecord,
     recordValues,
 } from '../model/profileRecord.js';
+import { imageField } from '../model/imageEdit.js';
 import type { EditMap, RecordEdit } from '../model/editState.js';
 import {
     applyErrors,
@@ -96,19 +103,33 @@ import { actionLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } fr
 import { readJson } from '../model/json.js';
 import type { EndpointAction } from '../api/endpoints.js';
 import { parseEndpoints } from '../api/endpoints.js';
-import type { Payload } from '../api/payload.js';
+import type { Payload, RequestBody } from '../api/payload.js';
 import {
     addChildPayload,
     fieldPayload,
+    imageUploadBody,
     recordPayload,
     removeChildPayload,
+    removeImagePayload,
     reorderPayload,
     visibilityPayload,
 } from '../api/payload.js';
 import type { EndpointResult } from '../api/response.js';
 import { ProfileEndpointClient } from '../api/client.js';
 import './editField.js';
-import type { EditFieldElement } from './editField.js';
+import './editImage.js';
+
+/**
+ * What the focus mechanism needs of a rendered control, and all it needs.
+ *
+ * Both child elements satisfy it — a field and the image — so one query and one
+ * `data-focus` attribute cover the whole surface. Typed structurally rather than
+ * as a union, because what matters here is not which element it is.
+ */
+interface FocusableControl extends HTMLElement {
+    readonly updateComplete: Promise<boolean>;
+    focusControl(): void;
+}
 
 @customElement('modern-extbase-frontend-edit-profile')
 export class ProfileEditElement extends LitElement {
@@ -185,6 +206,17 @@ export class ProfileEditElement extends LitElement {
     @state()
     private labels: LabelMap = {};
 
+    /**
+     * Whether the last thing done to the image failed.
+     *
+     * Not part of the edit sessions, because it is not an error *about a value*
+     * — it is the statement that the file the user picked no longer exists
+     * anywhere and has to be picked again. It is cleared when the next attempt
+     * starts, so it always describes the most recent one.
+     */
+    @state()
+    private imageRejected = false;
+
     private client: ProfileEndpointClient | null = null;
 
     /**
@@ -220,7 +252,7 @@ export class ProfileEditElement extends LitElement {
             return;
         }
         this.pendingFocus = null;
-        const field = this.renderRoot.querySelector<EditFieldElement>(`[data-focus="${key}"]`);
+        const field = this.renderRoot.querySelector<FocusableControl>(`[data-focus="${key}"]`);
         if (field === null) {
             return;
         }
@@ -267,9 +299,43 @@ export class ProfileEditElement extends LitElement {
                         : nothing}
                 </div>
                 ${this.renderGeneralErrors(target)}
+                ${target.child === null ? this.renderImage(profile, target, edit) : nothing}
                 ${fieldsOf(target).map((definition: FieldDefinition): TemplateResult =>
                     this.renderField(profile, target, definition, edit))}
             </div>
+        `;
+    }
+
+    /**
+     * The image, which the surface renders for the profile and for nothing else.
+     *
+     * It is inside the element, and it was outside it until the two image
+     * endpoints existed. That earlier placement rested on one argument — "no
+     * endpoint manages it, so nothing can make the rendered image disagree with
+     * the server" — and the argument stops holding the moment something does
+     * manage it. An image left outside would keep showing the file the page was
+     * loaded with after the first upload, which is exactly the defect the name
+     * heading is inside to avoid.
+     *
+     * It is not a `FieldDefinition` and does not appear in `fieldsOf()`: those
+     * are the fields a `save` carries, and the image is written by neither
+     * `save` nor `saveField`. Putting it in that list would make every whole
+     * record edit open a control for a value it cannot submit.
+     */
+    private renderImage(profile: ProfileRecord, target: RecordTarget, edit: RecordEdit | null): TemplateResult {
+        return html`
+            <modern-extbase-frontend-edit-image
+                data-focus="${focusKey(target, imageField)}"
+                .image="${profile.image}"
+                .labels="${this.labels}"
+                .profileName="${displayName(profile)}"
+                .busy="${edit?.busy ?? false}"
+                .errors="${errorsOf(this.edits, target, imageField)}"
+                .rejected="${this.imageRejected}"
+                @image-select="${(event: CustomEvent<{ file: File }>): void =>
+                    void this.uploadImage(event.detail.file)}"
+                @image-remove="${(): void => void this.clearImage()}"
+            ></modern-extbase-frontend-edit-image>
         `;
     }
 
@@ -618,27 +684,78 @@ export class ProfileEditElement extends LitElement {
     }
 
     /**
+     * Replaces the image with the picked file, through the one multipart request.
+     *
+     * The `File` is passed to the body builder and held nowhere: on a failure it
+     * is gone from this component exactly as it is gone from the server, which
+     * is what {@see imageRejected} then tells the user. Keeping it in order to
+     * offer a retry without a re-pick was considered and rejected — a surface
+     * that can re-send a file it does not show is a surface whose state the user
+     * cannot see.
+     */
+    private async uploadImage(file: File): Promise<void> {
+        this.imageRejected = false;
+        const result = await this.send(
+            profileTarget,
+            'uploadImage',
+            (profile: ProfileRecord): RequestBody => imageUploadBody(profile.uid, file),
+            (): void => {
+                this.pendingFocus = null;
+            },
+        );
+        // Null is "the request was not made at all" — the surface is busy, or it
+        // never enhanced — and nothing was lost in that case.
+        this.imageRejected = result !== null && result.kind !== 'success';
+    }
+
+    /**
+     * Removes the stored image.
+     *
+     * An ordinary JSON call: there is nothing to transfer, so nothing about
+     * multipart applies. Named `clearImage` for the same reason `deleteChild` is
+     * not `removeChild` — `removeImage` would read like a DOM method on an
+     * element, and this class already inherits one collision of that kind.
+     */
+    private async clearImage(): Promise<void> {
+        this.imageRejected = false;
+        await this.send(
+            profileTarget,
+            'removeImage',
+            (profile: ProfileRecord): RequestBody => removeImagePayload(profile.uid),
+            (): void => {
+                this.pendingFocus = null;
+            },
+        );
+    }
+
+    /**
      * One request, with the busy flag and the answer handling around it.
      *
-     * The payload is built from the profile as it is *when the request is sent*
+     * The body is built from the profile as it is *when the request is sent*
      * rather than from one captured earlier, because a previous response may
      * have replaced the document in between.
+     *
+     * Answers the result, or `null` when no request was made — a caller that has
+     * something to do with the outcome beyond what {@see applyResult} does with
+     * it needs to tell those two apart.
      */
     private async send(
         target: RecordTarget,
         action: EndpointAction,
-        payload: (profile: ProfileRecord) => Payload,
+        body: (profile: ProfileRecord) => RequestBody,
         onSuccess: () => void,
-    ): Promise<void> {
+    ): Promise<EndpointResult | null> {
         const client = this.client;
         const profile = this.profile;
         if (client === null || profile === null || isBusy(this.edits, target)) {
-            return;
+            return null;
         }
         this.edits = setBusy(clearErrors(this.edits, target), target, true);
-        const result = await client.send(action, payload(profile));
+        const result = await client.send(action, body(profile));
         this.edits = setBusy(this.edits, target, false);
         this.applyResult(result, target, onSuccess);
+
+        return result;
     }
 
     /**

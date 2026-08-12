@@ -48,3 +48,12 @@ settings:
     default: 1589
     type: int
     category: modernextbasefrontendedit
+
+  # A combined storage identifier ("<storageUid>:/<path>/"), not a folder
+  # picker: the value is handed to Extbase's FileUploadConfiguration, which
+  # refuses anything else with an exception. The folder is created on first
+  # upload if it does not exist.
+  modernextbasefrontendedit.imageUploadFolder:
+    default: '1:/user_upload/profiles/'
+    type: string
+    category: modernextbasefrontendedit

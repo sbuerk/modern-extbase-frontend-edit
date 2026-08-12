@@ -108,8 +108,51 @@ final readonly class ProfileDocumentFactory
             // Readable so the surface can show the state, writable only through
             // the dedicated action and only for children.
             'hidden' => $profile->isHidden(),
+            // `null` is "no image", which is a valid state and not an error.
+            // The value object behind this is derived from the persisted file
+            // reference on every call and carries scalars only, so the document
+            // stays serializable and has no FAL object graph behind it.
+            'image' => $this->imageDocument($profile),
             'addresses' => $addressDocuments,
             'emails' => $emailDocuments,
+        ];
+    }
+
+    /**
+     * The image entry, or `null` when the profile has none.
+     *
+     * Read through `Profile::getProfileImage()` rather than off the framework
+     * `FileReference`, so that neither this class nor the client has to reach
+     * through `getOriginalResource()->getOriginalFile()` — that chain is
+     * framework vocabulary, and it is the reason the read side wrapper exists.
+     *
+     * `uid` is the `sys_file_reference` uid and `fileUid` the `sys_file` uid.
+     * Both are exposed because they answer different questions: the first
+     * identifies *this* usage of the file, the second the file itself, and a
+     * client that wants to notice "the image was replaced" has to compare the
+     * second.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function imageDocument(Profile $profile): ?array
+    {
+        $image = $profile->getProfileImage();
+        if ($image === null) {
+            return null;
+        }
+
+        return [
+            'uid' => $image->uid,
+            'fileUid' => $image->fileUid,
+            'publicUrl' => $image->publicUrl,
+            'name' => $image->name,
+            'extension' => $image->extension,
+            'mimeType' => $image->mimeType,
+            'size' => $image->size,
+            'title' => $image->title,
+            'alternative' => $image->alternative,
+            'width' => $image->width,
+            'height' => $image->height,
         ];
     }
 }

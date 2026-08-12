@@ -6,6 +6,7 @@ namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend;
 
 use Psr\Http\Message\ResponseInterface;
 use SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\AbstractProfileTestCase;
+use SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\ProfileImageFixtureTrait;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\HttpUtility;
 use TYPO3\CMS\Frontend\Page\CacheHashCalculator;
@@ -51,6 +52,21 @@ use TYPO3\TestingFramework\Core\Functional\Framework\Frontend\InternalRequestCon
  */
 abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
 {
+    /**
+     * The FAL fixture is set up for every plugin test, not only for the two
+     * that assert the rendered image.
+     *
+     * The alternative would be to import it per test class, which is what the
+     * `Profile/Image` partial being covered by nothing in the first place came
+     * from: a fixture that has to be opted into is a fixture that renders
+     * nothing until somebody remembers it. The upload tests reach this class
+     * through {@see \SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend\AbstractProfileAjaxTestCase}
+     * and need the same storage and the same `fileadmin/user_upload/` folder.
+     */
+    use ProfileImageFixtureTrait;
+
+    protected array $pathsToProvideInTestInstance = self::PROFILE_IMAGE_FILES_TO_PROVIDE;
+
     /**
      * The page holding the `show` plugin, and the page the `list` plugin is
      * configured to link its entries to.
@@ -129,6 +145,8 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
     protected const LISTED_PROFILE_NAMES = [
         'Ada Lovelace',
         self::UNOWNED_PROFILE_NAME,
+        self::IMAGE_UNMEASURED_PROFILE_NAME,
+        self::IMAGE_PROFILE_NAME,
         'Radia Perlman',
         self::SHORTNAME_ONLY_PROFILE_NAME,
     ];
@@ -180,6 +198,7 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
         parent::setUp();
 
         $this->importCSVDataSet(__DIR__ . '/../Fixtures/Database/ProfilePlugins.csv');
+        $this->importProfileImageFixture();
         $this->setUpProfilePluginRendering();
     }
 

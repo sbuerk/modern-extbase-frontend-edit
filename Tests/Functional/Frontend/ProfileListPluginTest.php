@@ -21,15 +21,9 @@ use PHPUnit\Framework\Attributes\Test;
  * them. A missing `trans-unit` renders as an empty string, so a test asserting
  * only that a `<h2>` exists passes with every label gone.
  *
- * ## What is deliberately not covered here
- *
- * The `Profile/Image` partial and the `profile.image.alt` label it is passed:
- * no fixture profile carries a profile image, so both plugins render the
- * partial into an empty string and every assertion below holds with the partial
- * gone. Covering it needs `sys_file` and `sys_file_reference` fixtures plus a
- * file on disk in the test instance, which belongs with the change that owns
- * the image handling rather than with the plugins. Until then this is a stated
- * gap, not a covered case.
+ * The same applies to the `Profile/Image` partial, which is rendered per card
+ * here and asserted per card below: the FAL fixture comes from
+ * {@see \SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\ProfileImageFixtureTrait}.
  */
 final class ProfileListPluginTest extends AbstractProfilePluginTestCase
 {
@@ -123,6 +117,83 @@ final class ProfileListPluginTest extends AbstractProfilePluginTestCase
                 sprintf('The card of "%s" renders the "link.show" label.', $name),
             );
         }
+    }
+
+    /**
+     * The image is rendered **per card**, for the cards that have one and for
+     * no other.
+     *
+     * Asserted per card rather than over the whole body on purpose: a body wide
+     * check is equally green for a list that renders one image four times, or
+     * renders the image of the first profile inside the card of the second.
+     */
+    #[Test]
+    public function listRendersTheImageOnlyInTheCardsOfTheProfilesThatHaveOne(): void
+    {
+        $cards = $this->profileCards((string)$this->renderListPlugin()->getBody());
+
+        $this->assertStringContainsString(
+            'src="' . self::IMAGE_RENDERED_URL . '"',
+            $cards[self::IMAGE_PROFILE_NAME],
+        );
+        $this->assertStringContainsString(
+            '<figcaption>' . self::IMAGE_REFERENCE_TITLE . '</figcaption>',
+            $cards[self::IMAGE_PROFILE_NAME],
+        );
+
+        foreach (['Ada Lovelace', self::UNOWNED_PROFILE_NAME, 'Radia Perlman'] as $withoutImage) {
+            $this->assertStringNotContainsString(
+                '<figure class="modern-extbase-frontend-edit-profile-image">',
+                $cards[$withoutImage],
+                sprintf('The card of "%s" renders no image.', $withoutImage),
+            );
+        }
+    }
+
+    /**
+     * The `alt` attribute takes the alternative text of the **file reference**
+     * where the reference carries one.
+     *
+     * The counterpart of
+     * {@see ProfileShowPluginTest::showResolvesTheAlternativeTextLabelForAnImageWithoutOne()}:
+     * one fixture reference has an alternative text and one has not, so the
+     * `f:if` in the partial has a case on each side. Without this test the
+     * condition can be replaced by its `else` branch and nothing notices.
+     */
+    #[Test]
+    public function listRendersTheAlternativeTextOfTheFileReferenceWhereThereIsOne(): void
+    {
+        $cards = $this->profileCards((string)$this->renderListPlugin()->getBody());
+
+        $this->assertStringContainsString(
+            'alt="' . self::IMAGE_REFERENCE_ALTERNATIVE . '"',
+            $cards[self::IMAGE_UNMEASURED_PROFILE_NAME],
+        );
+        $this->assertStringNotContainsString(
+            'Portrait of ' . self::IMAGE_UNMEASURED_PROFILE_NAME,
+            $cards[self::IMAGE_UNMEASURED_PROFILE_NAME],
+        );
+    }
+
+    /**
+     * The `f:if` around each dimension attribute.
+     *
+     * The file of this profile has no `sys_file_metadata` record at all, so
+     * `ProfileImage` reports `NULL` for both dimensions and the partial has to
+     * omit the attributes rather than emit `width=""`. The card still carries
+     * an image, which is what keeps this from passing for a card that renders
+     * nothing.
+     */
+    #[Test]
+    public function listRendersNoDimensionAttributesForAnImageWithoutMetadata(): void
+    {
+        $card = $this->profileCards(
+            (string)$this->renderListPlugin()->getBody(),
+        )[self::IMAGE_UNMEASURED_PROFILE_NAME];
+
+        $this->assertStringContainsString('<img', $card);
+        $this->assertStringNotContainsString('width=', $card);
+        $this->assertStringNotContainsString('height=', $card);
     }
 
     /**

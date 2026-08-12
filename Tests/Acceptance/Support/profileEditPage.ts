@@ -20,6 +20,7 @@
  */
 import type { Locator, Page, Response } from '@playwright/test';
 import { expect } from '@playwright/test';
+import * as path from 'node:path';
 import { manifest } from '../manifest';
 
 export const PROFILE_TABLE = 'tx_modernextbasefrontendedit_domain_model_profile';
@@ -60,7 +61,22 @@ export type EndpointAction =
     | 'addChild'
     | 'removeChild'
     | 'reorderChildren'
-    | 'setChildVisibility';
+    | 'setChildVisibility'
+    | 'uploadImage'
+    | 'removeImage';
+
+/**
+ * The image the upload spec picks.
+ *
+ * The very file the functional suite uploads, addressed in the repository
+ * rather than copied here: the Playwright container has the same bind mount as
+ * the PHP containers, and a second copy of a binary fixture is a second thing
+ * to keep in sync.
+ */
+export const FIXTURE_IMAGE_PATH = path.resolve(
+    __dirname,
+    '../../Functional/Fixtures/Files/profile-image.png',
+);
 
 export class ProfileEditPage {
     public constructor(private readonly page: Page) {}
@@ -231,6 +247,69 @@ export class ProfileEditPage {
      * order is the assertion and the text is not. The add form carries the same
      * attribute shape with `new` instead of a uid and is dropped.
      */
+    /**
+     * The image element of the enhanced surface.
+     *
+     * Everything below it lives in its shadow root, which Playwright pierces —
+     * so `imageControl()` and `enhancedImage()` read like ordinary selectors.
+     */
+    public get imageElement(): Locator {
+        return this.element.locator('modern-extbase-frontend-edit-image');
+    }
+
+    /**
+     * The file input. There is exactly one control per image and it has no
+     * `Apply` — picking a file *is* the write.
+     */
+    public get imageControl(): Locator {
+        return this.imageElement.locator('input.field-control');
+    }
+
+    /**
+     * The `<img>` the component draws, i.e. the image as the surface believes
+     * it to be right now.
+     */
+    public get enhancedImage(): Locator {
+        return this.imageElement.locator('img');
+    }
+
+    /**
+     * The `<figure>` the **server** rendered into the markup, from
+     * `Profile/Image.html`.
+     *
+     * This is the no-JavaScript view, and it is the one that answers "the new
+     * image is served": it is part of the document the server sent, so it says
+     * nothing about what the component did after the page loaded. The class is
+     * the partial's own and does not occur in the shadow root, so the two cannot
+     * be confused.
+     */
+    public get servedImage(): Locator {
+        return this.element.locator('figure.modern-extbase-frontend-edit-profile-image img');
+    }
+
+    public get imageErrors(): Locator {
+        return this.imageElement.locator('.field-errors li');
+    }
+
+    /**
+     * Picks a file and waits for the upload to be answered.
+     *
+     * `setInputFiles()` dispatches the `change` event the component listens for,
+     * which is what makes this the same interaction a user performs — there is
+     * no submit button to press afterwards.
+     */
+    public async uploadImage(filePath: string = FIXTURE_IMAGE_PATH): Promise<Response> {
+        return this.withEndpoint('uploadImage', async (): Promise<void> => {
+            await this.imageControl.setInputFiles(filePath);
+        });
+    }
+
+    public async removeImage(): Promise<Response> {
+        return this.withEndpoint('removeImage', async (): Promise<void> => {
+            await this.imageElement.getByRole('button', { name: 'Remove', exact: true }).click();
+        });
+    }
+
     public async renderedChildUids(child: ChildType): Promise<number[]> {
         const keys = await this.element
             .locator(`modern-extbase-frontend-edit-field[data-focus^="${child}:"][data-focus$="|type"]`)

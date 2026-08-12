@@ -127,10 +127,10 @@ ExtensionUtility::configurePlugin(
     'ModernExtbaseFrontendEdit',
     'Ajax',
     [
-        ProfileAjaxController::class => 'read,save,saveField,addChild,removeChild,reorderChildren,setChildVisibility',
+        ProfileAjaxController::class => 'read,save,saveField,addChild,removeChild,reorderChildren,setChildVisibility,uploadImage,removeImage',
     ],
     [
-        ProfileAjaxController::class => 'read,save,saveField,addChild,removeChild,reorderChildren,setChildVisibility',
+        ProfileAjaxController::class => 'read,save,saveField,addChild,removeChild,reorderChildren,setChildVisibility,uploadImage,removeImage',
     ],
     ExtensionUtility::PLUGIN_TYPE_CONTENT_ELEMENT,
 );
@@ -172,6 +172,15 @@ plugin.tx_modernextbasefrontendedit {
         # plugin sits on, so no separate page has to be created for them. Change
         # it only if the number collides with another extension on the site.
         ajaxPageType = 1589
+        # The storage folder uploaded profile images are moved into. It has to
+        # be a combined storage identifier ("<storageUid>:/<path>/"); anything
+        # else is refused by the upload configuration with an exception, and the
+        # endpoint would then answer an exception page rather than JSON. The
+        # folder is created on first use. An empty value falls back to the same
+        # default, which is spelled once more in
+        # "Validation\ProfileImageUploadRules::DEFAULT_UPLOAD_FOLDER" — the
+        # constant is what applies when no TypoScript reaches the plugin at all.
+        imageUploadFolder = 1:/user_upload/profiles/
     }
 }
 ');
@@ -194,6 +203,7 @@ plugin.tx_modernextbasefrontendedit {
         showPageUid = {$plugin.tx_modernextbasefrontendedit.settings.showPageUid}
         editPageUid = {$plugin.tx_modernextbasefrontendedit.settings.editPageUid}
         ajaxPageType = {$plugin.tx_modernextbasefrontendedit.settings.ajaxPageType}
+        imageUploadFolder = {$plugin.tx_modernextbasefrontendedit.settings.imageUploadFolder}
     }
     view {
         # Lets the Extbase UriBuilder produce an endpoint URL with

@@ -46,16 +46,20 @@
     own surface into its shadow root and does not slot these children, so they
     disappear rather than duplicating what the component draws.
 
-    The image is the one thing rendered OUTSIDE the element, because the
-    component does not manage it: there is no image endpoint, so nothing can
-    make the rendered image disagree with the server. The name heading is
-    inside for the opposite reason - the component edits the name, and a
-    heading left outside would still show the value the page was loaded with
-    after the first save.
+    Everything the component edits belongs inside, and everything it edits is
+    inside: the name heading, the details, both collections and the image. A
+    value left outside would still show what the page was loaded with after the
+    first save, while the surface next to it showed the new one - the page would
+    disagree with itself about the same record.
 
-    Profile/Card is deliberately not used here although it renders both. It
-    bundles the image with the name, and this template needs them on different
-    sides of the element.
+    The image was outside while it was read only. It moved in when the upload
+    and remove endpoints landed, and the detail view still renders it outside
+    its own markup, which is why the two templates place the same partial
+    differently.
+
+    Profile/Card is deliberately not used here although it renders the image and
+    the name together. That pairing is what the detail view wants; this template
+    composes the two partials itself.
 
     The assets are loaded in this branch only. A visitor who is not logged in
     gets no editing module, and there is nothing on the page for it to enhance.
@@ -83,13 +87,6 @@
                 <f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend-edit.js" />
 
                 <f:variable name="imageAlternativeText" value="{f:translate(key: 'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.image.alt', arguments: {0: profileName})}" />
-                <f:render
-                    partial="Profile/Image"
-                    arguments="{
-                        image: profile.profileImage,
-                        alternativeText: imageAlternativeText
-                    }"
-                />
 
                 <modern-extbase-frontend-edit-profile
                     data-profile="{profileJson}"
@@ -98,6 +95,25 @@
                     data-labels="{labelsJson}"
                 >
                     <h3 class="modern-extbase-frontend-edit-profile-name">{profileName}</h3>
+
+                    <f:comment>
+                        The image sits inside the element, unlike in the detail
+                        view, because here it is editable.
+
+                        Everything in this element is the no-JavaScript view and
+                        is replaced once the element upgrades. Rendering the
+                        image outside would leave the served file on screen
+                        after a replacement, next to a surface that already
+                        shows the new one — the page would disagree with itself
+                        about which image the profile has.
+                    </f:comment>
+                    <f:render
+                        partial="Profile/Image"
+                        arguments="{
+                            image: profile.profileImage,
+                            alternativeText: imageAlternativeText
+                        }"
+                    />
 
                     <f:render partial="Profile/Details" arguments="{profile: profile}" />
                     <f:render partial="Profile/AddressList" arguments="{addresses: addresses}" />

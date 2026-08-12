@@ -9,13 +9,12 @@ supported core versions.
 > These pages document the **design and the reasoning behind it**, and the code
 > is landing against them one change at a time. The domain, the schema, the
 > ownership resolver, the three plugins, the DTO/validation/mapping layer, the
-> write path, the seven JSON endpoints, the frontend asset toolchain and the lit
-> component that drives the endpoints all exist. **The image upload does not**,
-> and it is deliberately a change of its own. Where a page describes code that
-> does not exist yet, it says so.
+> write path, the nine endpoints, the frontend asset toolchain, the lit component
+> that drives them and the image upload all exist. Where a page describes code
+> that does not exist yet, it says so.
 >
-> Writing the code disproved five statements these pages made while they were
-> design only. All five are corrected **in place**, next to the reasoning they
+> Writing the code disproved ten statements these pages made while they were
+> design only. All ten are corrected **in place**, next to the reasoning they
 > replace, rather than collected in an errata list nobody reads:
 > the content object the endpoint `PAGE` calls and the need for
 > `config.no_cache` → [AJAX transport](ajax-transport.md#caching); what the
@@ -26,9 +25,20 @@ supported core versions.
 > no `.gitignore` at all
 > → [Frontend assets](frontend-assets.md#correction-gitignore-was-never-what-kept-php-cs-fixer-out);
 > and that the edit plugin would reuse `Profile/Card` — it cannot, because the
-> card bundles the image with the name and those two end up on different sides
-> of the custom element
+> card bundles the image and the name with the links that apply to a profile
 > → [Plugins and the Fluid layer](plugins-and-fluid.md#the-fluid-layer).
+>
+> The image upload disproved five more, and the first of them was dangerous: the
+> reference count that may delete a replaced file
+> → [Image handling](image-handling.md#correction-one-remaining-reference-was-the-wrong-threshold);
+> that `skipProperties()` is the only property mapping call a hand built upload
+> needs → [the third trap](image-handling.md#allowproperties-is-the-third-trap-and-the-quietest);
+> that `setMaxFiles(1)` expresses "one image"
+> → [the fourth](image-handling.md#setmaxfiles1-makes-replacement-impossible);
+> that a core validator message can be replaced with ours
+> → [the validators](image-handling.md#one-core-message-cannot-be-overridden-on-v143);
+> and that the image belongs outside the custom element
+> → [The edit plugin](edit-plugin.md#the-enhanced-surface-is-client-rendered).
 
 | Page                                                  | Contents                                                                                        |
 |-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
@@ -36,10 +46,10 @@ supported core versions.
 | [Plugins and the Fluid layer](plugins-and-fluid.md)   | The three plugins, their registration and settings, and the partial API.                        |
 | [The edit plugin](edit-plugin.md)                     | The two editing modes, the client-rendered surface, degradation, the one document factory.      |
 | [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.     |
-| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the seven endpoints, the request token.        |
+| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the nine endpoints, the request token.         |
 | [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence lives.       |
 | [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers.   |
-| [Image handling](image-handling.md)                   | The modern upload API, why the custom model is a read-side wrapper, replacement and cleanup.    |
+| [Image handling](image-handling.md)                   | The two image endpoints, the upload rules, the read-side wrapper, replacement and cleanup.      |
 | [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain, the gates and the CI job. |
 
 ## The short version
@@ -92,9 +102,19 @@ supported core versions.
   **densification is not repaired**, so pre-existing gaps in `sorting` survive;
   and the profile's own **`hidden` flag is readable and not writable**.
   → [Persistence and sorting](persistence-and-sorting.md#what-the-write-path-does-not-do)
-  The fourth is that **image upload is not implemented** and is deliberately not
-  one of the seven endpoints — it is a different transport with a different
-  cleanup rule. → [AJAX transport](ajax-transport.md#the-seven-endpoints)
+  The fourth is that the profile's **image carries no metadata editing** — no
+  alternative text, no title, no cropping — and that a replaced file is only
+  *unlinked* on a storage without a `_recycler_` folder.
+  → [Image handling](image-handling.md#named-gaps)
+- **The image is the one endpoint that is not JSON.** A file cannot travel in a
+  JSON body without base64, so `uploadImage` is `multipart/form-data` — and the
+  client must not set the `Content-Type` header itself, because the boundary is
+  the browser's to add. Everything else about the request and the whole answer
+  are unchanged. → [Image handling](image-handling.md#the-two-endpoints)
+- **A replaced file is deleted only when nothing but our own reference row
+  points at it.** Deleting a `sys_file` hard-deletes every `sys_file_reference`
+  in every table, so a guard that is off by one costs somebody else's record.
+  → [Image handling](image-handling.md#the-cleanup-and-the-safeguard-that-makes-it-safe)
 - **The edit plugin has a controller of its own**, because the read controller
   never touches the `Edit\` repositories and the owner's editing view must show
   the children the owner hid. → [The edit plugin](edit-plugin.md)

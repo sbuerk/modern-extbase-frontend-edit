@@ -51,9 +51,10 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
     /**
      * Every endpoint that writes, with a payload that succeeds in the live
      * workspace — see {@see ProfileAjaxAuthorizationTest::writingEndpoints()}
-     * for why the payloads are complete.
+     * for why the payloads are complete and why the multipart upload is a row
+     * of this provider rather than a test of its own.
      *
-     * @return \Generator<string, array{action: string, payload: array<string, mixed>}>
+     * @return \Generator<string, array{action: string, payload: array<string, mixed>, multipart?: bool}>
      */
     public static function writingEndpoints(): \Generator
     {
@@ -88,6 +89,15 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
             'action' => 'setChildVisibility',
             'payload' => ['uid' => self::OWNED_PROFILE_UID, 'child' => 'address', 'childUid' => 1, 'hidden' => true],
         ];
+        yield 'uploadImage' => [
+            'action' => 'uploadImage',
+            'payload' => ['uid' => self::IMAGE_PROFILE_UID],
+            'multipart' => true,
+        ];
+        yield 'removeImage' => [
+            'action' => 'removeImage',
+            'payload' => ['uid' => self::IMAGE_PROFILE_UID],
+        ];
     }
 
     /**
@@ -95,13 +105,17 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
      */
     #[DataProvider('writingEndpoints')]
     #[Test]
-    public function aWriteIsRefusedWhileAWorkspaceIsActiveAndWritesNothing(string $action, array $payload): void
-    {
+    public function aWriteIsRefusedWhileAWorkspaceIsActiveAndWritesNothing(
+        string $action,
+        array $payload,
+        bool $multipart = false,
+    ): void {
         $snapshot = $this->recordSnapshot();
 
-        $response = $this->sendAjaxRequest(
+        $response = $this->sendWriteRequest(
             action: $action,
             payload: $payload,
+            multipart: $multipart,
             frontendUserId: self::OWNER_FRONTEND_USER_ID,
             workspaceId: 1,
         );
@@ -109,6 +123,7 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
         $this->assertSame(409, $response->getStatusCode());
         $this->assertSame([1786495905], $this->errorCodes($response));
         $this->assertSame($snapshot, $this->recordSnapshot(), 'The live records are byte identical afterwards.');
+        $this->assertSame([], $this->storedUploadFileNames(), 'No file reached the storage.');
     }
 
     /**
@@ -122,11 +137,15 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
      */
     #[DataProvider('writingEndpoints')]
     #[Test]
-    public function theSameWriteSucceedsInTheLiveWorkspace(string $action, array $payload): void
-    {
-        $response = $this->sendAjaxRequest(
+    public function theSameWriteSucceedsInTheLiveWorkspace(
+        string $action,
+        array $payload,
+        bool $multipart = false,
+    ): void {
+        $response = $this->sendWriteRequest(
             action: $action,
             payload: $payload,
+            multipart: $multipart,
             frontendUserId: self::OWNER_FRONTEND_USER_ID,
             workspaceId: 0,
         );

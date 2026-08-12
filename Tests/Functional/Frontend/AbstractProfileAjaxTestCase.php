@@ -7,9 +7,12 @@ namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend;
 use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\ResponseInterface;
 use SBUERK\ModernExtbaseFrontendEdit\Controller\ProfileAjaxController;
+use SBUERK\ModernExtbaseFrontendEdit\Validation\ProfileImageUploadRules;
 use TYPO3\CMS\Core\Database\Connection;
+use TYPO3\CMS\Core\Http\UploadedFile;
 use TYPO3\CMS\Core\Security\Nonce;
 use TYPO3\CMS\Core\Security\RequestToken;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\HttpUtility;
 use TYPO3\CMS\Frontend\Page\CacheHashCalculator;
 use TYPO3\TestingFramework\Core\Functional\Framework\Frontend\InternalRequest;
@@ -57,6 +60,16 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
      * `ajaxPageType` TypoScript constant that `ext_localconf.php` registers.
      */
     protected const AJAX_PAGE_TYPE = 1589;
+
+    /**
+     * The plugin namespace every argument of these endpoints is nested under.
+     *
+     * `ExtensionService::getPluginNamespace()` derives it from the extension
+     * name and the plugin name, and both the query arguments of a request and
+     * the parts of a multipart body have to spell it — see
+     * `RequestBuilder::build()`.
+     */
+    protected const PLUGIN_NAMESPACE = 'tx_modernextbasefrontendedit_ajax';
 
     /**
      * The profile of {@see AbstractProfilePluginTestCase::OWNER_FRONTEND_USER_ID},
@@ -157,19 +170,45 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
      * The tables a request must not change when it is refused, and the tables
      * every successful write is read back from.
      *
+     * The two FAL tables are part of the list because the upload endpoint
+     * writes them, and because they are the tables an *unrelated* record loses
+     * data in when the cleanup guard fails open — a snapshot that covered only
+     * the three record tables would call that request "wrote nothing".
+     *
      * @var list<string>
      */
     protected const RECORD_TABLES = [
         self::PROFILE_TABLE,
         self::ADDRESS_TABLE,
         self::EMAIL_TABLE,
+        self::FILE_TABLE,
+        self::FILE_REFERENCE_TABLE,
     ];
+
+    protected const FILE_TABLE = 'sys_file';
+    protected const FILE_REFERENCE_TABLE = 'sys_file_reference';
+
+    /**
+     * The name the "browser" states for the uploaded file.
+     *
+     * Deliberately not the name of the fixture file on disk: the target name is
+     * derived from the *client* name plus the random suffix, so a test asserting
+     * the stored name would pass for an implementation that took the name from
+     * the temporary file instead.
+     */
+    protected const UPLOAD_CLIENT_FILE_NAME = 'portrait.png';
+
+    /**
+     * The boundary of the multipart body — see {@see sendUploadRequest()}.
+     */
+    private const MULTIPART_BOUNDARY = '----ModernExtbaseFrontendEditTestBoundary';
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->importCSVDataSet(__DIR__ . '/../Fixtures/Database/ProfileAjaxRecords.csv');
+        $this->resetProfileImageFiles();
     }
 
     /**
@@ -259,6 +298,223 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
     }
 
     /**
+     * Fires one write at an endpoint, whichever transport that endpoint speaks.
+     *
+     * The upload is the only `multipart/form-data` endpoint of this controller,
+     * and it is subject to exactly the same authorization, request token and
+     * workspace rules as the JSON ones. Those rules are asserted from shared
+     * data providers, so the providers name the transport and this method is
+     * what keeps the provider from having to know how either of them is built.
+     *
+     * The payload of a multipart write is the `uid` and nothing else: the file
+     * is the rest of the request, and every caller of this method that sends one
+     * sends the same fixture image.
+     *
+     * @param array<string, mixed> $payload
+     */
+    protected function sendWriteRequest(
+        string $action,
+        array $payload,
+        bool $multipart = false,
+        ?int $frontendUserId = null,
+        string $requestToken = self::TOKEN_VALID,
+        ?int $workspaceId = null,
+    ): ResponseInterface {
+        if (!$multipart) {
+            return $this->sendAjaxRequest(
+                action: $action,
+                payload: $payload,
+                frontendUserId: $frontendUserId,
+                requestToken: $requestToken,
+                workspaceId: $workspaceId,
+            );
+        }
+
+        $uid = $payload['uid'] ?? null;
+        $this->assertIsInt($uid, 'A multipart write addresses a record by uid.');
+
+        return $this->sendUploadRequest(
+            uid: $uid,
+            frontendUserId: $frontendUserId,
+            requestToken: $requestToken,
+            workspaceId: $workspaceId,
+        );
+    }
+
+    /**
+     * Fires one `multipart/form-data` upload at the image endpoint.
+     *
+     * ## What is real here, and what is not
+     *
+     * The body is a genuine multipart body: the parts are serialized with the
+     * boundary the `Content-Type` header announces, so the request that reaches
+     * the middleware chain is byte for byte one a browser could have sent.
+     *
+     * The parsed body and the uploaded files are set **as well**, and that is
+     * not a shortcut around the encoding — it is where a multipart request
+     * comes from in TYPO3. `ServerRequestFactory::fromGlobals()` builds them
+     * from `$_POST` and `$_FILES` (`cms-core/Classes/Http/ServerRequestFactory.php:99-104`),
+     * which PHP itself fills by parsing the body before any TYPO3 code runs.
+     * Neither core nor the testing framework contains a multipart parser, so a
+     * request built here has to state the parse result the same way the SAPI
+     * would have.
+     *
+     * The uploaded file is a `\TYPO3\CMS\Core\Http\UploadedFile` around a real
+     * temporary file, because both consumers insist on it: the upload
+     * validators reject anything else outright
+     * (`AbstractValidator::ensureFileUploadTypes()`, 1712057926), and
+     * `ResourceStorage::addUploadedFile()` moves the file named by
+     * `getTemporaryFileName()`. The temporary file is written inside the test
+     * instance rather than into the system temporary directory, so that a run
+     * cannot leave anything behind outside the instance it is cleaned up with.
+     *
+     * @param int|null $uid the `uid` part, or `null` to omit it entirely
+     * @param string|null $contents the file bytes, or `null` for the fixture image
+     * @param int $fileCount how many parts carry the image property — `2` is the "one file only" case
+     */
+    protected function sendUploadRequest(
+        ?int $uid,
+        ?int $frontendUserId = null,
+        string $requestToken = self::TOKEN_VALID,
+        string $method = 'POST',
+        ?string $contentType = 'multipart/form-data; boundary=' . self::MULTIPART_BOUNDARY,
+        ?int $workspaceId = null,
+        string $clientFileName = self::UPLOAD_CLIENT_FILE_NAME,
+        ?string $contents = null,
+        string $clientMediaType = 'image/png',
+        int $fileCount = 1,
+        ?string $rawUid = null,
+    ): ResponseInterface {
+        $contents ??= $this->fixtureImageBytes();
+        $uidPart = $rawUid ?? ($uid === null ? null : (string)$uid);
+
+        $request = (new InternalRequest($this->ajaxUri('uploadImage')))->withMethod($method);
+        if ($contentType !== null) {
+            $request = $this->asInternalRequest($request->withHeader('Content-Type', $contentType));
+        }
+        if ($requestToken !== self::TOKEN_ABSENT) {
+            $token = $this->requestTokenParts($requestToken);
+            $request = $this->asInternalRequest($request->withHeader(RequestToken::HEADER_NAME, $token['headerValue']));
+            $request = $request->withCookieParams(
+                array_replace($request->getCookieParams(), [$token['cookieName'] => $token['cookieValue']]),
+            );
+        }
+
+        $fields = [];
+        if ($uidPart !== null) {
+            $fields[self::PLUGIN_NAMESPACE . '[' . ProfileAjaxController::UPLOAD_UID_FIELD . ']'] = $uidPart;
+        }
+
+        $filePartName = self::PLUGIN_NAMESPACE
+            . '[' . ProfileAjaxController::UPLOAD_ARGUMENT . ']'
+            . '[' . ProfileImageUploadRules::PROPERTY . ']';
+
+        $uploadedFiles = [];
+        $fileParts = [];
+        for ($index = 0; $index < $fileCount; $index++) {
+            $uploadedFiles[] = $this->createUploadedFile($contents, $clientFileName, $clientMediaType);
+            $fileParts[] = [
+                'name' => $fileCount === 1 ? $filePartName : $filePartName . '[]',
+                'filename' => $clientFileName,
+                'mediaType' => $clientMediaType,
+                'contents' => $contents,
+            ];
+        }
+
+        $request->getBody()->write($this->multipartBody($fields, $fileParts));
+
+        $parsedBody = [];
+        if ($uidPart !== null) {
+            $parsedBody[self::PLUGIN_NAMESPACE][ProfileAjaxController::UPLOAD_UID_FIELD] = $uidPart;
+        }
+        $request = $this->asInternalRequest($request->withParsedBody($parsedBody));
+        $request = $this->asInternalRequest($request->withUploadedFiles([
+            self::PLUGIN_NAMESPACE => [
+                ProfileAjaxController::UPLOAD_ARGUMENT => [
+                    ProfileImageUploadRules::PROPERTY => $fileCount === 1 ? $uploadedFiles[0] : $uploadedFiles,
+                ],
+            ],
+        ]));
+
+        $context = new InternalRequestContext();
+        if ($frontendUserId !== null) {
+            $context = $context->withFrontendUserId($frontendUserId);
+        }
+        if ($workspaceId !== null) {
+            $context = $context->withWorkspaceId($workspaceId);
+        }
+
+        return $this->executeFrontendSubRequest($request, $context);
+    }
+
+    /**
+     * The bytes of the committed fixture image.
+     *
+     * Read from the extension rather than from the instance, so that a test
+     * which just deleted the copy in `fileadmin/` can still upload it.
+     */
+    protected function fixtureImageBytes(): string
+    {
+        $bytes = file_get_contents(__DIR__ . '/../Fixtures/Files/' . self::IMAGE_FILE_NAME);
+        $this->assertIsString($bytes);
+
+        return $bytes;
+    }
+
+    /**
+     * A `UploadedFile` around a temporary file inside the test instance.
+     *
+     * `UPLOAD_ERR_OK` and the real byte count, because both are read: the size
+     * is what `ResourceStorage::assureFileUploadPermissions()` compares against
+     * `upload_max_filesize`, and an error status other than `UPLOAD_ERR_OK`
+     * makes `FileHandlingServiceConfiguration` refuse the file before a
+     * validator sees it.
+     */
+    private function createUploadedFile(string $contents, string $clientFileName, string $clientMediaType): UploadedFile
+    {
+        $folder = $this->instancePath . '/typo3temp/var/transient/';
+        GeneralUtility::mkdir_deep($folder);
+        $temporaryFile = $folder . 'upload-' . bin2hex(random_bytes(8)) . '.tmp';
+        file_put_contents($temporaryFile, $contents);
+
+        return new UploadedFile(
+            $temporaryFile,
+            strlen($contents),
+            UPLOAD_ERR_OK,
+            $clientFileName,
+            $clientMediaType,
+        );
+    }
+
+    /**
+     * The parts, serialized the way a browser serializes them.
+     *
+     * `CRLF` throughout and a closing `--<boundary>--`, because that is what the
+     * media type means; nothing in this test suite parses it back, and a body
+     * that only looked plausible would make the `Content-Type` header a lie.
+     *
+     * @param array<string, string> $fields
+     * @param list<array{name: string, filename: string, mediaType: string, contents: string}> $files
+     */
+    private function multipartBody(array $fields, array $files): string
+    {
+        $body = '';
+        foreach ($fields as $name => $value) {
+            $body .= '--' . self::MULTIPART_BOUNDARY . CRLF
+                . 'Content-Disposition: form-data; name="' . $name . '"' . CRLF . CRLF
+                . $value . CRLF;
+        }
+        foreach ($files as $file) {
+            $body .= '--' . self::MULTIPART_BOUNDARY . CRLF
+                . 'Content-Disposition: form-data; name="' . $file['name'] . '"; filename="' . $file['filename'] . '"' . CRLF
+                . 'Content-Type: ' . $file['mediaType'] . CRLF . CRLF
+                . $file['contents'] . CRLF;
+        }
+
+        return $body . '--' . self::MULTIPART_BOUNDARY . '--' . CRLF;
+    }
+
+    /**
      * The endpoint URL, with a valid cHash.
      *
      * Without one `PageArgumentValidator` answers `404` before Extbase is
@@ -270,7 +526,7 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
     protected function ajaxUri(string $action): string
     {
         $pluginArguments = [
-            'tx_modernextbasefrontendedit_ajax' => [
+            self::PLUGIN_NAMESPACE => [
                 'controller' => 'ProfileAjax',
                 'action' => $action,
             ],

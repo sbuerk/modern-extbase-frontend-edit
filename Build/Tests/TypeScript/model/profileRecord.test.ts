@@ -17,8 +17,10 @@ import { describe, it } from 'node:test';
 import type { ProfileRecord } from '../../../Sources/TypeScript/model/types.js';
 import {
     childUids,
+    displayName,
     fieldValue,
     movedChildOrder,
+    parseProfileImage,
     parseProfileRecord,
     recordOf,
     recordValues,
@@ -80,6 +82,71 @@ describe('parseProfileRecord', (): void => {
 
         assert.deepEqual(childUids(profile, 'address'), [7]);
         assert.deepEqual(childUids(profile, 'email'), []);
+    });
+});
+
+describe('parseProfileImage', (): void => {
+    it('reads the image the server described, and does not derive the URL from the name', (): void => {
+        const image = parsed().image;
+
+        assert.notEqual(image, null);
+        assert.equal(image?.uid, 5);
+        assert.equal(image?.fileUid, 12);
+        assert.equal(image?.publicUrl, '/fileadmin/user_upload/profiles/portrait-9f2c1ab4c07d3e51.jpg');
+        assert.equal(image?.width, 320);
+        assert.equal(image?.height, 400);
+    });
+
+    it('answers null for a profile that has none, which is a state and not a failure', (): void => {
+        assert.equal(parsed(profileDocumentWith({ image: null })).image, null);
+        assert.equal(parsed(profileDocumentWith({ image: undefined })).image, null);
+        assert.equal(parsed(profileDocumentWith({ image: 'portrait.jpg' })).image, null);
+        assert.equal(parsed(profileDocumentWith({ image: { fileUid: 12 } })).image, null, 'no reference uid');
+    });
+
+    it('applies the whole document of a replacement rather than patching the old one', (): void => {
+        const replaced = parsed(profileDocumentWith({
+            image: {
+                uid: 5,
+                fileUid: 13,
+                publicUrl: '/fileadmin/user_upload/profiles/holiday-0b7d4e2f9a1c6538.png',
+                name: 'holiday-0b7d4e2f9a1c6538.png',
+                extension: 'png',
+                mimeType: 'image/png',
+                size: 81920,
+                title: '',
+                alternative: '',
+                width: 600,
+                height: 600,
+            },
+        }));
+
+        assert.equal(replaced.image?.publicUrl, '/fileadmin/user_upload/profiles/holiday-0b7d4e2f9a1c6538.png');
+        assert.equal(replaced.image?.fileUid, 13, 'the same reference row now points at another file');
+        assert.equal(replaced.image?.title, '', 'and the title of the previous file does not survive');
+    });
+
+    it('keeps a reference whose file is gone, so it stays removable', (): void => {
+        const image = parseProfileImage({ uid: 5, fileUid: 12, publicUrl: null });
+
+        assert.equal(image?.uid, 5);
+        assert.equal(image?.publicUrl, '', 'a null public URL normalises like every other missing scalar');
+    });
+
+    it('keeps a missing dimension null, because an empty width attribute is invalid markup', (): void => {
+        const image = parseProfileImage({ uid: 5, width: null, height: '400' });
+
+        assert.equal(image?.width, null);
+        assert.equal(image?.height, null, 'a string is not a dimension');
+        assert.equal(parseProfileImage({ uid: 5, width: 0 })?.width, 0, 'but zero is a number and stays one');
+    });
+});
+
+describe('displayName', (): void => {
+    it('answers what the server would, so the alternative text says the same thing', (): void => {
+        assert.equal(displayName(parsed()), 'Ada Lovelace');
+        assert.equal(displayName(parsed(profileDocumentWith({ lastname: '' }))), 'Ada');
+        assert.equal(displayName(parsed(profileDocumentWith({ firstname: '', lastname: '' }))), 'ada');
     });
 });
 
