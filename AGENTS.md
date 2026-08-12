@@ -260,6 +260,7 @@ Build/Scripts/runTests.sh -t 13 -s lintPhp
 Build/Scripts/runTests.sh -t 13 -s unit
 Build/Scripts/runTests.sh -t 13 -s unitRandom
 Build/Scripts/runTests.sh -t 13 -s functional -d sqlite
+Build/Scripts/runTests.sh -t 13 -s acceptance
 Build/Scripts/runTests.sh -t 13 -s composerValidate
 Build/Scripts/runTests.sh -t 13 -s checkBom
 Build/Scripts/runTests.sh -t 13 -s checkExceptionCodes
@@ -271,6 +272,12 @@ Build/Scripts/runTests.sh -t 13 -s checkTestMethodsPrefix
 Build/Scripts/runTests.sh -t 14 -s composerUpdate
 # …
 ```
+
+`-s acceptance` is the exception to the "everything twice" rule: it drives a
+browser against a seeded TYPO3 instance and covers the client half of the edit
+plugin, which is the same JavaScript on both core versions. It runs once, on the
+version that is installed, and CI runs it on v13 only.
+→ [Acceptance tests](docs/testing/acceptance-tests.md)
 
 Further:
 

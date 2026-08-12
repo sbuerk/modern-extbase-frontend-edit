@@ -24,7 +24,7 @@ printSummary() {
     fi
     echo "PHP: ${PHP_VERSION}" >&2
     echo "TYPO3: ${CORE_VERSION}" >&2
-    if [[ ${TEST_SUITE} =~ ^(functional)$ ]]; then
+    if [[ ${TEST_SUITE} =~ ^(functional|acceptance)$ ]]; then
         case "${DBMS}" in
             mariadb|mysql|postgres)
                 echo "DBMS: ${DBMS}  version ${DBMS_VERSION}  driver ${DATABASE_DRIVER}" >&2
@@ -64,6 +64,75 @@ waitFor() {
     if [[ $? -gt 0 ]]; then
         kill -SIGINT -$$
     fi
+}
+
+startAcceptanceInstance() {
+    # Brings up everything the acceptance suite needs, in the order it needs it:
+    # the seeded TYPO3 instance, a php-fpm pool serving it and an apache in front
+    # of that. Both server containers are attached to ${NETWORK} under the aliases
+    # "phpfpm" and "web", which is what lets the browser container reach the site
+    # as "http://web/" - the same host the site configuration carries as its base,
+    # and the reason no host port is published.
+    #
+    # Attaching them to the network is also what makes cleanUp() remove them: it
+    # enumerates the network, not a list of names.
+    local INSTANCE_PATH="${ROOT_DIR}/.Build/Web/typo3temp/var/tests/acceptance"
+
+    rm -rf \
+        "${ROOT_DIR}/.Build/Web/typo3temp/var/tests/playwright-reports" \
+        "${ROOT_DIR}/.Build/Web/typo3temp/var/tests/playwright-results"
+
+    ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name acceptance-seed-${SUFFIX} \
+        ${XDEBUG_MODE} -e XDEBUG_CONFIG="${XDEBUG_CONFIG}" \
+        ${IMAGE_PHP} php -dxdebug.mode=off Build/Scripts/setupAcceptanceInstance.php
+    SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
+
+    # "web" is both the network alias and the server name, because the site
+    # configuration carries "http://web/" as its base and TYPO3 resolves a site
+    # by the host it was requested with.
+    APACHE_COMMON_OPTIONS="-e APACHE_RUN_SERVERNAME=web -e APACHE_RUN_DOCROOT=${INSTANCE_PATH} -e PHPFPM_HOST=phpfpm -e PHPFPM_PORT=9000"
+
+    # Which user the two server processes run as is the whole game here, and the
+    # two runtimes need opposite answers:
+    #
+    # - **docker** runs the container as root unless told otherwise, so both are
+    #   pinned to the host uid/gid. That is the only way php-fpm can write the
+    #   SQLite file of a bind mount owned by the host user.
+    # - **rootless podman** already maps the container root to the host user, so
+    #   root *is* the right answer and "--user ${HOST_UID}" is the wrong one - it
+    #   lands on a subordinate uid with no write access, and every request then
+    #   fails with "attempt to write a readonly database" while apache still
+    #   serves a perfectly convincing TYPO3 exception page.
+    #
+    # Core passes "${USERSET}" in both branches and gets away with it because its
+    # CI runs docker. This is deliberately not copied.
+    #
+    # "#${HOST_GID}" rather than the "#${HOST_PID}" core passes: the value is a
+    # group id, and core's is a long standing typo that is harmless only because
+    # both of its containers make it.
+    if [ "${CONTAINER_BIN}" == "docker" ]; then
+        APACHE_OPTIONS="-e APACHE_RUN_USER=#${HOST_UID} -e APACHE_RUN_GROUP=#${HOST_GID}"
+        ${CONTAINER_BIN} run --rm -d --name acceptance-phpfpm-${SUFFIX} --network ${NETWORK} --network-alias phpfpm \
+            --add-host ${CONTAINER_HOST}:host-gateway ${USERSET} \
+            -e PHPFPM_USER=${HOST_UID} -e PHPFPM_GROUP=${HOST_GID} \
+            -v ${ROOT_DIR}:${ROOT_DIR} ${IMAGE_PHP} php-fpm -d xdebug.mode=off >/dev/null
+        SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
+        ${CONTAINER_BIN} run --rm -d --name acceptance-web-${SUFFIX} --network ${NETWORK} --network-alias web \
+            --add-host ${CONTAINER_HOST}:host-gateway \
+            -v ${ROOT_DIR}:${ROOT_DIR} ${APACHE_OPTIONS} ${APACHE_COMMON_OPTIONS} ${IMAGE_APACHE} >/dev/null
+        SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
+    else
+        APACHE_OPTIONS="-e APACHE_RUN_USER=#0 -e APACHE_RUN_GROUP=#0"
+        ${CONTAINER_BIN} run --rm ${CI_PARAMS} -d --name acceptance-phpfpm-${SUFFIX} --network ${NETWORK} --network-alias phpfpm \
+            -e PHPFPM_USER=0 -e PHPFPM_GROUP=0 \
+            -v ${ROOT_DIR}:${ROOT_DIR}:Z ${IMAGE_PHP} php-fpm -R -d xdebug.mode=off >/dev/null
+        SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
+        ${CONTAINER_BIN} run --rm ${CI_PARAMS} -d --name acceptance-web-${SUFFIX} --network ${NETWORK} --network-alias web \
+            -v ${ROOT_DIR}:${ROOT_DIR}:Z ${APACHE_OPTIONS} ${APACHE_COMMON_OPTIONS} ${IMAGE_APACHE} >/dev/null
+        SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
+    fi
+
+    waitFor web 80
 }
 
 cleanUp() {
@@ -193,6 +262,7 @@ Usage: $0 [options] [file]
 Options:
     -s <...>
         Specifies which test suite to run
+            - acceptance: browser based acceptance tests, driven by Playwright
             - buildJs: compile Build/Sources/ into Resources/Public/
             - cgl: test and fix all php files
             - checkBom: check UTF-8 files do not contain BOM
@@ -250,7 +320,7 @@ Options:
                 - pdo_mysql
 
     -d <sqlite|mariadb|mysql|postgres>
-        Only with -s functional
+        Only with -s functional. The acceptance suite is sqlite only.
         Specifies on which DBMS tests are performed
             - sqlite: (default): use sqlite
             - mariadb: use mariadb
@@ -352,6 +422,10 @@ Examples:
 
     # Run a single functional test class on sqlite, phpunit arguments after "--"
     ./Build/Scripts/runTests.sh -s functional -d sqlite -- --filter DummyTest
+
+    # Run the browser based acceptance suite, playwright arguments after "--"
+    ./Build/Scripts/runTests.sh -s acceptance
+    ./Build/Scripts/runTests.sh -s acceptance -- --grep "cancel"
 
     # Run functional tests on postgres 10
     ./Build/Scripts/runTests.sh -s functional -d postgres -i 10
@@ -532,6 +606,14 @@ IMAGE_DOCS="ghcr.io/typo3-documentation/render-guides:latest"
 # way core pins it - a node major changing under a committed build artifact is exactly
 # the kind of surprise that gate exists to catch, not to produce.
 IMAGE_NODEJS="ghcr.io/typo3/core-testing-nodejs24:1.1"
+# The two images of the acceptance suite, both pinned to the versions TYPO3 core
+# pins for its own Playwright suite. The Playwright image tag and the
+# "@playwright/test" entry of Build/playwright/package.json carry the same
+# version on purpose: the image ships the browser binaries, the package ships the
+# runner that drives them, and a runner newer than its browsers is a class of
+# failure that reads like a broken test.
+IMAGE_APACHE="ghcr.io/typo3/core-testing-apache24:1.7"
+IMAGE_PLAYWRIGHT="mcr.microsoft.com/playwright:v1.56.1-noble"
 IMAGE_MARIADB="docker.io/mariadb:${DBMS_VERSION}"
 IMAGE_MYSQL="docker.io/mysql:${DBMS_VERSION}"
 IMAGE_POSTGRES="docker.io/postgres:${DBMS_VERSION}-alpine"
@@ -591,6 +673,49 @@ fi
 
 # Suite execution
 case ${TEST_SUITE} in
+    acceptance)
+        # The only suite that needs a running TYPO3 and a real browser.
+        #
+        # SQLite only, and that is a decision rather than a gap: the reset
+        # between specs is a file copy of a snapshot, which is what makes an
+        # assertion about persistence possible without a per test container
+        # start. A server based DBMS would need a different mechanism, and no
+        # spec here asserts anything a second platform could disagree about -
+        # the queries are covered by "-s functional -d mariadb|mysql|postgres".
+        if [ "${DBMS}" != "sqlite" ]; then
+            echo "The acceptance suite supports \"-d sqlite\" only." >&2
+            SUITE_EXIT_CODE=1
+        else
+            startAcceptanceInstance
+            # "npm ci" runs in the Playwright image itself rather than in the
+            # node image the asset suites use. It only installs the runner - the
+            # browsers are already in the image, which is what the skip variable
+            # says - so a second image and a second container buy nothing here.
+            #
+            # Arguments are handed to "sh -c" as positional parameters instead of
+            # being interpolated, so a "--grep" pattern containing spaces stays
+            # one argument.
+            COMMAND=(/bin/sh -c 'cd Build/playwright && npm ci --no-audit --no-fund && npm test -- "$@"' acceptance "$@")
+            # NODE_PATH is what lets a spec in "Tests/Acceptance/" import
+            # "@playwright/test": node resolves "node_modules" by walking up from
+            # the importing file, and the specs deliberately do not live next to
+            # the manifest that installs the runner. The alternative is a
+            # "node_modules" in the repository root, i.e. a third package.json.
+            #
+            # "node:sqlite" - which the reset between specs verifies itself with
+            # - is experimental in node 22 and prints a warning per worker
+            # process. The suite fails on nothing else that is written to stderr,
+            # so the warning is silenced rather than tolerated as noise.
+            ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name acceptance-${SUFFIX} \
+                -e HOME=${ROOT_DIR}/.cache \
+                -e NODE_PATH=${ROOT_DIR}/Build/playwright/node_modules \
+                -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
+                -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+                -e CHROME_SANDBOX=false \
+                ${IMAGE_PLAYWRIGHT} "${COMMAND[@]}"
+            SUITE_EXIT_CODE=$?
+        fi
+        ;;
     buildJs)
         COMMAND="cd Build && npm ci && npm run build"
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name build-js-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"

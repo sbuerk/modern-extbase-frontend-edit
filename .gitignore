@@ -29,6 +29,11 @@
 /Build/node_modules
 /Build/.cache
 
+# The Playwright runner of the acceptance suite. A manifest of its own next to
+# "Build/package.json" on purpose: the asset build produces committed artifacts,
+# and a Playwright bump must not turn into a diff of shipped JavaScript.
+/Build/playwright/node_modules
+
 /.direnv
 /.envrc
 

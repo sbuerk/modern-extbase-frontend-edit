@@ -75,6 +75,9 @@ Build/Scripts/runTests.sh -s functional -d sqlite
 
 # A single class or method — note the "--" separator.
 Build/Scripts/runTests.sh -s functional -d sqlite -- --filter DummyTest
+
+# Browser based acceptance tests, against a TYPO3 instance this suite seeds.
+Build/Scripts/runTests.sh -s acceptance
 ```
 
 Test methods must **not** be prefixed with `test`; use the PHPUnit `#[Test]`
@@ -92,6 +95,7 @@ frontend sub-requests available everywhere.
 → [Testing](docs/testing/Index.md) ·
 [Unit tests](docs/testing/unit-tests.md) ·
 [Functional tests](docs/testing/functional-tests.md) ·
+[Acceptance tests](docs/testing/acceptance-tests.md) ·
 [Site based tests](docs/testing/site-based-tests.md)
 
 ## Code rules

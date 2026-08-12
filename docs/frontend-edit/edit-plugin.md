@@ -414,29 +414,43 @@ as the other frontend suites, so it is core version independent and needs no
   header, that each action goes to its own URL, and that neither a failed request
   nor a non-JSON body throws.
 
-### What only an acceptance harness can cover
+### What only a browser can cover, and what does
 
-Named as a gap rather than hidden. Everything in the list below needs a real
-browser — a custom element upgrade, a shadow root, a focus ring, a native date
-control:
+Everything in the list below needs a real browser — a custom element upgrade, a
+shadow root, a focus ring, a native date control — and most of it is now covered
+by the [acceptance suite](../testing/acceptance-tests.md), which drives a seeded
+TYPO3 instance with Playwright.
 
-- That the element **refuses to enhance** for each of the six refusal conditions,
-  and that the light DOM stays visible when it does.
-- That the shadow root does **not** slot the light DOM children once it upgrades.
-- Focus movement: into a freshly opened control, and onto the first field a `422`
-  named.
-- The `<select>` value synchronisation in `updated()`, which exists because a
+| Behaviour                                                                     | Covered by                       |
+|-------------------------------------------------------------------------------|----------------------------------|
+| The real `fetch`, the cHash-bearing URL and the request token, end to end     | every spec that writes           |
+| A saved field is served by the **server** after a reload                      | `InlineEdit.spec.ts`             |
+| Cancel reverts to the last server known value, after a successful save        | `InlineEdit.spec.ts`             |
+| A `422` lands at the field and keeps the draft                                | `InlineEdit.spec.ts`             |
+| Focus moves into a freshly opened control                                     | `InlineEdit.spec.ts`             |
+| Enter applies, Escape cancels                                                 | `InlineEdit.spec.ts`             |
+| Reorder, removal and the visibility toggle survive a reload                   | `ChildCollections.spec.ts`       |
+| Adding a child stores what was typed, not the values a new record starts from | `ChildCollections.spec.ts`       |
+| The light DOM stays readable when the element does not upgrade                | `ProgressiveEnhancement.spec.ts` |
+| The shadow root does **not** slot the light DOM children once it upgrades     | `ProgressiveEnhancement.spec.ts` |
+| `lit` resolves from the frontend import map                                   | `ProgressiveEnhancement.spec.ts` |
+
+What is still open, and why:
+
+- **Five of the six refusal conditions.** Only "no JavaScript" is covered. A
+  malformed `data-profile`, an `ajaxPageType` of `0`, an incomplete endpoint map
+  and a missing request token each need a differently misconfigured instance,
+  i.e. one seeded instance per condition.
+- **Focus onto the first field a `422` named**, as opposed to into a freshly
+  opened control.
+- **The `<select>` value synchronisation in `updated()`**, which exists because a
   `.value` binding is committed before the `<option>` children exist.
-- Enter and Escape, including that Enter is not bound in a textarea.
-- The real `fetch`, the real cHash-bearing URL and the real request token, end to
-  end against a running TYPO3 instance.
+- **That Enter is not bound in a textarea**, which is the one keyboard case with
+  no counterpart in the covered set.
 
-Real-browser JavaScript tests are
-[deliberately deferred](frontend-assets.md#the-toolchain-and-why-it-is-smaller-than-cores):
-`@web/test-runner` needs a ~700 MB Chrome image and a hand-written import map.
-The PHP functional test covers the server half of everything in that list that
-has a server half, which is the four attributes and the assets — not the
-behaviour of the component.
+The PHP functional test covers the server half of everything in the table that
+has a server half — the four attributes and the assets — and not the behaviour of
+the component.
 
 ## Two duplications, recorded rather than hidden
 

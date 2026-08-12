@@ -70,6 +70,7 @@
         "phpstan": "Build/Scripts/runTests.sh -s phpstan",
         "test:unit": "Build/Scripts/runTests.sh -s unit",
         "test:functional": "Build/Scripts/runTests.sh -s functional",
+        "test:acceptance": "Build/Scripts/runTests.sh -s acceptance",
         "docs": "Build/Scripts/runTests.sh -s renderDocumentation"
     },
     "extra": {

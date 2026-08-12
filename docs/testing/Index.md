@@ -1,13 +1,15 @@
 # Testing
 
-Both test suites run through [`Build/Scripts/runTests.sh`](../../Build/Scripts/runTests.sh)
-and must pass for **both** supported TYPO3 versions.
+Every test suite runs through [`Build/Scripts/runTests.sh`](../../Build/Scripts/runTests.sh).
+The two PHP suites must pass for **both** supported TYPO3 versions; the browser
+based [acceptance suite](acceptance-tests.md) runs once, against v13.
 
 | Page                                              | Contents                                                                                                                  |
 |---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
 | [PHPUnit configuration](phpunit-configuration.md) | Where `Build/phpunit/*` comes from, the deliberate deviations from the testing framework template, the strictness policy. |
 | [Unit tests](unit-tests.md)                       | Layout and conventions, data providers, core version aware tests, testing injected classes.                               |
 | [Functional tests](functional-tests.md)           | The base test case, databases, container assertions, fixtures.                                                            |
+| [Acceptance tests](acceptance-tests.md)           | The seeded TYPO3 instance, the Playwright suite, the reset between specs, what only a browser can prove.                  |
 | [Fixture extensions](fixture-extensions.md)       | Test-only extensions below `Tests/Functional/Fixtures/Extensions/`, loaded by composer package name.                      |
 | [Site based tests](site-based-tests.md)           | Site configuration with several languages and frontend sub-requests.                                                      |
 | [Environment state](environment-state.md)         | Application type and language context for functional tests.                                                               |
@@ -26,6 +28,9 @@ Build/Scripts/runTests.sh -s functional -d sqlite
 
 # A single class or method — note the "--" separator.
 Build/Scripts/runTests.sh -s functional -d sqlite -- --filter ExtensionLoadedTest
+
+# Browser based acceptance tests, against a seeded TYPO3 instance.
+Build/Scripts/runTests.sh -s acceptance
 ```
 
 ## The two tests that must never be dropped

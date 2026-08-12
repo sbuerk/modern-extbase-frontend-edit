@@ -160,16 +160,21 @@ patch version, so a future lit major in core changes the API under us; and using
 anonymous import map. The second is not a security issue — those are core's own
 file names and the core version is discoverable anyway.
 
-The first is **still unmitigated**, and the shape of the gap has changed rather
-than closed. `ProfileEditPluginTest::theAssetsOfTheEditingSurfaceAreEmitted()`
-now asserts that an import map is emitted and that it carries
+The first is **closed**, and by the second of the two routes. It stayed open
+while `ProfileEditPluginTest::theAssetsOfTheEditingSurfaceAreEmitted()` was the
+only assertion: it asserts that an import map is emitted and that it carries
 `@sbuerk/modern-extbase-frontend-edit/frontend-edit.js`, which is what a
-`USER_INT` plugin has to get out of the non-cached pass. It asserts nothing
-about `lit`: our own specifier resolving says nothing about the specifier our
-module imports. A lit major in core would therefore still surface as a broken
-page rather than as a red gate, and closing that needs either an assertion on
-the emitted map's `lit` entry or a real browser — see
-[what only an acceptance harness can cover](edit-plugin.md#what-only-an-acceptance-harness-can-cover).
+`USER_INT` plugin has to get out of the non-cached pass — and it asserts nothing
+about `lit`, because our own specifier resolving says nothing about the specifier
+our module imports.
+
+`ProgressiveEnhancement.spec.ts` of the
+[acceptance suite](../testing/acceptance-tests.md) closes it in the only place it
+can be closed: it reads the `lit` entry out of the emitted map, then evaluates
+`await import('lit')` in the page and asserts that `LitElement`, `html` and `css`
+are functions, and that both custom elements are registered afterwards. A lit
+major version bump in core now reaches this extension as a red gate rather than
+as a broken page.
 
 ## The toolchain, and why it is smaller than core's
 

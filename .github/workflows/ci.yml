@@ -9,10 +9,10 @@ name: "CI"
 #
 # Staging, cheapest and most likely to fail first:
 #
-#   quality ─┐
-#   phpstan ─┤
-#   lint    ─┼─> unit ─> functional (SQLite) ─> functional (MySQL, MariaDB, …)
-#            │
+#   quality ─┐                                  ┌─> functional (MySQL, MariaDB, …)
+#   phpstan ─┤                                  │
+#   lint    ─┼─> unit ─> functional (SQLite) ───┤
+#            │                                  └─> acceptance (browser)
 #   docs ────┘  (independent, for fast feedback on documentation changes)
 #
 # "ci-status" closes the graph. Every other job feeds into it, so there is one
@@ -321,6 +321,68 @@ jobs:
           include-hidden-files: true
           overwrite: true
 
+  acceptance:
+    name: "acceptance"
+    runs-on: ubuntu-22.04
+    # Staged behind the SQLite functional tests for the same reason the DBMS
+    # matrix is: a browser suite is the most expensive and the least specific
+    # signal in this workflow. If the endpoints are broken, the functional tests
+    # say so in a sentence and this job would say it in a screenshot.
+    needs: [ "functional-sqlite" ]
+    # No matrix, and that is the deliberate trade. What this suite covers is the
+    # browser half — the custom element upgrading, the import map resolving, a
+    # save surviving a reload — and none of it is PHP version or core version
+    # specific; the server half of every one of those paths is covered by
+    # "functional" on both core versions and both edge PHP versions. Running it
+    # per matrix cell would quadruple the two largest image pulls in the workflow
+    # to re-prove the same JavaScript.
+    steps:
+
+      - name: "Checkout"
+        uses: actions/checkout@v6
+
+      - name: "Cache composer downloads"
+        uses: actions/cache@v6
+        with:
+          path: ".cache/composer"
+          key: "composer-8.2-v13-${{ hashFiles('composer.json') }}"
+          restore-keys: |
+            composer-8.2-v13-
+            composer-8.2-
+
+      # A separate manifest from the asset build, so this cache key is the
+      # Playwright lockfile and not the one of the shipped JavaScript.
+      - name: "Cache npm downloads"
+        uses: actions/cache@v6
+        with:
+          path: ".cache/.npm"
+          key: "npm-acceptance-${{ hashFiles('Build/playwright/package-lock.json') }}"
+          restore-keys: "npm-acceptance-"
+
+      - name: "Prepare dependencies for TYPO3 v13"
+        run: "Build/Scripts/runTests.sh -b docker -t 13 -p 8.2 -s composerUpdate"
+
+      - name: "Execute acceptance tests"
+        run: "Build/Scripts/runTests.sh -b docker -t 13 -p 8.2 -d sqlite -s acceptance"
+
+      # Traces, screenshots, the HTML report and the TYPO3 log of the instance.
+      # Only on failure: a green run produces nothing worth keeping, and there
+      # are no retries, so the trace of the one run that failed is the only
+      # record there will be.
+      - name: "Upload the Playwright artifacts"
+        if: "failure()"
+        uses: actions/upload-artifact@v6
+        with:
+          name: "acceptance-artifacts"
+          path: |
+            .Build/Web/typo3temp/var/tests/playwright-reports/
+            .Build/Web/typo3temp/var/tests/playwright-results/
+            .Build/Web/typo3temp/var/tests/acceptance/typo3temp/var/log/
+          compression-level: 9
+          if-no-files-found: "warn"
+          retention-days: 5
+          include-hidden-files: true
+
   frontend-assets:
     name: "frontend assets"
     runs-on: ubuntu-latest
@@ -373,6 +435,7 @@ jobs:
       - "unit"
       - "functional-sqlite"
       - "functional-dbms"
+      - "acceptance"
       - "documentation"
       - "frontend-assets"
     steps:
