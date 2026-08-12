@@ -21,5 +21,14 @@ plugin.tx_modernextbasefrontendedit {
     settings {
         showPageUid = {$modernextbasefrontendedit.showPageUid}
         editPageUid = {$modernextbasefrontendedit.editPageUid}
+        ajaxPageType = {$modernextbasefrontendedit.ajaxPageType}
     }
+    view.formatToPageTypeMapping.json = {$modernextbasefrontendedit.ajaxPageType}
 }
+
+# The endpoint PAGE object itself is defined once, in "ext_localconf.php", so
+# that a site which does not use this set gets it too. Only the type number is
+# restated here, because a site setting cannot reach a TypoScript *constant* —
+# the classic constant this object is built from carries the default, and this
+# line is what makes the site setting win on a site that uses the set.
+modernextbasefrontendedit_ajax.typeNum = {$modernextbasefrontendedit.ajaxPageType}

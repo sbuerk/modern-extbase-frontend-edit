@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use SBUERK\ModernExtbaseFrontendEdit\Controller\ProfileAjaxController;
 use SBUERK\ModernExtbaseFrontendEdit\Controller\ProfileController;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
@@ -69,6 +70,43 @@ ExtensionUtility::configurePlugin(
     ExtensionUtility::PLUGIN_TYPE_CONTENT_ELEMENT,
 );
 
+// The JSON endpoints of the edit plugin.
+//
+// This registration exists for one thing only: `registerControllerActions()`
+// writes the controller/action allow list into
+// $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['extbase'], which is what the Extbase
+// request builder validates an incoming controller and action against, and what
+// `Bootstrap::isExtbaseRequestCacheable()` reads. The TypoScript this call
+// generates alongside it — "tt_content.modernextbasefrontendedit_ajax =<
+// lib.contentElement" — is deliberately **not** used by the endpoint page type
+// below: `lib.contentElement` renders through the Fluid Styled Content "Generic"
+// template, whose "Default" layout wraps the output in a
+// "<div id=\"c{data.uid}\" class=\"frame …\">". That is exactly right for a
+// content element and fatal for a JSON body, so the PAGE object calls
+// EXTBASEPLUGIN directly.
+//
+// The plugin is not registered in "Configuration/TCA/Overrides/tt_content.php"
+// either. It is an endpoint, not something an editor places on a page, and
+// `configurePlugin()` adds no TCA by itself — the wizard entry comes from
+// `registerPlugin()`, which is not called for it.
+//
+// **Every action is non-cacheable, and that is load-bearing twice.** The
+// response depends on the logged-in frontend user, while the page cache
+// identifier varies by frontend user *group* ids. And the request token that
+// every write carries is signed with a per-browser nonce, so any markup or
+// response tied to it must never be shared between users.
+ExtensionUtility::configurePlugin(
+    'ModernExtbaseFrontendEdit',
+    'Ajax',
+    [
+        ProfileAjaxController::class => 'read,save,saveField,addChild,removeChild,reorderChildren,setChildVisibility',
+    ],
+    [
+        ProfileAjaxController::class => 'read,save,saveField,addChild,removeChild,reorderChildren,setChildVisibility',
+    ],
+    ExtensionUtility::PLUGIN_TYPE_CONTENT_ELEMENT,
+);
+
 // Classic TypoScript, next to the site set in "Configuration/Sets/". Site sets
 // exist since TYPO3 v13.1 (Feature #103437) and are therefore available on both
 // target versions, but they are opt-in per site: an installation that has not
@@ -101,6 +139,11 @@ plugin.tx_modernextbasefrontendedit {
         # current frontend user owns. The edit plugin is a later change; the
         # list does not assume it exists and renders no link while this is 0.
         editPageUid = 0
+        # The page type ("&type=") of the JSON endpoints. It is a page *type*
+        # and not a page uid: the endpoints answer on whichever page the edit
+        # plugin sits on, so no separate page has to be created for them. Change
+        # it only if the number collides with another extension on the site.
+        ajaxPageType = 1589
     }
 }
 ');
@@ -122,6 +165,68 @@ plugin.tx_modernextbasefrontendedit {
     settings {
         showPageUid = {$plugin.tx_modernextbasefrontendedit.settings.showPageUid}
         editPageUid = {$plugin.tx_modernextbasefrontendedit.settings.editPageUid}
+        ajaxPageType = {$plugin.tx_modernextbasefrontendedit.settings.ajaxPageType}
+    }
+    view {
+        # Lets the Extbase UriBuilder produce an endpoint URL with
+        # ->setFormat(\'json\') as well as with ->setTargetPageType(),
+        # `ExtensionService::getTargetPageTypeByFormat()` reads exactly this key
+        # (`ExtensionService.php:237-244`). Both spellings then resolve to the
+        # same page type, so the edit plugin cannot generate a URL that points
+        # at a type nobody renders.
+        formatToPageTypeMapping.json = {$plugin.tx_modernextbasefrontendedit.settings.ajaxPageType}
+    }
+}
+
+# The endpoint page type.
+#
+# A PAGE object of its own rather than a plugin on a page: the response is a
+# JSON document, and everything that would otherwise wrap it has to be switched
+# off in one place.
+#
+# "10" is EXTBASEPLUGIN directly, **not** "tt_content.modernextbasefrontendedit_ajax".
+# That object exists (`configurePlugin()` writes it) and is unusable here,
+# because it inherits "lib.contentElement" and therefore renders through the
+# Fluid Styled Content "Generic" template, whose layout wraps the content in a
+# "frame" div.
+modernextbasefrontendedit_ajax = PAGE
+modernextbasefrontendedit_ajax {
+    typeNum = {$plugin.tx_modernextbasefrontendedit.settings.ajaxPageType}
+    config {
+        # Returns the body content unchanged, skipping every PageRenderer
+        # setting, so the response is exactly what the plugin produced
+        # (`cms-frontend/Classes/Http/RequestHandler.php:258-262`). The
+        # "Content-Type" the action set survives it: the Extbase bootstrap hands
+        # it to PageParts (`cms-extbase/Classes/Core/Bootstrap.php:168-173`) and
+        # RequestHandler writes it onto the response (`:1157`), after the
+        # non-cached parts have been rendered (`:234-244`).
+        disableAllHeaderCode = 1
+        # No "Content-Language" header on a JSON document (`RequestHandler.php:1160-1162`).
+        disableLanguageHeader = 1
+        # Read by EXT:adminpanel, which is not a dependency of this extension.
+        # It is set so that an installation which does have it does not inject
+        # its markup into a JSON response for a logged-in backend user.
+        admPanel = 0
+        debug = 0
+        # The endpoint page is never cached, and this is the only instrument
+        # that acts early enough. It routes straight into the cache instruction
+        # request attribute of Feature #102628 — the middleware calls
+        # $cacheInstruction->disableCache() for it
+        # (`cms-frontend/Classes/Middleware/PrepareTypoScriptFrontendRendering.php:261-264`)
+        # — but it does so *before* page generation, whereas the plugin runs as
+        # USER_INT and therefore after RequestHandler has already written the
+        # page cache (`RequestHandler.php:174-226` vs. `:234-238`). A
+        # disableCache() call from inside the action cannot prevent that write;
+        # it is still made, because it does reach the client cache headers.
+        #
+        # The objection to "config.no_cache" is that it is a page-wide toggle.
+        # Here the page *is* the endpoint, so page-wide is the intended scope.
+        no_cache = 1
+    }
+    10 = EXTBASEPLUGIN
+    10 {
+        extensionName = ModernExtbaseFrontendEdit
+        pluginName = Ajax
     }
 }
 ');

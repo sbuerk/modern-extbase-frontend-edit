@@ -8,17 +8,26 @@ supported core versions.
 > [!NOTE]
 > These pages document the **design and the reasoning behind it**, and the code
 > is landing against them one change at a time. The domain, the schema, the
-> ownership resolver, the two read plugins and the DTO, validation and mapping
-> layer exist; nothing writes to the database yet and there is no HTTP endpoint.
-> Where a page describes code that does not exist yet, it says so.
+> ownership resolver, the two read plugins, the DTO/validation/mapping layer,
+> the write path and the seven JSON endpoints exist. What does not: the image
+> upload, and the JavaScript component that drives the endpoints. Where a page
+> describes code that does not exist yet, it says so.
+>
+> Writing the code disproved three statements these pages made while they were
+> design only. All three are corrected **in place**, next to the reasoning they
+> replace, rather than collected in an errata list nobody reads:
+> the content object the endpoint `PAGE` calls and the need for
+> `config.no_cache` → [AJAX transport](ajax-transport.md#caching); what the
+> `true` default of `getPropertyFromAspect('workspace', 'isLive', true)` covers
+> → [Persistence and sorting](persistence-and-sorting.md#correction-what-the-true-default-actually-covers).
 
 | Page                                                  | Contents                                                                                      |
 |-------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                  |
 | [Plugins and the Fluid layer](plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                   |
 | [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.   |
-| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the JSON contract, the request token.        |
-| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence belongs.   |
+| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the seven endpoints, the request token.      |
+| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence lives.     |
 | [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers. |
 | [Image handling](image-handling.md)                   | The modern upload API, why the custom model is a read-side wrapper, replacement and cleanup.  |
 | [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain and the gates it needs.  |
@@ -29,6 +38,20 @@ supported core versions.
   Neither eID nor a PSR-15 middleware can do the job: eID runs before frontend
   authentication, and a middleware before `prepare-tsfe-rendering` dies at the
   first repository call. → [AJAX transport](ajax-transport.md)
+- The page calls **`EXTBASEPLUGIN` directly**, not the content object
+  `configurePlugin()` generates — that one inherits `lib.contentElement` and
+  would wrap every JSON body in a Fluid Styled Content frame `<div>`.
+- **`config.no_cache = 1` is mandatory on that page**, not optional. A
+  `USER_INT` plugin body runs *after* the page cache has been written, so
+  disabling the cache from PHP is too late.
+  → [AJAX transport](ajax-transport.md#caching)
+- **Authorization is four statements, not an attribute.** `#[Authorize]` is
+  v14-only; taking it would mean a duplicated controller and two versions
+  running different code on the security path.
+  → [Authorization](authorization.md#the-boundary-is-code-and-it-is-not-an-attribute)
+- The **read endpoint requires no token and makes no login check**, so that an
+  anonymous read and a non-owner read answer identically instead of revealing
+  which case occurred. → [Authorization](authorization.md)
 - A profile is **owned by a frontend user**. Endpoints resolve it from the
   session and never trust a uid from the client; child records are reached by
   filtering the already-owned set. → [Authorization](authorization.md)
@@ -54,6 +77,14 @@ supported core versions.
 - The schema is language, workspace, soft-delete and hidden aware, but the edit
   plugin **refuses to write while a workspace is active**. That gap is named
   rather than hidden.
+- Four further gaps are named rather than hidden. `persistAll()` is **not a
+  transaction**, so a mid-flush failure leaves a partially written aggregate;
+  **densification is not repaired**, so pre-existing gaps in `sorting` survive;
+  and the profile's own **`hidden` flag is readable and not writable**.
+  → [Persistence and sorting](persistence-and-sorting.md#what-the-write-path-does-not-do)
+  The fourth is that **image upload is not implemented** and is deliberately not
+  one of the seven endpoints — it is a different transport with a different
+  cleanup rule. → [AJAX transport](ajax-transport.md#the-seven-endpoints)
 - **Asset loading needs no version split.** Import maps behave identically in
   the frontend on v13 and v14. → [Frontend assets](frontend-assets.md)
 

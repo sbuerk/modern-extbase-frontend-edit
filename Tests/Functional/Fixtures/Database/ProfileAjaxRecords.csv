@@ -1,0 +1,8 @@
+"tx_modernextbasefrontendedit_domain_model_address",,,,,,,,,,,,,
+,"uid","pid","sys_language_uid","deleted","hidden","starttime","endtime","sorting","profile","tablenames","type","line1","line2"
+,11,1,0,0,0,0,0,1,4,"tx_modernextbasefrontendedit_domain_model_profile","work","Spanning Tree Avenue 1",""
+,12,1,0,0,0,0,0,2,4,"tx_modernextbasefrontendedit_domain_model_profile","home","Bridge Loop 2",""
+"tx_modernextbasefrontendedit_domain_model_email",,,,,,,,,,
+,"uid","pid","sys_language_uid","deleted","hidden","sorting","profile","tablenames","type","email"
+,11,1,0,0,0,1,4,"tx_modernextbasefrontendedit_domain_model_profile","private","radia@example.org"
+,12,1,0,0,0,2,4,"tx_modernextbasefrontendedit_domain_model_profile","business","perlman@example.org"

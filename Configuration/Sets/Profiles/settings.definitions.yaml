@@ -39,3 +39,12 @@ settings:
     default: 0
     type: page
     category: modernextbasefrontendedit
+
+  # The page type of the JSON endpoints, not a page uid: the endpoints answer on
+  # whichever page the edit plugin sits on. It exists as a setting only so that
+  # a site can move it out of the way of another extension using the same
+  # number; nothing else about the endpoints is configurable.
+  modernextbasefrontendedit.ajaxPageType:
+    default: 1589
+    type: int
+    category: modernextbasefrontendedit

@@ -6,8 +6,16 @@ Extbase actions that return `$this->jsonResponse(...)`. Not eID, and not a
 bespoke PSR-15 middleware.
 
 This page records why, what the decision costs, and the request/response
-contract that follows from it. The implementation lands in a later change; what
-is fixed here is the design.
+contract that follows from it.
+
+> [!NOTE]
+> **This is code now.** The page type is registered in `ext_localconf.php`, the
+> seven endpoints live in `Classes/Controller/ProfileAjaxController.php`, and the
+> envelope in `Classes/Http/JsonEnvelope.php`. Two statements this page made
+> while it was design only turned out to be wrong when the code was written, and
+> both are corrected below: the content object the `PAGE` calls, and
+> `config.no_cache`. They are called out where they sit rather than in a note,
+> because a reader arriving at the section is the reader who needs them.
 
 Line references point into the installed dependency set below
 `.Build/vendor/`, which is TYPO3 v14 unless a v13 file is named explicitly.
@@ -17,21 +25,26 @@ differ.
 ## The decision
 
 ```typoscript
-modernExtbaseFrontendEditAjax = PAGE
-modernExtbaseFrontendEditAjax {
+modernextbasefrontendedit_ajax = PAGE
+modernextbasefrontendedit_ajax {
     typeNum = 1589
     config {
         disableAllHeaderCode = 1
         disableLanguageHeader = 1
         admPanel = 0
         debug = 0
+        no_cache = 1
     }
-    10 =< tt_content.modernextbasefrontendedit_ajax
+    10 = EXTBASEPLUGIN
+    10 {
+        extensionName = ModernExtbaseFrontendEdit
+        pluginName = Ajax
+    }
 }
 plugin.tx_modernextbasefrontendedit.view.formatToPageTypeMapping.json = 1589
 ```
 
-Three properties of this construction carry the decision:
+Four properties of this construction carry the decision:
 
 - **`disableAllHeaderCode = 1` returns the body content unchanged**, skipping
   every `PageRenderer` setting, so the response is exactly what the plugin
@@ -46,37 +59,149 @@ Three properties of this construction carry the decision:
 - **`Content-Type` survives page assembly.** `jsonResponse()` sets it
   (`ActionController.php:921-926`), and the bootstrap hands it to `PageParts`
   (`Bootstrap.php:168-173`), from where `RequestHandler` writes it onto the PSR-7
-  response.
+  response (`:1157`).
+- **`config.no_cache = 1` is the only instrument that acts early enough** to keep
+  the endpoint out of the page cache. That is the second correction, and it has
+  its own section: [caching](#caching).
+
+### Correction: not `tt_content.modernextbasefrontendedit_ajax`
+
+An earlier revision of this page put `10 =< tt_content.modernextbasefrontendedit_ajax`
+into the `PAGE`, on the reasoning that `configurePlugin()` writes that object
+anyway. It does — and using it wraps every JSON response in a content element
+frame.
+
+`ExtensionUtility::configurePlugin()` generates
+
+```typoscript
+tt_content.modernextbasefrontendedit_ajax =< lib.contentElement
+tt_content.modernextbasefrontendedit_ajax {
+    templateName = Generic
+    20 = EXTBASEPLUGIN
+    …
+}
+```
+
+(`cms-extbase/Classes/Utility/ExtensionUtility.php:64-72`). `lib.contentElement`
+is a `FLUIDTEMPLATE` of Fluid Styled Content
+(`cms-fluid-styled-content/Configuration/TypoScript/Helper/ContentElement.typoscript:2-17`),
+`Generic.fluid.html` declares `<f:layout name="Default" />`, and that layout
+opens with
+
+```html
+<f:if condition="{data.frame_class} != none">
+    <f:then>
+        <div id="c{data.uid}" class="frame frame-{data.frame_class} frame-type-{data.CType} …">
+```
+
+(`cms-fluid-styled-content/Resources/Private/Layouts/Default.fluid.html:2-6`).
+On a `PAGE` object there is no `tt_content` row, so `data.frame_class` is empty,
+it is therefore not `none`, and the `then` branch runs: the JSON document comes
+back inside `<div id="c" class="frame frame- frame-type- frame-layout-">`,
+together with the anchor and the header/footer partial renders. `json_decode()`
+on the client fails on the first character.
+
+The `configurePlugin()` call is still made, and it is made for one thing only:
+`registerControllerActions()` writes the controller/action allow-list into
+`$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['extbase']`, which is what
+`RequestBuilder` validates an incoming controller and action against and what
+`Bootstrap::isExtbaseRequestCacheable()` reads for the `USER_INT` conversion.
+The TypoScript it generates alongside is simply not referenced. The plugin also
+gets no `Configuration/TCA/Overrides/tt_content.php` entry — it is an endpoint,
+not something an editor places on a page, and `configurePlugin()` adds no TCA by
+itself.
 
 ### Caching
 
-Every writing action is registered in the `$nonCacheableControllerActions`
-argument of `ExtensionUtility::configurePlugin()`. The bootstrap then converts
-the object to `USER_INT` *before* the action runs
-(`Bootstrap.php:143-151`), so nothing the endpoint produces is ever written to
-a cache.
+**This is the correction that matters most on the page, because the failure mode
+is a cached JSON response.** An earlier revision argued that the plugin-level
+non-cacheable registration is the precise instrument and that `config.no_cache`
+is a blunt page-wide toggle the `PAGE` object therefore does not need. The first
+half is right about the *plugin*; the conclusion about the *page* is wrong, and
+the ordering in `RequestHandler` is why.
 
-Where PHP has to suppress the page cache beyond that, it goes through the
-**cache instruction request attribute** introduced by Feature #102628 in v13.0:
+Every action is registered in the `$nonCacheableControllerActions` argument of
+`ExtensionUtility::configurePlugin()`. The bootstrap reads that list and converts
+the object to `USER_INT` *before* the action runs (`Bootstrap.php:143-151`), and
+returns `''` for the cached pass. So the plugin body executes in the **non-cached
+pass** — and `RequestHandler::handleRequest()` runs that pass at
+`cms-frontend/Classes/Http/RequestHandler.php:234-238`, **after** it has written
+the page cache entry at `:174-226`:
 
 ```php
-$request->getAttribute('frontend.cache.instruction')
-    ->disableCache('EXT:modern_extbase_frontend_edit: <reason>');
+// cms-frontend/Classes/Http/RequestHandler.php:169-174, abridged
+$event = new AfterCacheableContentIsGeneratedEvent($request, $content, …, $cacheInstruction->isCachingAllowed());
+$event = $this->eventDispatcher->dispatch($event);
+…
+// Write page cache if allowed
+if ($event->isCachingEnabled()) {
+
+// :234
+if ($pageParts->hasNotCachedContentElements()) {
+    $content = $this->calculateNonCachedElements($request, $content);
 ```
 
-Not `TypoScriptFrontendController->no_cache` and not `set_no_cache()`. Both were
-marked read-only/internal in 13.0 (Breaking #102621, which names
-`frontend.cache.instruction` as the replacement) and the whole class is gone in
-14.0 (Breaking #107831). The TypoScript `config.no_cache = 1` is not deprecated,
-but it is only a front for the same attribute
-(`PrepareTypoScriptFrontendRendering.php:261-264`) and it is a blunt page-wide
-toggle — the plugin-level registration is the more precise instrument, so the
-`PAGE` object does not set it.
+A `disableCache()` call issued from inside the controller therefore **cannot
+prevent that write**. It is executed at `:236`, two branches after the decision
+it would have to influence. What gets cached is the page with the `USER_INT`
+placeholder in it, which is not the JSON body — but it is a page cache entry for
+an endpoint, keyed on frontend user *group* ids
+(`PrepareTypoScriptFrontendRendering.php:322-344`), and it is exactly the entry
+this design promises does not exist.
 
-The page cache identifier is keyed on the frontend user's group ids
-(`PrepareTypoScriptFrontendRendering.php:322-344`), not on the user. That is a
-real leak vector for per-user markup, and it is closed here only because the
-endpoint page type is never cached in the first place.
+`config.no_cache = 1` is early enough. The middleware reads it out of the
+TypoScript config tree and routes it into the **same** cache instruction request
+attribute that Feature #102628 introduced in v13.0:
+
+```php
+// cms-frontend/Classes/Middleware/PrepareTypoScriptFrontendRendering.php:261-264
+if ($setupConfigAst->getChildByName('no_cache')?->getValue()) {
+    // Disable cache if config.no_cache is set!
+    $cacheInstruction = $request->getAttribute('frontend.cache.instruction');
+    $cacheInstruction->disableCache('EXT:frontend: Disabled cache due to TypoScript "config.no_cache = 1"');
+}
+```
+
+That happens before `return $handler->handle($request);` at `:270`, i.e. before
+page generation begins, so `isCachingAllowed()` is already `false` when
+`RequestHandler` builds the event at `:169` and the whole block at `:174-226` is
+skipped. **It is not a different mechanism from the PHP call — it is the same
+attribute, set early enough to matter.** The objection that it is page-wide does
+not apply here: the page *is* the endpoint.
+
+The controller still calls it as well, and that is not redundant:
+
+```php
+// Classes/Controller/ProfileAjaxController.php, initializeAction()
+$this->request->getAttribute('frontend.cache.instruction')
+    ->disableCache('EXT:modern_extbase_frontend_edit: …');
+```
+
+`addHttpHeadersToResponse()` at `:244` calls `getClientCacheHeaders()` at
+`:1189`, whose first conjunct is `$cacheInstruction->isCachingAllowed()`
+(`:1218`), and whose fallback is an explicit `Cache-Control: private, no-store`
+(`:1274-1279`). So the PHP call is what pins the *client* cache headers to a
+value that does not depend on the TypoScript a site ships.
+
+Two things about that call are worth stating exactly rather than approximately,
+because both are easy to overclaim:
+
+- It is **defence in depth, not the sole cause**. `!hasNotCachedContentElements()`
+  at `:1219` is false too while every action is registered non-cacheable, so the
+  `private, no-store` fallback is reached either way. The call earns its place by
+  not depending on that registration staying as it is.
+- It does **not** reach the failure responses. Those are thrown as
+  `PropagateResponseException` and returned by the outermost
+  `response-propagation` middleware (`ResponsePropagation.php:33-38`), which
+  never passes through `addHttpHeadersToResponse()`. A `403` or a `422` from
+  these endpoints carries the headers the controller set and no `Cache-Control`
+  at all. That is acceptable — the status codes involved are not
+  heuristically cacheable — but it is not what "on every response" would mean.
+
+`TypoScriptFrontendController->no_cache` and `set_no_cache()` are not used for
+any of this. Both were marked read-only/internal in 13.0 (Breaking #102621,
+which names `frontend.cache.instruction` as the replacement) and the whole class
+is gone in 14.0 (Breaking #107831).
 
 ## Why not eID
 
@@ -164,6 +289,13 @@ endpoint is `POST`, including the per-field inline save. No REST verb purity;
 the verb carries no information here anyway, because the action is already in
 the URL.
 
+Anything else is refused with `405` and an `Allow: POST` header, before the
+payload is looked at. The media type is checked in the same place and for a
+second, independent reason: a cross-origin `<form>` can only produce
+`application/x-www-form-urlencoded`, `multipart/form-data` or `text/plain`, so
+insisting on `application/json` costs a browser a preflight it will not send.
+That is a cheap CSRF barrier and it does **not** replace the request token.
+
 ### A JSON body is invisible to Extbase
 
 TYPO3 fills the parsed body from `$_POST`, plus urlencoded `PUT`/`PATCH`/
@@ -222,14 +354,29 @@ Validation failures are **`422`, not `400`**. `400` is Extbase's own
 — `Bootstrap.php:223-232`). A user mistyping a field must not evict the page
 cache.
 
-| Situation                                     | Status | Reason                                                         |
-|-----------------------------------------------|--------|----------------------------------------------------------------|
-| Read or write succeeded                       | `200`  | the only sub-300 status a frontend plugin can produce          |
-| Malformed JSON, unknown field, wrong type     | `400`  | genuinely malformed request; matches Extbase's `errorAction()` |
-| No or invalid request token, or not logged in | `403`  | matches the v14 `#[Authorize]` denial path                     |
-| Record absent, or not visible to this user    | `404`  | deliberately not distinguished from "forbidden"                |
-| Well-formed request, domain validation failed | `422`  | the field-level case, distinguishable from `400` by the client |
-| Rate limit exceeded                           | `429`  | v14 `#[RateLimit]` only; no equivalent on v13                  |
+| Situation                                                          | Status | Reason                                                                             |
+|--------------------------------------------------------------------|--------|------------------------------------------------------------------------------------|
+| Read or write succeeded                                            | `200`  | the only sub-300 status a frontend plugin can produce                              |
+| Malformed JSON, wrong type, unknown field, non-JSON `Content-Type` | `400`  | genuinely malformed request; matches Extbase's `errorAction()`                     |
+| No or invalid request token, or a write without a login            | `403`  | a statement about the caller, never about a record                                 |
+| Record absent, or not part of the caller's owned set               | `404`  | deliberately not distinguished from "forbidden"                                    |
+| Any verb other than `POST`                                         | `405`  | sent with an `Allow: POST` header; see [POST for everything](#post-for-everything) |
+| A write issued while a workspace is active                         | `409`  | authenticated and authorised — it is the session state that makes it unanswerable  |
+| Well-formed request, domain validation failed                      | `422`  | the field-level case, distinguishable from `400` by the client                     |
+| Rate limit exceeded                                                | `429`  | **not implemented.** v14 `#[RateLimit]` only; no equivalent on v13                 |
+
+`405` and `409` were missing from this table while it was design only, and both
+are real answers of the implementation. The `409` is deliberately not a `403`:
+`403` here means "the caller may not do this", and a workspace refusal is not
+about the caller's rights at all — the same caller in the live workspace is
+allowed. `405` carries `Allow: POST` because a status code that names no
+alternative is a status code a client cannot act on.
+
+Neither is `#[Authorize]` involved in the `403`. The v14 attribute exists and is
+**not used** — the checks are plain statements at the top of every write, run in
+a fixed order and identical on both core versions, so there is no `Core13/` and
+`Core14/` controller pair to keep in sync. See
+[authorization](authorization.md#the-boundary-is-code-and-it-is-not-an-attribute).
 
 ### The editing plugin is `USER_INT`
 
@@ -244,20 +391,67 @@ token — was rejected for the extra request and for the operational sharpness o
 the nonce pool: size 5, 900 s expiry (`NoncePool.php:25-33`), so a long editing
 session or a sixth tab starts evicting nonces.
 
-## The JSON contract
+## The seven endpoints
 
-Requests carry `Content-Type: application/json` and the token header. Both
-endpoints are `POST` to the same `typeNum` URL, distinguished by the Extbase
-action in the query string.
+All seven are `POST` to the same `typeNum` URL with
+`Content-Type: application/json`, distinguished by the Extbase action in the
+query string — `tx_modernextbasefrontendedit_ajax[controller]=ProfileAjax` and
+`…[action]=save`, both part of the cHash. Every write carries the
+`X-TYPO3-RequestToken` header.
 
-**Full save** — every editable property of one record:
+`child` is the discriminator that decides whether a payload addresses the
+profile itself or one of its two collections. It is a closed set — `address` or
+`email` — and a name outside it is a `400`, not a `404`: the client either knows
+the API or it does not, and answering "no such record" would be an odd way to say
+"unknown parameter".
+
+| Action               | Payload                                        | What it does                                                              |
+|----------------------|------------------------------------------------|---------------------------------------------------------------------------|
+| `read`               | `uid?`                                         | The caller's profile with both collections. No token, no login check.     |
+| `save`               | `uid`, `data`, `child?`, `childUid?`           | Every writable property of one record at once — the profile or one child. |
+| `saveField`          | `uid`, `field`, `value`, `child?`, `childUid?` | One named field of one record, for the inline editor.                     |
+| `addChild`           | `uid`, `child`, `data`                         | Appends one child to a collection; it sorts last.                         |
+| `removeChild`        | `uid`, `child`, `childUid`                     | Removes one child *and deletes the row* — a detach alone would orphan it. |
+| `reorderChildren`    | `uid`, `child`, `order`                        | Puts a collection into the submitted order.                               |
+| `setChildVisibility` | `uid`, `child`, `childUid`, `hidden`           | Sets the `hidden` flag of one child to an explicit boolean.               |
+
+Four properties of that surface are decisions rather than accidents:
+
+- **`uid` filters, it never looks up.** It is matched against the set the
+  *session* owns, and a uid that is not in it answers exactly like a uid that
+  does not exist. On `read` it is optional; without it the caller gets the owned
+  profile with the lowest uid. → [authorization](authorization.md)
+- **`order` has to be a permutation of the whole collection.** That is a security
+  property, not API pedantry: the submitted list replaces the collection
+  wholesale, so a short list would drop every record it omits — and those records
+  are then deleted as orphans. A wrong length or a duplicate uid is refused
+  before anything is touched.
+- **`setChildVisibility` takes an explicit boolean, not a toggle.** An idempotent
+  endpoint is what a client with an optimistic UI needs; a real toggle answers
+  differently depending on a state the client may have wrong.
+- **Every endpoint answers with the whole aggregate**, including the ones that
+  changed a single field, so a client that patched its own state cannot drift and
+  a client that moved a child gets the resulting order back with it.
+
+**Image upload is deliberately not one of these seven.** It is a different
+transport — `multipart/form-data`, not a JSON body — a different failure surface
+and a different cleanup rule for the file behind a replaced reference. Bolting it
+onto an endpoint set whose entire contract is "JSON in, JSON out" would make
+every rule on this page conditional. It is a change of its own, and until it
+lands the profile image is a backend-only field.
+→ [Image handling](image-handling.md)
+
+### The wire format
+
+**Full save** — every writable property of the profile:
 
 ```json
 {
   "uid": 42,
   "data": {
-    "firstName": "Ada",
-    "lastName": "Lovelace",
+    "shortname": "ada",
+    "firstname": "Ada",
+    "lastname": "Lovelace",
     "birthday": "1815-12-10",
     "bio": ""
   }
@@ -266,32 +460,74 @@ action in the query string.
 
 **Partial save** — one field, for the inline editor. `field` must be a name the
 DTO's rule set knows; the rule set is the single whitelist for both "what is
-validated" and "what may be addressed partially":
+validated" and "what may be addressed partially", and an unknown name is refused
+twice — once by the validator, once by the mapper's closed `switch`:
 
 ```json
 {
   "uid": 42,
-  "field": "firstName",
+  "field": "firstname",
   "value": "Ada"
 }
 ```
 
-**Success**, `200`:
+**A child save** adds the discriminator and the child uid, and `data` is then
+that child's own DTO — so nothing about the parent can be written through it:
+
+```json
+{
+  "uid": 42,
+  "child": "address",
+  "childUid": 7,
+  "data": {
+    "type": "home",
+    "line1": "1 Marylebone Road",
+    "line2": ""
+  }
+}
+```
+
+**A reorder** carries the full permutation:
+
+```json
+{ "uid": 42, "child": "email", "order": [9, 7, 8] }
+```
+
+**Success**, `200` — the same document from all seven:
 
 ```json
 {
   "data": {
     "uid": 42,
-    "firstName": "Ada",
-    "lastName": "Lovelace",
+    "shortname": "ada",
+    "firstname": "Ada",
+    "lastname": "Lovelace",
     "birthday": "1815-12-10",
-    "bio": ""
+    "bio": "",
+    "hidden": false,
+    "addresses": [
+      { "uid": 7, "type": "home", "line1": "1 Marylebone Road", "line2": "", "hidden": false }
+    ],
+    "emails": [
+      { "uid": 9, "type": "private", "email": "ada@example.org", "hidden": false }
+    ]
   }
 }
 ```
 
 `data` is the persisted state as the server sees it after the write, not an echo
 of the request — a client that trusts its own optimistic update will drift.
+`birthday` is `""` for "no birthday", matching the DTO default, and its format is
+pinned by `ProfileData::BIRTHDAY_FORMAT` so that what is read back is spelled
+exactly like what may be written.
+
+> [!NOTE]
+> **The profile's own `hidden` flag is readable and not writable.** It is in the
+> response so an editor can show the state, and no endpoint can change it —
+> `setChildVisibility` is, as its name says, for children. Publishing a profile
+> from the frontend needs its own action with its own rule about who may make a
+> record public, and that rule is not written yet. Shipping the column as
+> writable "for symmetry" would ship the missing rule with it.
 
 > [!NOTE]
 > **Concurrent editing is not designed.** Two sessions editing the same record
@@ -300,18 +536,20 @@ of the request — a client that trusts its own optimistic update will drift.
 > the write — deliberately left out here rather than reserved half-way, because
 > a field nobody validates is worse than an absent one.
 
-**Validation failure**, `422`:
+**Validation failure**, `422` — one entry per rejected property, `field` being
+`null` for an error attached to the object rather than to a property:
 
 ```json
 {
   "errors": [
-    { "field": "firstName", "code": 1712345678, "message": "Must not be empty." },
+    { "field": "shortname", "code": 1712345678, "message": "Must not be empty." },
     { "field": "birthday",  "code": 1712345679, "message": "Must be a valid date." }
   ]
 }
 ```
 
-**Everything else**, `403`/`404` — same envelope, no field context:
+**Everything else** — `400`, `403`, `404`, `405`, `409` — the same envelope with
+one entry and no field context:
 
 ```json
 {
@@ -355,10 +593,16 @@ $securityAspect = SecurityAspect::provideIn($this->context);
 $signingSecret = $securityAspect->getSigningSecretResolver()
     ->findByType('nonce')
     ->provideSigningSecret();
-$jwt = RequestToken::create('modern_extbase_frontend_edit/record-save')
+$jwt = RequestToken::create(ProfileAjaxController::REQUEST_TOKEN_SCOPE)
     ->withMergedParams(['request' => ['uri' => $endpointUri]])
     ->toHashSignedJwt($signingSecret);
 ```
+
+The scope is a `public` constant on the controller rather than a literal on both
+sides, because a scope that drifts apart rejects every write, and the failure
+looks like a broken token rather than like a typo. It is an opaque identifier and
+grants nothing — it only keeps a token issued for something else from being
+replayed here.
 
 `provideSigningSecret()` is what causes the nonce cookie to be emitted on that
 response, which is why it must happen while rendering the editable markup.
@@ -456,12 +700,18 @@ Consequences for this extension:
   `ResponseData` and `RequestHandler` applies them. Returning `jsonResponse()`
   lands the `Content-Type` on the response either way. Code that relied on
   `header()` having already fired mid-render would break on v14 — we have none.
-- **`#[Authorize]` and `#[RateLimit]` are v14-only** and belong in `Core14/`
-  behind a shared interface, with the v13 counterpart doing the same checks in
-  PHP. No conditionals in shared classes.
-- **Rate limiting is a named gap on v13.** There is no Extbase-level equivalent;
-  13.4.x offers global rate limiter configuration (Important #103140), which is
-  not the same thing.
+- **`#[Authorize]` is v14-only and is not used.** The design allowed for a
+  `Core13/`/`Core14/` controller pair, the v14 half carrying the attribute. The
+  implementation does the checks in PHP instead, in one controller shared by both
+  versions — the attribute would have bought a declaration and cost a duplicated
+  controller, and the checks it would have replaced are four statements. There is
+  therefore no version split in the transport at all.
+  → [authorization](authorization.md#the-boundary-is-code-and-it-is-not-an-attribute)
+- **Rate limiting is not implemented, on either version.** `#[RateLimit]` is
+  v14-only, and 13.4.x offers global rate limiter configuration (Important
+  #103140), which is not the same thing. Adding it on v14 alone would make the
+  two versions differ in their security posture, which is worse than the honest
+  gap.
 
 ## See also
 
@@ -473,7 +723,9 @@ Consequences for this extension:
 - [DTOs and validation](dto-and-validation.md) — why rules are data rather than
   attributes, and what fills the `errors` array.
 - [Persistence and sorting](persistence-and-sorting.md) — what Extbase writes
-  and what it refuses to.
+  and what it refuses to, and what the seven endpoints hand to the write path.
+- [Image handling](image-handling.md) — the upload that is deliberately not one
+  of the seven endpoints.
 - [Core version aware code](../architecture/core-version-aware-code.md) — why
   the v14-only attributes are a directory, not an `if`.
 - [Dependency injection](../architecture/dependency-injection.md) — why

@@ -145,24 +145,25 @@ rewriting a message, and keep their order.
 Known limitations
 =================
 
-Nothing is saved yet
-    This release adds the checking and the mapping, not the writing. No record
-    is created, changed or deleted, and there is no address a form could submit
-    to. The editing endpoint and the persistence that goes with it are part of a
-    later release. Until then, the profile records are edited in the backend, as
-    before.
+This entry describes checking and mapping only
+    On its own this feature writes nothing: it turns a payload into a checked
+    object and that object into an entity, and stops there. The endpoints that
+    accept such a payload, and the persistence that follows it, are described in
+    :ref:`feature-profile-editing-endpoints` and ship in the same release, so a
+    reader looking for how a change actually reaches the database should start
+    there.
 
-Child records are not removed
+Mapping describes a set, it does not remove from one
     A save that leaves out one of a profile's addresses or e-mail addresses
-    describes the set that should remain, but nothing acts on that description
-    yet — removing what is no longer in it belongs to the write path.
+    describes the set that should remain. Acting on that description — deleting
+    what is no longer in it — is the write path's job, not the mapper's.
 
 Publishing and images are not form fields
-    Hiding or unhiding a profile is not part of a save, and neither is the
-    profile image. Both are separate actions with their own handling, and both
-    come with the editing endpoint.
+    Hiding or unhiding a record is not part of a save, and neither is the
+    profile image. Visibility is its own action, so that a save of a single
+    field can never flip it. The image is not a payload field at all.
 
 Only the default language, and never in a workspace
     The restrictions stated for the domain model are unchanged: frontend
-    editing will apply to records of the default language and will be refused
-    while a workspace is active.
+    editing applies to records of the default language, and is refused while a
+    workspace is active.

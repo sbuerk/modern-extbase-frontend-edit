@@ -1,0 +1,154 @@
+<?php
+
+declare(strict_types=1);
+
+namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend;
+
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+
+/**
+ * The workspace guard, exercised by request.
+ *
+ * Extbase persistence is workspace blind: `Typo3DbBackend` issues plain
+ * `INSERT`/`UPDATE` statements against the live row — no `t3ver_wsid`, no
+ * `t3ver_oid`, no `DataHandler`. A write issued while a workspace is active
+ * therefore does not produce a draft, it modifies the **published** record
+ * while the editor believes the opposite. The guard is what makes the feature
+ * refuse rather than corrupt, and this is the test that proves the refusal
+ * reaches the wire as a clean `409`.
+ *
+ * ## Why a fixture extension activates the workspace
+ *
+ * `InternalRequestContext::withWorkspaceId()` is applied by the testing
+ * framework through `BackendUserAuthentication::setTemporaryWorkspace()`, which
+ * resolves the workspace against the `sys_workspace` schema. That table and its
+ * TCA ship with EXT:workspaces, which this extension does not depend on and
+ * which is **not** part of the dependency set — so the call fails silently and
+ * the request would run in the live workspace. `tests/workspace-fixture`
+ * therefore sets the `workspace` aspect of the shared `Context` directly, which
+ * is the signal `WorkspaceGuard` reads and the same one
+ * `BackendUserAuthenticator` writes in a real request. Its docblock states what
+ * it does and does not simulate.
+ *
+ * The control case below is what keeps that honest: with the same fixture
+ * extension loaded and workspace `0` requested, the identical write succeeds.
+ * A middleware that broke every request would fail that test rather than pass
+ * this one.
+ */
+final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
+{
+    /**
+     * The extension itself is repeated from the parent class, because
+     * redeclaring the property replaces it.
+     */
+    protected array $testExtensionsToLoad = [
+        'sbuerk/modern-extbase-frontend-edit',
+        'fgtclb/environment-state-manager',
+        'tests/workspace-fixture',
+    ];
+
+    /**
+     * Every endpoint that writes, with a payload that succeeds in the live
+     * workspace — see {@see ProfileAjaxAuthorizationTest::writingEndpoints()}
+     * for why the payloads are complete.
+     *
+     * @return \Generator<string, array{action: string, payload: array<string, mixed>}>
+     */
+    public static function writingEndpoints(): \Generator
+    {
+        yield 'save' => [
+            'action' => 'save',
+            'payload' => [
+                'uid' => self::OWNED_PROFILE_UID,
+                'data' => ['shortname' => 'drafted', 'firstname' => 'Augusta', 'lastname' => 'King'],
+            ],
+        ];
+        yield 'saveField' => [
+            'action' => 'saveField',
+            'payload' => ['uid' => self::OWNED_PROFILE_UID, 'field' => 'firstname', 'value' => 'Augusta'],
+        ];
+        yield 'addChild' => [
+            'action' => 'addChild',
+            'payload' => [
+                'uid' => self::OWNED_PROFILE_UID,
+                'child' => 'email',
+                'data' => ['type' => 'private', 'email' => 'drafted@example.org'],
+            ],
+        ];
+        yield 'removeChild' => [
+            'action' => 'removeChild',
+            'payload' => ['uid' => self::OWNED_PROFILE_UID, 'child' => 'address', 'childUid' => 1],
+        ];
+        yield 'reorderChildren' => [
+            'action' => 'reorderChildren',
+            'payload' => ['uid' => self::OWNED_PROFILE_UID, 'child' => 'address', 'order' => [1, 4, 3, 2]],
+        ];
+        yield 'setChildVisibility' => [
+            'action' => 'setChildVisibility',
+            'payload' => ['uid' => self::OWNED_PROFILE_UID, 'child' => 'address', 'childUid' => 1, 'hidden' => true],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('writingEndpoints')]
+    #[Test]
+    public function aWriteIsRefusedWhileAWorkspaceIsActiveAndWritesNothing(string $action, array $payload): void
+    {
+        $snapshot = $this->recordSnapshot();
+
+        $response = $this->sendAjaxRequest(
+            action: $action,
+            payload: $payload,
+            frontendUserId: self::OWNER_FRONTEND_USER_ID,
+            workspaceId: 1,
+        );
+
+        $this->assertSame(409, $response->getStatusCode());
+        $this->assertSame([1786495905], $this->errorCodes($response));
+        $this->assertSame($snapshot, $this->recordSnapshot(), 'The live records are byte identical afterwards.');
+    }
+
+    /**
+     * The control case: the same request, the same fixture extension, workspace
+     * `0`.
+     *
+     * Without this the test above would also pass for a fixture middleware that
+     * broke the endpoint outright, and for a guard that refuses every write.
+     *
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('writingEndpoints')]
+    #[Test]
+    public function theSameWriteSucceedsInTheLiveWorkspace(string $action, array $payload): void
+    {
+        $response = $this->sendAjaxRequest(
+            action: $action,
+            payload: $payload,
+            frontendUserId: self::OWNER_FRONTEND_USER_ID,
+            workspaceId: 0,
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    /**
+     * A read is not refused. It changes nothing, and the guard is about writes.
+     */
+    #[Test]
+    public function aReadIsAnsweredWhileAWorkspaceIsActive(): void
+    {
+        $response = $this->sendAjaxRequest(
+            action: 'read',
+            payload: ['uid' => self::OWNED_PROFILE_UID],
+            frontendUserId: self::OWNER_FRONTEND_USER_ID,
+            requestToken: self::TOKEN_ABSENT,
+            workspaceId: 1,
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(self::OWNED_PROFILE_UID, $this->successData($response)['uid']);
+    }
+}
