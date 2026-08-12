@@ -91,6 +91,30 @@ The six node based suites — `lintTypescript`, `typecheckJs`, `unitJs`,
 no `composerUpdate` first.
 → [Frontend assets](../frontend-edit/frontend-assets.md#the-runtestssh-suites)
 
+## When a functional run says the database refused the connection
+
+A functional run against `mariadb`, `mysql` or `postgres` starts the database in
+its own container and waits for it before handing over to PHPUnit. Two things
+about that wait are worth knowing, because both were learnt from failures that
+looked like defects in the code under test.
+
+The wait asks the server to **answer a query**, through the client shipped in
+the database image itself, rather than checking that the port is open. An open
+port is not a ready server: the mysql image runs a temporary server while it
+initialises its data directory, and it accepts a connection there. The budget is
+a minute, which is long enough for a first initialisation on a loaded machine.
+
+If the suite fails and the database container is no longer running, the wrapper
+says so and prints the last lines of that container's log, instead of leaving
+several hundred connection errors to be interpreted. That is also why the
+database containers are started **without** `--rm`: a container that removes
+itself on exit takes its log with it, and the log is the only evidence of why it
+stopped. `cleanUp()` removes them either way.
+
+None of this makes a database that dies mid-run succeed. It makes the difference
+between a run that fails with an explanation and a run that fails with a wall of
+stack traces.
+
 ## Passing arguments to the underlying tool
 
 The wrapper parses its own options with `getopts`, so arguments meant for

@@ -66,6 +66,79 @@ waitFor() {
     fi
 }
 
+waitForDatabase() {
+    # An open TCP port is not a ready database, so this asks the server to
+    # answer a query rather than probing the port with waitFor().
+    #
+    # The probe runs the vendor's own client, from the database image itself,
+    # because that client is the only thing guaranteed to speak the protocol
+    # of the version under test - and because it needs no extension to be
+    # compiled into the PHP image.
+    #
+    # The budget is a minute rather than the ten seconds waitFor() allows. A
+    # database initialising its data directory for the first time on a loaded
+    # machine takes longer than that, and the price of waiting too long is a
+    # slower run, while the price of waiting too briefly is a suite that fails
+    # for a reason that has nothing to do with the code under test.
+    local KIND=${1}
+    local HOST=${2}
+    local IMAGE=${3}
+    local PROBE=""
+    case ${KIND} in
+        mariadb|mysql)
+            # MYSQL_PWD rather than -p, which warns about the password on the
+            # command line and writes that warning into every probe iteration.
+            PROBE="MYSQL_PWD=funcp mysql -h ${HOST} -u root -e 'SELECT 1' >/dev/null 2>&1"
+            ;;
+        postgres)
+            PROBE="PGPASSWORD=funcp psql -h ${HOST} -U funcu -d funcu -c 'SELECT 1' >/dev/null 2>&1"
+            ;;
+        *)
+            echo "waitForDatabase() does not know the DBMS \"${KIND}\"." >&2
+            kill -SIGINT -$$
+            ;;
+    esac
+    local TESTCOMMAND="
+        COUNT=0;
+        until ${PROBE}; do
+            if [ \"\${COUNT}\" -gt 60 ]; then
+              echo \"The ${KIND} server \\\"${HOST}\\\" did not answer a query within 60 seconds. Aborting.\";
+              exit 1;
+            fi;
+            sleep 1;
+            COUNT=\$((COUNT + 1));
+        done;
+    "
+    ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name wait-for-${SUFFIX} ${IMAGE} /bin/sh -c "${TESTCOMMAND}"
+    if [[ $? -gt 0 ]]; then
+        kill -SIGINT -$$
+    fi
+}
+
+reportDatabaseUnavailable() {
+    # Called when a functional run failed. A database that stops during the run
+    # produces one connection error per remaining test and no statement of what
+    # actually happened, so a reader is left to infer it from several hundred
+    # stack traces. Say it instead, and show what the server said last.
+    #
+    # This can only report anything because the database container is started
+    # without "--rm": an exited container that removes itself takes its log
+    # with it. cleanUp() removes it either way, since it enumerates everything
+    # attached to the network.
+    local NAME=${1}
+    if [[ -n "$(${CONTAINER_BIN} ps --filter name=^${NAME}$ --format '{{.Names}}' 2>/dev/null)" ]]; then
+        return
+    fi
+
+    echo "" >&2
+    echo "The database container \"${NAME}\" is not running any more." >&2
+    echo "The failures above are therefore very likely a consequence of that," >&2
+    echo "not of the code under test. Its last output was:" >&2
+    echo "" >&2
+    ${CONTAINER_BIN} logs --tail 50 "${NAME}" >&2 2>&1 || echo "  (the container is gone, so it kept no log)" >&2
+    echo "" >&2
+}
+
 startAcceptanceInstance() {
     # Brings up everything the acceptance suite needs, in the order it needs it:
     # the seeded TYPO3 instance, a php-fpm pool serving it and an apache in front
@@ -136,7 +209,12 @@ startAcceptanceInstance() {
 }
 
 cleanUp() {
-    ATTACHED_CONTAINERS=$(${CONTAINER_BIN} ps --filter network=${NETWORK} --format='{{.Names}}')
+    # "-a", because a container that already exited is still attached and still
+    # has to go. The database containers are deliberately started without
+    # "--rm" so that reportDatabaseUnavailable() can still read the log of one
+    # that died during a run, which makes an exited container a normal state
+    # here rather than an exceptional one.
+    ATTACHED_CONTAINERS=$(${CONTAINER_BIN} ps -a --filter network=${NETWORK} --format='{{.Names}}')
     for ATTACHED_CONTAINER in ${ATTACHED_CONTAINERS}; do
         ${CONTAINER_BIN} rm -f ${ATTACHED_CONTAINER} >/dev/null
     done
@@ -854,29 +932,32 @@ case ${TEST_SUITE} in
         case ${DBMS} in
             mariadb)
                 echo "Using driver: ${DATABASE_DRIVER}"
-                ${CONTAINER_BIN} run --rm ${CI_PARAMS} --name mariadb-func-${SUFFIX} --network ${NETWORK} -d -e MYSQL_ROOT_PASSWORD=funcp --tmpfs /var/lib/mysql/:rw,noexec,nosuid ${IMAGE_MARIADB} >/dev/null
+                ${CONTAINER_BIN} run ${CI_PARAMS} --name mariadb-func-${SUFFIX} --network ${NETWORK} -d -e MYSQL_ROOT_PASSWORD=funcp --tmpfs /var/lib/mysql/:rw,noexec,nosuid ${IMAGE_MARIADB} >/dev/null
                 SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
-                waitFor mariadb-func-${SUFFIX} 3306
+                waitForDatabase mariadb mariadb-func-${SUFFIX} ${IMAGE_MARIADB}
                 CONTAINERPARAMS="-e typo3DatabaseDriver=${DATABASE_DRIVER} -e typo3DatabaseName=func_test -e typo3DatabaseUsername=root -e typo3DatabaseHost=mariadb-func-${SUFFIX} -e typo3DatabasePassword=funcp"
                 ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name functional-${SUFFIX} ${XDEBUG_MODE} -e XDEBUG_CONFIG="${XDEBUG_CONFIG}" ${CONTAINERPARAMS} ${IMAGE_PHP} "${COMMAND[@]}"
                 SUITE_EXIT_CODE=$?
+                [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && reportDatabaseUnavailable mariadb-func-${SUFFIX}
                 ;;
             mysql)
                 echo "Using driver: ${DATABASE_DRIVER}"
-                ${CONTAINER_BIN} run --rm ${CI_PARAMS} --name mysql-func-${SUFFIX} --network ${NETWORK} -d -e MYSQL_ROOT_PASSWORD=funcp --tmpfs /var/lib/mysql/:rw,noexec,nosuid ${IMAGE_MYSQL} >/dev/null
+                ${CONTAINER_BIN} run ${CI_PARAMS} --name mysql-func-${SUFFIX} --network ${NETWORK} -d -e MYSQL_ROOT_PASSWORD=funcp --tmpfs /var/lib/mysql/:rw,noexec,nosuid ${IMAGE_MYSQL} >/dev/null
                 SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
-                waitFor mysql-func-${SUFFIX} 3306
+                waitForDatabase mysql mysql-func-${SUFFIX} ${IMAGE_MYSQL}
                 CONTAINERPARAMS="-e typo3DatabaseDriver=${DATABASE_DRIVER} -e typo3DatabaseName=func_test -e typo3DatabaseUsername=root -e typo3DatabaseHost=mysql-func-${SUFFIX} -e typo3DatabasePassword=funcp"
                 ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name functional-${SUFFIX} ${XDEBUG_MODE} -e XDEBUG_CONFIG="${XDEBUG_CONFIG}" ${CONTAINERPARAMS} ${IMAGE_PHP} "${COMMAND[@]}"
                 SUITE_EXIT_CODE=$?
+                [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && reportDatabaseUnavailable mysql-func-${SUFFIX}
                 ;;
             postgres)
-                ${CONTAINER_BIN} run --rm ${CI_PARAMS} --name postgres-func-${SUFFIX} --network ${NETWORK} -d -e POSTGRES_PASSWORD=funcp -e POSTGRES_USER=funcu --tmpfs ${POSTGRES_TMPFS_MOUNT}:rw,noexec,nosuid ${IMAGE_POSTGRES} >/dev/null
+                ${CONTAINER_BIN} run ${CI_PARAMS} --name postgres-func-${SUFFIX} --network ${NETWORK} -d -e POSTGRES_PASSWORD=funcp -e POSTGRES_USER=funcu --tmpfs ${POSTGRES_TMPFS_MOUNT}:rw,noexec,nosuid ${IMAGE_POSTGRES} >/dev/null
                 SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
-                waitFor postgres-func-${SUFFIX} 5432
+                waitForDatabase postgres postgres-func-${SUFFIX} ${IMAGE_POSTGRES}
                 CONTAINERPARAMS="-e typo3DatabaseDriver=pdo_pgsql -e typo3DatabaseName=bamboo -e typo3DatabaseUsername=funcu -e typo3DatabaseHost=postgres-func-${SUFFIX} -e typo3DatabasePassword=funcp"
                 ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name functional-${SUFFIX} ${XDEBUG_MODE} -e XDEBUG_CONFIG="${XDEBUG_CONFIG}" ${CONTAINERPARAMS} ${IMAGE_PHP} "${COMMAND[@]}"
                 SUITE_EXIT_CODE=$?
+                [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && reportDatabaseUnavailable postgres-func-${SUFFIX}
                 ;;
             sqlite)
                 # create sqlite tmpfs mount typo3temp/var/tests/functional-sqlite-dbs/ to avoid permission issues
