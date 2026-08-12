@@ -199,6 +199,59 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
     protected const UPLOAD_CLIENT_FILE_NAME = 'portrait.png';
 
     /**
+     * The PHPUnit group of every test that expects an upload to **succeed**,
+     * which is a request TYPO3 v13 cannot be made to answer from a test.
+     *
+     * ## The core difference
+     *
+     * Every write that moves an uploaded file into a storage passes
+     * `ResourceStorage::assureFileUploadPermissions()`. On **v13** the caller
+     * resolves the `UploadedFile` to its temporary path first
+     * (`.Build/vendor/typo3/cms-core/Classes/Resource/ResourceStorage.php:2274`)
+     * and the method then calls `is_uploaded_file()` on that path
+     * unconditionally (`:1095`, throwing `UploadException` 1322110455 on
+     * `:1096`). PHP answers that check `false` for every file the SAPI did not
+     * receive as an HTTP upload **in the same process**, so a `UploadedFile`
+     * built by a test is refused before any code of this extension runs.
+     *
+     * On **v14** the method takes the uploaded file itself —
+     * `string|array|UploadedFileInterface` — and performs the check only on the
+     * string branch, "otherwise, resolve the local file path from the
+     * `UploadedFile`-like structure (no additional `is_uploaded_file` check on
+     * purpose)": v14.3.5 `ResourceStorage.php:1004-1018`. The change is
+     * forge #107027, "[TASK] Replace $_FILES with PSR-7 UploadedFile in
+     * ExtendedFileUtility", released for `main` only, and its commit message
+     * names the intent — "In case `UploadedFile` structures are given, the
+     * assumption is, that file were actually uploaded (this allows functional
+     * testing via `UploadedFile`)".
+     *
+     * ## What that does and does not mean
+     *
+     * - **Production is unaffected on either version.** A browser upload
+     *   arrives through the SAPI, `is_uploaded_file()` is true, and v13 takes
+     *   the same path as v14. What v13 refuses is the simulation, not the
+     *   feature.
+     * - **The path is covered on v13 by the acceptance suite**, which uploads
+     *   through a real browser and apache:
+     *   [`Tests/Acceptance/Frontend/ImageUpload.spec.ts`](../../Acceptance/Frontend/ImageUpload.spec.ts),
+     *   run by `Build/Scripts/runTests.sh -s acceptance`, which installs and
+     *   seeds a v13 instance.
+     * - **Only the successful upload carries this group.** Every refusal —
+     *   authorization, ownership, request token, transport, validation, the
+     *   workspace guard — is answered before `ResourceStorage` is reached and
+     *   therefore runs on both core versions, which is where the value of these
+     *   tests is concentrated anyway.
+     *
+     * `Build/Scripts/runTests.sh` passes `--exclude-group not-core-<version>`
+     * for the selected core version, the same mechanism the `Core13/` and
+     * `Core14/` test directories use.
+     *
+     * @todo Drop this constant and its usages once TYPO3 v13 is no longer
+     *       supported by this extension — the upload tests then run everywhere.
+     */
+    protected const UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13 = 'not-core-13';
+
+    /**
      * The boundary of the multipart body — see {@see sendUploadRequest()}.
      */
     private const MULTIPART_BOUNDARY = '----ModernExtbaseFrontendEditTestBoundary';
@@ -367,6 +420,13 @@ abstract class AbstractProfileAjaxTestCase extends AbstractProfilePluginTestCase
      * `getTemporaryFileName()`. The temporary file is written inside the test
      * instance rather than into the system temporary directory, so that a run
      * cannot leave anything behind outside the instance it is cleaned up with.
+     *
+     * That constructed `UploadedFile` is also the reason a test which expects
+     * the upload to **succeed** has to carry
+     * {@see UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13} — TYPO3 v13 refuses it in
+     * `ResourceStorage`, and the constant states why and where the case is
+     * covered instead. A test that expects the request to be **refused** needs
+     * nothing: the refusal happens long before the storage is reached.
      *
      * @param int|null $uid the `uid` part, or `null` to omit it entirely
      * @param string|null $contents the file bytes, or `null` for the fixture image

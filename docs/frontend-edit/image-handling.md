@@ -815,6 +815,49 @@ image has now joined it. It is also why the edit template does not use
 links are not part of an editing surface.
 → [The enhanced surface is client-rendered](edit-plugin.md#the-enhanced-surface-is-client-rendered)
 
+## A successful upload can only be simulated on v14
+
+The feature behaves identically on both core versions. The **test** of a
+successful upload does not: on TYPO3 v13 a functional test cannot produce a
+request that `ResourceStorage` accepts at all.
+
+Every write that moves an uploaded file into a storage passes
+`ResourceStorage::assureFileUploadPermissions()`.
+
+- **v13** resolves the `UploadedFile` to its temporary path first
+  (`cms-core/Classes/Resource/ResourceStorage.php:2274`) and then calls
+  `is_uploaded_file()` on it unconditionally (`:1095`), throwing
+  `UploadException` 1322110455 on `:1096`. PHP answers that check `false` for
+  every file the SAPI did not receive as an HTTP upload in the same process, so
+  a `UploadedFile` a test constructed is refused before this extension is
+  reached.
+- **v14** takes the uploaded file itself — `string|array|UploadedFileInterface`
+  — and performs the check only on the string branch, "(no additional
+  `is_uploaded_file` check on purpose)": v14.3.5 `ResourceStorage.php:1004-1018`.
+  The change is forge #107027, *[TASK] Replace $_FILES with PSR-7 UploadedFile in
+  ExtendedFileUtility*, released for `main` only; its commit message states the
+  intent as "this allows functional testing via `UploadedFile`".
+
+A browser upload arrives through the SAPI on both versions, so nothing about the
+endpoint, the validators or the cleanup differs at runtime. What differs is what
+a test can construct.
+
+The consequence for this repository is deliberately narrow:
+
+| Coverage                                                                             | v13                                                  | v14     |
+|--------------------------------------------------------------------------------------|------------------------------------------------------|---------|
+| Refusals — authorization, ownership, request token, transport, validation, workspace | yes                                                  | yes     |
+| A successful upload, replacement and removal, asserted on the raw rows               | no, excluded by group                                | yes     |
+| A successful upload through a real browser and apache                                | yes, `Tests/Acceptance/Frontend/ImageUpload.spec.ts` | not run |
+
+The excluded tests carry
+`AbstractProfileAjaxTestCase::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13`, whose value
+is the `not-core-13` group `runTests.sh` excludes for a v13 run. The refusal
+tests carry nothing and run everywhere, which is where the security relevant
+assertions of this feature live.
+→ [Functional tests](../testing/functional-tests.md#a-test-can-be-grouped-because-the-core-differs) ·
+[Acceptance tests](../testing/acceptance-tests.md)
+
 ## Named gaps
 
 Deliberately out of scope for the proof of concept, and listed so they are

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Http\Message\ResponseInterface;
 
@@ -36,6 +37,18 @@ use Psr\Http\Message\ResponseInterface;
  * `ProfileImageFixtureTrait::resetProfileImageFiles()` for that reason, and it
  * is what makes the two cleanup tests independent of the order they run in.
  *
+ * ## Why seven of these tests do not run on TYPO3 v13
+ *
+ * They are the seven that expect an upload to **succeed**, and v13 refuses a
+ * simulated upload in `ResourceStorage` before this extension is reached. They
+ * therefore carry
+ * {@see AbstractProfileAjaxTestCase::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13},
+ * whose docblock states the core difference, why production is unaffected and
+ * where the same path is covered on v13 instead. The refusal tests of this
+ * class — validation, ownership, transport, and the removal of an absent image
+ * — run on both core versions, deliberately: they are the ones that guard what
+ * a hostile request can do.
+ *
  * ## What the fixture provides
  *
  * `ProfileImages.csv` — imported for every plugin test — carries the storage,
@@ -56,6 +69,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      */
     private const FIRST_UPLOADED_FILE_UID = 3;
 
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function anUploadStoresTheFileAndAnswersWithTheNewImage(): void
     {
@@ -116,6 +130,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * with the file that was moved produces a perfectly well formed URL to
      * nothing.
      */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function theReportedUrlResolvesToTheUploadedFile(): void
     {
@@ -144,6 +159,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * row that is about to be repointed — `FileDeletionAspect` deletes every
      * reference of a deleted file.
      */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function aReplacementRepointsTheExistingReferenceAtTheNewFile(): void
     {
@@ -184,6 +200,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * guard exists for, and it is the one that is destroyed when the guard is
      * removed — by an event listener the deleting code never calls itself.
      */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function aFileAnotherRecordReferencesSurvivesAReplacement(): void
     {
@@ -225,6 +242,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * row covers at all, so a guard built on the reference table alone would
      * count zero and delete a file an editor is linking to.
      */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function aFileTheReferenceIndexStillKnowsAboutSurvivesAReplacement(): void
     {
@@ -252,6 +270,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * Without it the guard above would be satisfied by an implementation that
      * never deletes anything at all.
      */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function aFileNothingElseReferencesIsDeletedAfterAReplacement(): void
     {
@@ -281,6 +300,7 @@ final class ProfileImageUploadTest extends AbstractProfileAjaxTestCase
      * which is the page a visitor gets and the only one of the three that proves
      * the read side agrees with the write side.
      */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
     #[Test]
     public function anImageCanBeReplacedAndThenRemovedEverywhere(): void
     {
