@@ -36,6 +36,10 @@ colour was written three times in three files.
 
 *   Buttons and controls share one box: the same height, border, radius and
     focus ring.
+*   Every address and e-mail address is headed by its own type and first line,
+    with the buttons that act on it on the same line. The heading is not a
+    number: the records can be reordered, and a number would rename every entry
+    below the one that moved.
 *   A field is laid out as a row — label, value, and the action belonging to it
     — rather than as a stack, which makes a profile roughly a third shorter and
     puts the :guilabel:`Edit` button beside the value it edits. On a narrow

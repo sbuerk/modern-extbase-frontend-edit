@@ -156,6 +156,28 @@ export class ProfileEditPage {
     }
 
     /**
+     * The heading of one child record.
+     *
+     * Absent, rather than empty, when the record has neither a type nor a
+     * detail — so `toHaveCount(0)` is how "no heading" is asserted.
+     */
+    public childTitle(target: Target): Locator {
+        return this.childRow(target).locator('.child-title');
+    }
+
+    /**
+     * Every child heading of one collection, in the order the surface renders
+     * them. Pairs with {@see renderedChildUids}, which reads the same rows.
+     */
+    public renderedChildTitles(child: ChildType): Promise<string[]> {
+        return this.element
+            .locator('li.child')
+            .filter({ has: this.page.locator(`[data-focus^="${child}:"]`) })
+            .locator('.child-title')
+            .allInnerTexts();
+    }
+
+    /**
      * The form that creates a child, addressed through a field of its own.
      *
      * It is a `div.child-new` rather than an `li.child`, so {@see childRow}
