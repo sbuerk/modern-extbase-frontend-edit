@@ -6,6 +6,12 @@
 Feature: Content Security Policy rules
 ======================================
 
+..  seealso::
+
+    This entry records what changed. The policy itself, what it costs, what is
+    deliberately not requested and how to relax or drop it are documented in
+    :ref:`configuration-csp`.
+
 Description
 ===========
 

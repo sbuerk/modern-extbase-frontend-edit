@@ -53,4 +53,4 @@ An installation that has not styled the surface needs to do nothing.
 The typeface is unchanged and is still inherited from the page: the extension
 ships no font and cannot load one from another origin, because the Content
 Security Policy it declares permits the installation's own origin only. See
-:ref:`feature-content-security-policy`.
+:ref:`configuration-csp`.
