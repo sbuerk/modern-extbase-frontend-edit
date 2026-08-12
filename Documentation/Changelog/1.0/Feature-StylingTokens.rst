@@ -36,6 +36,11 @@ colour was written three times in three files.
 
 *   Buttons and controls share one box: the same height, border, radius and
     focus ring.
+*   Buttons carry emphasis. The one that commits a pending change —
+    :guilabel:`Apply`, :guilabel:`Save all fields`, :guilabel:`Add` — is filled
+    in the accent colour, and :guilabel:`Remove` is labelled in the danger
+    colour and fills only under the pointer. Everything else is the plain
+    button.
 *   The surface is capped at :css:`--frontend-edit-measure`, so the
     :guilabel:`Edit` button of a value no longer sits at the far edge of a wide
     page.

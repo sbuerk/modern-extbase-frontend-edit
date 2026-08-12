@@ -31,9 +31,51 @@ const controls = css`
     }
 
     /*
+     * The one filled button in a row: it commits the change the reader came to
+     * make. Filled rather than merely tinted, because in a row of four or five
+     * bordered buttons a tint is not a hierarchy, it is a shade.
+     */
+    button[data-variant='primary'] {
+        border-color: var(--frontend-edit-color-accent);
+        background-color: var(--frontend-edit-color-accent);
+        color: var(--frontend-edit-color-accent-contrast);
+    }
+
+    button[data-variant='primary']:hover:not(:disabled),
+    button[data-variant='primary']:active:not(:disabled) {
+        border-color: var(--frontend-edit-color-accent-hover);
+        background-color: var(--frontend-edit-color-accent-hover);
+    }
+
+    /*
+     * Destructive, and quiet until it is about to be pressed. A permanently red
+     * button in a row of neutral ones shouts at a reader who is not going to
+     * press it, and the row it sits in — move, hide, remove — is one a reader
+     * uses for the other three far more often. Colour identifies it; the fill
+     * arrives on hover, when the intent is already there.
+     */
+    button[data-variant='danger'] {
+        color: var(--frontend-edit-color-danger);
+    }
+
+    button[data-variant='danger']:hover:not(:disabled),
+    button[data-variant='danger']:active:not(:disabled) {
+        border-color: var(--frontend-edit-color-danger);
+        background-color: var(--frontend-edit-color-danger-surface);
+    }
+
+    button[data-variant='danger']:focus-visible {
+        outline-color: var(--frontend-edit-color-danger);
+    }
+
+    /*
      * Disabled means "not right now" — a save that is already in flight, a move
      * up on the first row. It has to read as unavailable rather than as missing,
      * because the button is a landmark the reader has already used once.
+     *
+     * Listed after the variants so a disabled primary is dimmed rather than
+     * drawn at full strength; the variants set colour, this sets opacity, and
+     * the two compose.
      */
     button:disabled {
         opacity: var(--frontend-edit-busy-opacity);

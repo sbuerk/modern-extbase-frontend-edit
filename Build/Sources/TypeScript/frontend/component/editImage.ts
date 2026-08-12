@@ -145,6 +145,7 @@ export class EditImageElement extends LitElement {
                         />
                         <button
                             type="button"
+                            data-variant="danger"
                             aria-describedby="label"
                             ?disabled="${this.busy || this.image === null}"
                             @click="${this.onRemove}"

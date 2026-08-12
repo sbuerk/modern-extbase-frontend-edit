@@ -14,9 +14,31 @@
  * class, so styling them by element keeps the markup about meaning and keeps
  * these rules from having to be applied by hand at every call site.
  *
- * There is no primary/secondary distinction yet. The surface has one button per
- * intent and no competing calls to action, so a hierarchy would be decoration.
- * When the record actions grow it becomes worth revisiting.
+ * ## The hierarchy, and why it is an attribute rather than a class
+ *
+ * Three levels, and the default is the unmarked one:
+ *
+ * | Variant     | Meaning                              | Buttons                        |
+ * |-------------|--------------------------------------|--------------------------------|
+ * | `primary`   | commits a pending change             | Apply, Save all fields, Add    |
+ * | *(default)* | changes what the surface is doing    | Edit, Cancel, Move, Hide       |
+ * | `danger`    | destroys a record or a file          | Remove                         |
+ *
+ * The variant travels in `data-variant`, not in `class`, and the reason is a
+ * convention this repository already relies on: class names here are
+ * **structural** — `.field-value`, `.field-control`, `.field-errors` are how the
+ * acceptance suite addresses the surface, precisely because they describe what a
+ * thing is and not how it looks. A presentational token in the same attribute
+ * would put a rename of an appearance concern in the same place as a selector a
+ * test depends on. Two attributes, two concerns, and `data-variant` can be
+ * renamed freely.
+ *
+ * Only two levels are marked. Boldness is spent in one place: `primary` is the
+ * single filled thing in a row, `danger` states itself in colour and does not
+ * fill until the pointer is on it, and everything else — `Cancel` included — is
+ * the plain button. A third, quieter level for `Cancel` was considered and left
+ * out; it would make the pair `Apply` / `Cancel` read as one real button beside
+ * one hint, and cancelling is an ordinary thing to want.
  */
 import { css } from 'lit';
 import type { CSSResult } from 'lit';
@@ -52,9 +74,51 @@ export const controls: CSSResult = css`
     }
 
     /*
+     * The one filled button in a row: it commits the change the reader came to
+     * make. Filled rather than merely tinted, because in a row of four or five
+     * bordered buttons a tint is not a hierarchy, it is a shade.
+     */
+    button[data-variant='primary'] {
+        border-color: var(--frontend-edit-color-accent);
+        background-color: var(--frontend-edit-color-accent);
+        color: var(--frontend-edit-color-accent-contrast);
+    }
+
+    button[data-variant='primary']:hover:not(:disabled),
+    button[data-variant='primary']:active:not(:disabled) {
+        border-color: var(--frontend-edit-color-accent-hover);
+        background-color: var(--frontend-edit-color-accent-hover);
+    }
+
+    /*
+     * Destructive, and quiet until it is about to be pressed. A permanently red
+     * button in a row of neutral ones shouts at a reader who is not going to
+     * press it, and the row it sits in — move, hide, remove — is one a reader
+     * uses for the other three far more often. Colour identifies it; the fill
+     * arrives on hover, when the intent is already there.
+     */
+    button[data-variant='danger'] {
+        color: var(--frontend-edit-color-danger);
+    }
+
+    button[data-variant='danger']:hover:not(:disabled),
+    button[data-variant='danger']:active:not(:disabled) {
+        border-color: var(--frontend-edit-color-danger);
+        background-color: var(--frontend-edit-color-danger-surface);
+    }
+
+    button[data-variant='danger']:focus-visible {
+        outline-color: var(--frontend-edit-color-danger);
+    }
+
+    /*
      * Disabled means "not right now" — a save that is already in flight, a move
      * up on the first row. It has to read as unavailable rather than as missing,
      * because the button is a landmark the reader has already used once.
+     *
+     * Listed after the variants so a disabled primary is dimmed rather than
+     * drawn at full strength; the variants set colour, this sets opacity, and
+     * the two compose.
      */
     button:disabled {
         opacity: var(--frontend-edit-busy-opacity);
