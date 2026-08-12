@@ -58,13 +58,24 @@ Colour
         -   Used for
     *   -   :css:`--frontend-edit-color-accent`
         -   :code:`#0a7bd4`
-        -   The focus ring, the frame around the surface, the active button.
+        -   The focus ring, the frame around the surface, and the fill of the
+            emphasised button.
+    *   -   :css:`--frontend-edit-color-accent-hover`
+        -   :code:`#0968b4`
+        -   The emphasised button under the pointer. A separate value because
+            :css:`color-mix()` is not available at the browsers this extension
+            supports.
     *   -   :css:`--frontend-edit-color-accent-contrast`
         -   :code:`#ffffff`
-        -   Text drawn on the accent.
+        -   Text drawn on the accent. Change it together with the accent, or the
+            emphasised button loses its contrast.
     *   -   :css:`--frontend-edit-color-danger`
         -   :code:`#a4141a`
-        -   Validation messages, the ring around a rejected control.
+        -   Validation messages, the ring around a rejected control, and the
+            label of a destructive button.
+    *   -   :css:`--frontend-edit-color-danger-surface`
+        -   :code:`#fdf2f2`
+        -   The fill of a destructive button under the pointer.
     *   -   :css:`--frontend-edit-color-border`
         -   :code:`#c7ccd1`
         -   Control borders, the rule above a collection, the child marker.
@@ -158,6 +169,50 @@ Type, focus, state and motion
     *   -   :css:`--frontend-edit-transition-easing`
         -   :code:`ease`
         -   Their easing.
+
+Buttons are not all the same weight
+===================================
+
+The surface marks two kinds of button, and leaves the rest plain:
+
+..  list-table::
+    :header-rows: 1
+
+    *   -   Button
+        -   Drawn as
+        -   Which ones
+    *   -   Commits a pending change
+        -   Filled in the accent colour
+        -   :guilabel:`Apply`, :guilabel:`Save all fields`, :guilabel:`Add`
+    *   -   Destroys a record or a file
+        -   Labelled in the danger colour, filled only under the pointer
+        -   :guilabel:`Remove`
+    *   -   Everything else
+        -   The plain bordered button
+        -   :guilabel:`Edit`, :guilabel:`Cancel`, :guilabel:`Move up`,
+            :guilabel:`Move down`, :guilabel:`Hide`
+
+There is no setting for this and no class to override. The distinction is
+carried in a :html:`data-variant` attribute on the button, so a site that wants
+a different treatment styles it directly — this is one of the few things a
+stylesheet can reach, because the attribute selector applies inside the
+component:
+
+..  code-block:: css
+
+    modern-extbase-frontend-edit-profile {
+        /* Make the emphasised button match the site's own call to action. */
+        --frontend-edit-color-accent: #00694e;
+        --frontend-edit-color-accent-hover: #005840;
+        --frontend-edit-color-accent-contrast: #ffffff;
+    }
+
+..  note::
+
+    Changing :css:`--frontend-edit-color-accent` also changes the focus ring and
+    the frame around the surface, because they are the same token. If the
+    emphasised button needs a colour of its own, set
+    :css:`--frontend-edit-focus-color` back to a value with enough contrast.
 
 ..  _configuration-styling-measure:
 

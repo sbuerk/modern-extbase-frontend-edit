@@ -9,8 +9,10 @@ const tokens = css`
          * and that beats both of these.
          */
         --frontend-edit-color-accent: #0a7bd4;
+        --frontend-edit-color-accent-hover: #0968b4;
         --frontend-edit-color-accent-contrast: #ffffff;
         --frontend-edit-color-danger: #a4141a;
+        --frontend-edit-color-danger-surface: #fdf2f2;
         --frontend-edit-color-border: #c7ccd1;
         --frontend-edit-color-border-strong: #8b9299;
         --frontend-edit-color-surface: #ffffff;
@@ -91,8 +93,10 @@ const tokens = css`
     @media (prefers-color-scheme: dark) {
         :host {
             --frontend-edit-color-accent: #4da3e8;
+            --frontend-edit-color-accent-hover: #6fb6ee;
             --frontend-edit-color-accent-contrast: #0b1116;
             --frontend-edit-color-danger: #f0868c;
+            --frontend-edit-color-danger-surface: #2a1416;
             --frontend-edit-color-border: #3a4249;
             --frontend-edit-color-border-strong: #5c666e;
             --frontend-edit-color-surface: #1b2126;

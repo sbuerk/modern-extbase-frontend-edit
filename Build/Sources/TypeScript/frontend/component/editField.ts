@@ -257,7 +257,13 @@ export class EditFieldElement extends LitElement {
 
         return html`
             <span class="field-actions">
-                <button type="button" aria-describedby="label" ?disabled="${this.busy}" @click="${this.onApply}">
+                <button
+                    type="button"
+                    data-variant="primary"
+                    aria-describedby="label"
+                    ?disabled="${this.busy}"
+                    @click="${this.onApply}"
+                >
                     ${label(this.labels, actionLabelKey('apply'))}
                 </button>
                 <button type="button" aria-describedby="label" ?disabled="${this.busy}" @click="${this.onCancel}">

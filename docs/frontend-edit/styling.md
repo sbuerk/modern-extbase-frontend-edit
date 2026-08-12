@@ -124,6 +124,39 @@ than eight literals, and it is not used: the browser floor of the import map
 mechanism is `chrome89 / firefox108 / safari16.4`, and `color-mix()` needs
 Chrome 111 and Firefox 113. It cannot be lowered by the build the way nesting can.
 
+## The button hierarchy is an attribute, not a class
+
+Three levels, and the default is the unmarked one:
+
+| Variant     | Meaning                           | Buttons                     |
+|-------------|-----------------------------------|-----------------------------|
+| `primary`   | commits a pending change          | Apply, Save all fields, Add |
+| *(default)* | changes what the surface is doing | Edit, Cancel, Move, Hide    |
+| `danger`    | destroys a record or a file       | Remove                      |
+
+It travels in `data-variant` rather than in `class`, and that follows from the
+section below: class names here are structural and the acceptance suite selects
+through them. Putting a presentational token in the same attribute would place a
+rename of an appearance concern next to a selector a test depends on.
+`data-variant` can be renamed freely; `.field-value` cannot.
+
+**Only two levels are marked, and that is the restraint.** `primary` is the one
+filled thing in a row — filled rather than tinted, because among four bordered
+buttons a tint is a shade and not a hierarchy. `danger` states itself in colour
+and does not fill until the pointer is on it, because the row it lives in (move,
+hide, remove) is one a reader uses for the other three far more often, and a
+permanently red button shouts at somebody who is not going to press it.
+
+A fourth, quieter level for `Cancel` was considered and rejected: it would make
+`Apply` / `Cancel` read as one real button beside one hint, and cancelling is an
+ordinary thing to want.
+
+**The mapping is tested, the appearance is not.**
+`Tests/Acceptance/Frontend/ButtonHierarchy.spec.ts` enumerates every button the
+surface draws and asserts the complete mapping, so a button added later fails
+until somebody decides what it is. It asserts nothing about colour — the
+stylesheet may change what `primary` looks like without touching the spec.
+
 ## Class names are structural, not presentational
 
 `.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by
@@ -133,14 +166,12 @@ Renaming one is a test change, not a styling change.
 
 ## What this layer does not do yet
 
-- **No button hierarchy.** `Apply` and `Cancel` are the same button. The surface
-  has one button per intent and no competing calls to action, so a primary /
-  secondary distinction would be decoration today. When the record actions grow
-  it is worth revisiting.
 - **No motion beyond two colour transitions.** There is one duration token, and
   `prefers-reduced-motion` sets it to `0ms` — one declaration rather than an
   `!important` sweep.
 - **Nothing verifies the appearance.** The acceptance suite proves the surface
-  still works; that it still looks right is a person looking at the six generated
+  still works, and one spec pins which button carries which emphasis — but that
+  a colour is legible, that a focus ring is visible against a dark host page, or
+  that nothing overlaps at 320 pixels is a person looking at the six generated
   screenshots. A visual regression suite would be the honest fix and does not
   exist.

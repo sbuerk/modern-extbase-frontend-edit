@@ -168,7 +168,12 @@ let ProfileEditElement = class extends LitElement {
   renderRecordActions(profile, target, edit) {
     if ((edit == null ? void 0 : edit.mode) === "record") {
       return html`
-                <button type="button" ?disabled="${edit.busy}" @click="${() => void this.submitRecord(target)}">
+                <button
+                    type="button"
+                    data-variant="primary"
+                    ?disabled="${edit.busy}"
+                    @click="${() => void this.submitRecord(target)}"
+                >
                     ${this.text(actionLabelKey("save"))}
                 </button>
                 <button type="button" ?disabled="${edit.busy}" @click="${() => this.cancelRecord(target)}">
@@ -255,6 +260,7 @@ let ProfileEditElement = class extends LitElement {
                     </button>
                     <button
                         type="button"
+                        data-variant="danger"
                         ?disabled="${busy}"
                         @click="${() => void this.deleteChild(child, record.uid)}"
                     >
@@ -303,7 +309,12 @@ let ProfileEditElement = class extends LitElement {
                     `;
     })}
                 <div class="child-actions">
-                    <button type="button" ?disabled="${(edit == null ? void 0 : edit.busy) ?? false}" @click="${() => void this.addChild(child)}">
+                    <button
+                        type="button"
+                        data-variant="primary"
+                        ?disabled="${(edit == null ? void 0 : edit.busy) ?? false}"
+                        @click="${() => void this.addChild(child)}"
+                    >
                         ${this.text(actionLabelKey("add"))}
                     </button>
                 </div>
