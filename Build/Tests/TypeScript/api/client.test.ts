@@ -16,10 +16,10 @@ import { describe, it } from 'node:test';
 import type { EndpointAction, EndpointMap } from '../../../Sources/TypeScript/api/endpoints.js';
 import type { Payload } from '../../../Sources/TypeScript/api/payload.js';
 import { ProfileEndpointClient } from '../../../Sources/TypeScript/api/client.js';
-import { fieldPayload } from '../../../Sources/TypeScript/api/payload.js';
+import { fieldPayload, imageUploadBody, imageUploadPart } from '../../../Sources/TypeScript/api/payload.js';
 import { noResponseStatus } from '../../../Sources/TypeScript/api/response.js';
 import { profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
-import { profileDocument } from '../profileDocument.js';
+import { profileDocument, profileDocumentWith } from '../profileDocument.js';
 
 const endpoints: EndpointMap = {
     save: '/p/1?tx[action]=save&cHash=a',
@@ -28,7 +28,13 @@ const endpoints: EndpointMap = {
     removeChild: '/p/1?tx[action]=removeChild&cHash=d',
     reorderChildren: '/p/1?tx[action]=reorderChildren&cHash=e',
     setChildVisibility: '/p/1?tx[action]=setChildVisibility&cHash=f',
+    uploadImage: '/p/1?tx[action]=uploadImage&cHash=g',
+    removeImage: '/p/1?tx[action]=removeImage&cHash=h',
 };
+
+function pickedFile(): File {
+    return new File(['not really a jpeg'], 'holiday.jpg', { type: 'image/jpeg' });
+}
 
 interface RecordedRequest {
     readonly url: string;
@@ -93,6 +99,7 @@ describe('ProfileEndpointClient.send', (): void => {
         const { requests, client } = recording((): Response => jsonResponse({ data: profileDocument }));
         const actions: readonly EndpointAction[] = [
             'save', 'saveField', 'addChild', 'removeChild', 'reorderChildren', 'setChildVisibility',
+            'uploadImage', 'removeImage',
         ];
         for (const action of actions) {
             await client.send(action, { uid: 42 });
@@ -137,6 +144,74 @@ describe('ProfileEndpointClient.send', (): void => {
         const result = await client.send('reorderChildren', { uid: 42 });
 
         assert.deepEqual(result, { kind: 'error', status: 504, codes: [] });
+    });
+
+    it('sends a multipart body without a content type, so the browser sets the boundary', async (): Promise<void> => {
+        const { requests, client } = recording((): Response => jsonResponse({ data: profileDocument }));
+        await client.send('uploadImage', imageUploadBody(42, pickedFile()));
+
+        const headers = headersOf(requests[0]!);
+        assert.equal(
+            headers['Content-Type'],
+            undefined,
+            'a hand written multipart content type drops the boundary, and the server then parses no parts at all',
+        );
+        assert.equal(headers.Accept, 'application/json');
+        assert.equal(
+            headers['X-TYPO3-RequestToken'],
+            'a-request-token',
+            'and the token travels in the same header as for every other write',
+        );
+        assert.equal(requests[0]!.init.method, 'POST');
+        assert.equal(requests[0]!.init.credentials, 'same-origin');
+    });
+
+    it('sends the form data itself rather than a serialisation of it', async (): Promise<void> => {
+        const { requests, client } = recording((): Response => jsonResponse({ data: profileDocument }));
+        const body = imageUploadBody(42, pickedFile());
+        await client.send('uploadImage', body);
+
+        assert.equal(requests[0]!.init.body, body);
+        assert.ok((requests[0]!.init.body as FormData).get(imageUploadPart) instanceof File);
+    });
+
+    it('applies the document of a successful upload, never a guess at the stored URL', async (): Promise<void> => {
+        const stored = {
+            uid: 5,
+            fileUid: 13,
+            publicUrl: '/fileadmin/user_upload/profiles/holiday-0b7d4e2f9a1c6538.jpg',
+            name: 'holiday-0b7d4e2f9a1c6538.jpg',
+            extension: 'jpg',
+            mimeType: 'image/jpeg',
+            size: 40960,
+            title: '',
+            alternative: '',
+            width: 640,
+            height: 480,
+        };
+        const { client } = recording((): Response => jsonResponse({ data: profileDocumentWith({ image: stored }) }));
+        const result = await client.send('uploadImage', imageUploadBody(42, pickedFile()));
+
+        assert.equal(result.kind, 'success');
+        assert.equal(
+            result.kind === 'success' ? result.profile.image?.publicUrl : null,
+            stored.publicUrl,
+            'the filename carries a random suffix the client cannot know',
+        );
+    });
+
+    it('answers a rejected upload as a validation result at the image field', async (): Promise<void> => {
+        const { client } = recording((): Response => jsonResponse(
+            { errors: [{ field: 'image', code: 1708526223, message: 'The file type is not allowed.' }] },
+            422,
+        ));
+        const result = await client.send('uploadImage', imageUploadBody(42, pickedFile()));
+
+        assert.equal(result.kind, 'validation', 'a rejected upload is read through the same envelope as every 422');
+        assert.deepEqual(
+            result.kind === 'validation' ? result.fieldErrors : null,
+            { image: ['The file type is not allowed.'] },
+        );
     });
 
     it('sends the payload it was handed, unchanged', async (): Promise<void> => {

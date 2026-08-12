@@ -264,17 +264,19 @@ Each row is a risk, the concrete defence, and the place the defence lives. A
 defence that lives in the controller only is a defence that the next controller
 forgets.
 
-| Risk                                                 | Defence                                                                                                          | Where it lives                                                                       |
-|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| IDOR on child records (address, e-mail, image)       | Navigate the owned aggregate; the client uid filters, it never looks up. No `findByUid()` in the controller.     | `findByUidAndProfileUidIncludingHidden()` + `ProfileAjaxController`, per child type. |
-| Mass assignment (no `__trustedProperties` in JSON)   | A `final readonly` DTO with exactly the writable fields. Never `allowAllProperties()`.                           | `Classes/Dto/`; the mappers apply a DTO onto the resolved entity.                    |
-| `pid` escape (`profile[pid]=1`)                      | `pid` is not a DTO property and never appears in an allow-list; new records inherit the parent's `pid`.          | DTO shape; `ChildCollectionSynchronizer` assigns it from the parent record.          |
-| Profile enumeration via the read endpoint            | `read` takes only an optional uid that **filters the owned set**; uniform 404, never 403, and no login check.    | `resolveOwnedProfile()` and the single `notFound()` helper.                          |
-| Hidden-record toggling (`profile[hidden]=0`)         | `hidden`, `starttime`, `endtime`, `deleted` are not DTO properties; the only path to `hidden` is its own action. | DTO shape; `setChildVisibility`, which is children-only.                             |
-| Enable-field bypass leaking editor-disabled records  | `setEnableFieldsToBeIgnored(['disabled'])` on the **owner-constrained** query only, never repository-wide.       | `AbstractEditRepository::createEditQuery()`; never `initializeObject()`.             |
-| Global visibility bypass                             | `VisibilityAspect` is never touched — it is request-global and would un-hide other people's records too.         | Nowhere. This is a "do not".                                                         |
-| Cross-user leak through the group-keyed page cache   | The endpoint page type is never cached; the edit plugin markup is `USER_INT`.                                    | `config.no_cache = 1` on the `PAGE`, plus the non-cacheable action registration.     |
-| Silent live-record write while a workspace is active | Refuse the write: `Context` `workspace.isLive` is asserted before any persistence call.                          | `WorkspaceGuard`, asserted by the controller **and** by the persistence service.     |
+| Risk                                                  | Defence                                                                                                                                    | Where it lives                                                                       |
+|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| IDOR on child records (address, e-mail, image)        | Navigate the owned aggregate; the client uid filters, it never looks up. No `findByUid()` in the controller.                               | `findByUidAndProfileUidIncludingHidden()` + `ProfileAjaxController`, per child type. |
+| Mass assignment (no `__trustedProperties` in JSON)    | A `final readonly` DTO with exactly the writable fields. Never `allowAllProperties()`.                                                     | `Classes/Dto/`; the mappers apply a DTO onto the resolved entity.                    |
+| `pid` escape (`profile[pid]=1`)                       | `pid` is not a DTO property and never appears in an allow-list; new records inherit the parent's `pid`.                                    | DTO shape; `ChildCollectionSynchronizer` assigns it from the parent record.          |
+| Profile enumeration via the read endpoint             | `read` takes only an optional uid that **filters the owned set**; uniform 404, never 403, and no login check.                              | `resolveOwnedProfile()` and the single `notFound()` helper.                          |
+| Hidden-record toggling (`profile[hidden]=0`)          | `hidden`, `starttime`, `endtime`, `deleted` are not DTO properties; the only path to `hidden` is its own action.                           | DTO shape; `setChildVisibility`, which is children-only.                             |
+| Enable-field bypass leaking editor-disabled records   | `setEnableFieldsToBeIgnored(['disabled'])` on the **owner-constrained** query only, never repository-wide.                                 | `AbstractEditRepository::createEditQuery()`; never `initializeObject()`.             |
+| Global visibility bypass                              | `VisibilityAspect` is never touched — it is request-global and would un-hide other people's records too.                                   | Nowhere. This is a "do not".                                                         |
+| Cross-user leak through the group-keyed page cache    | The endpoint page type is never cached; the edit plugin markup is `USER_INT`.                                                              | `config.no_cache = 1` on the `PAGE`, plus the non-cacheable action registration.     |
+| Silent live-record write while a workspace is active  | Refuse the write: `Context` `workspace.isLive` is asserted before any persistence call.                                                    | `WorkspaceGuard`, asserted by the controller **and** by the persistence service.     |
+| Hostile file upload (stored XSS, resource exhaustion) | An allow-list of four raster MIME types — no SVG — plus a size and a dimension bound, all validated before anything is moved into storage. | `Validation\ProfileImageUploadRules`, applied by `initializeUploadImageAction()`.    |
+| Destroying another record's file reference            | Delete a replaced `sys_file` only when nothing but our own reference row points at it, counted after the flush.                            | `UnreferencedFileCleanupService`, called only by `ProfilePersistenceService`.        |
 
 Three rows changed shape when the code was written, and the table above is the
 corrected version:
@@ -460,6 +462,16 @@ The three request shapes are: no `InternalRequestContext` at all (anonymous),
 | Workspace guard        | A request with `withWorkspaceId()` set is refused with `409`, and the live row is byte-identical afterwards.                           |
 | Verb and media type    | A `GET`, and a `POST` without `application/json`, are refused before the payload is read — `405` with `Allow: POST`, and `400`.        |
 
+The media type row does not hold for the image upload, and that is worth saying
+here rather than only where it is decided. `uploadImage` insists on
+`multipart/form-data`, which a cross origin `<form>` **can** produce, so the
+cheap second CSRF barrier the JSON endpoints get for free does not exist there.
+The request token is the only one. It is enough — a hash signed JWT bound to a
+nonce cookie this browser holds, which an attacker cannot read — but it is the
+only one, and that is the reason the token check on that endpoint runs before
+anything else and must never be relaxed "because the upload is harmless".
+→ [Image handling](image-handling.md#the-two-endpoints)
+
 Per repository policy every one of these is **shown to fail** with its guard
 removed before it is committed — an authorization test that passes for the wrong
 reason is worse than no test, because it is trusted.
@@ -468,7 +480,7 @@ reason is worse than no test, because it is trusted.
 
 - [Plugins and the Fluid layer](plugins-and-fluid.md) — the ownership flag the
   read plugins render, and why it is not one of the defences on this page.
-- [AJAX transport](ajax-transport.md) — the seven endpoints these rules guard,
+- [AJAX transport](ajax-transport.md) — the nine endpoints these rules guard,
   the status codes and the caching correction.
 - [Persistence and sorting](persistence-and-sorting.md) — the write path behind
   the boundary, and what it does not do.

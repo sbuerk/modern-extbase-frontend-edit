@@ -244,6 +244,12 @@ TYPO3 core reaches this extension as a broken page rather than as a red gate.
   `data-profile`, an `ajaxPageType` of `0`, a missing request token — are not
   covered. Each needs a differently misconfigured instance, i.e. a second seeded
   instance per condition.
+- **The image surface.** Picking a file, the upload round trip, the replacement
+  and the removal have no spec here. Playwright can set a file on an input, so
+  this is a gap of effort rather than of possibility: the server half is covered
+  by the functional suite, the decisions by `imageEdit.test.ts`, and nothing yet
+  drives the two together in a browser.
+  → [Image handling](../frontend-edit/image-handling.md)
 
 ## See also
 

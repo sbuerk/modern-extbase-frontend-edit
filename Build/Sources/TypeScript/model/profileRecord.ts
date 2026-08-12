@@ -19,7 +19,14 @@
  * one. Applying a response is then an assignment in the component, which is
  * also what lit needs in order to notice it.
  */
-import type { AddressRecord, ChildRecord, ChildType, EmailRecord, ProfileRecord } from './types.js';
+import type {
+    AddressRecord,
+    ChildRecord,
+    ChildType,
+    EmailRecord,
+    ProfileImageRecord,
+    ProfileRecord,
+} from './types.js';
 import type { RecordTarget } from './recordTarget.js';
 import { fieldsOf } from './fieldDefinitions.js';
 
@@ -51,9 +58,64 @@ export function parseProfileRecord(value: unknown): ProfileRecord | null {
         birthday: readString(value.birthday),
         bio: readString(value.bio),
         hidden: value.hidden === true,
+        image: parseProfileImage(value.image),
         addresses: readChildren(value.addresses, parseAddressRecord),
         emails: readChildren(value.emails, parseEmailRecord),
     };
+}
+
+/**
+ * Reads the `image` member of a document, or answers `null`.
+ *
+ * `null` means "this profile has no image", which is a state and not a failure —
+ * a document without the member, one whose member is `null` and one whose member
+ * is unusable all end up the same way, and the surface then offers an upload
+ * instead of an image.
+ *
+ * A reference whose file is gone still parses: `uid` identifies the
+ * `sys_file_reference` row, the removal endpoint addresses it, and only the
+ * rendering of the `<img>` depends on `publicUrl` being non-empty. Refusing it
+ * here would leave the owner with a reference they can see in the backend and
+ * cannot remove in the frontend.
+ */
+export function parseProfileImage(value: unknown): ProfileImageRecord | null {
+    if (!isObject(value)) {
+        return null;
+    }
+    const uid = readUid(value.uid);
+    if (uid === null) {
+        return null;
+    }
+
+    return {
+        uid,
+        fileUid: readUid(value.fileUid) ?? 0,
+        publicUrl: readString(value.publicUrl),
+        name: readString(value.name),
+        extension: readString(value.extension),
+        mimeType: readString(value.mimeType),
+        size: readNumber(value.size) ?? 0,
+        title: readString(value.title),
+        alternative: readString(value.alternative),
+        width: readNumber(value.width),
+        height: readNumber(value.height),
+    };
+}
+
+/**
+ * The name of a profile, by the rule the server applies.
+ *
+ * `ProfileEditController::displayName()` and `Profile/Card` both compute it as
+ * "first and last name, or the shortname when both are empty", and the component
+ * has to compute it again because the name it shows has to follow the document
+ * of the last response — a name handed over once would be the name the page was
+ * loaded with, and it is the alternative text of the image that would then be
+ * wrong.
+ */
+export function displayName(profile: ProfileRecord): string {
+    const name = `${profile.firstname} ${profile.lastname}`.trim();
+
+    return name === '' ? profile.shortname : name;
 }
 
 export function parseAddressRecord(value: unknown): AddressRecord | null {
@@ -213,6 +275,17 @@ function readChildren<T>(value: unknown, parse: (entry: unknown) => T | null): T
 
 function readUid(value: unknown): number | null {
     return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+/**
+ * A finite number, or `null` for anything else.
+ *
+ * Distinct from {@see readUid} because a dimension of `0` is a value and a uid
+ * of `0` is not one, and because `null` here means "the file carries no
+ * dimensions" rather than "the document is unusable".
+ */
+function readNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 function readString(value: unknown): string {

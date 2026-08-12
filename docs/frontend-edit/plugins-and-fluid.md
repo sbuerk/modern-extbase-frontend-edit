@@ -120,14 +120,15 @@ through `sys_template` records never sees it. Core's own `felogin` ships both fo
 exactly that reason: a set under `Configuration/Sets/Felogin/` next to
 `addTypoScriptConstants()` and `addTypoScriptSetup()` in its `ext_localconf.php`.
 
-The two carry the same four settings in two namespaces:
+The two carry the same five settings in two namespaces:
 
-| Meaning                              | Site set setting (`settings.definitions.yaml`)     | Classic TypoScript constant                                  | Plugin path                                                  |
-|--------------------------------------|----------------------------------------------------|--------------------------------------------------------------|--------------------------------------------------------------|
-| Storage pages of the profile records | `modernextbasefrontendedit.persistence.storagePid` | `plugin.tx_modernextbasefrontendedit.persistence.storagePid` | `plugin.tx_modernextbasefrontendedit.persistence.storagePid` |
-| Page holding the show plugin         | `modernextbasefrontendedit.showPageUid`            | `plugin.tx_modernextbasefrontendedit.settings.showPageUid`   | `plugin.tx_modernextbasefrontendedit.settings.showPageUid`   |
-| Page holding the edit plugin         | `modernextbasefrontendedit.editPageUid`            | `plugin.tx_modernextbasefrontendedit.settings.editPageUid`   | `plugin.tx_modernextbasefrontendedit.settings.editPageUid`   |
-| Page **type** of the JSON endpoints  | `modernextbasefrontendedit.ajaxPageType`           | `plugin.tx_modernextbasefrontendedit.settings.ajaxPageType`  | `plugin.tx_modernextbasefrontendedit.settings.ajaxPageType`  |
+| Meaning                              | Site set setting (`settings.definitions.yaml`)     | Classic TypoScript constant                                      | Plugin path                                                      |
+|--------------------------------------|----------------------------------------------------|------------------------------------------------------------------|------------------------------------------------------------------|
+| Storage pages of the profile records | `modernextbasefrontendedit.persistence.storagePid` | `plugin.tx_modernextbasefrontendedit.persistence.storagePid`     | `plugin.tx_modernextbasefrontendedit.persistence.storagePid`     |
+| Page holding the show plugin         | `modernextbasefrontendedit.showPageUid`            | `plugin.tx_modernextbasefrontendedit.settings.showPageUid`       | `plugin.tx_modernextbasefrontendedit.settings.showPageUid`       |
+| Page holding the edit plugin         | `modernextbasefrontendedit.editPageUid`            | `plugin.tx_modernextbasefrontendedit.settings.editPageUid`       | `plugin.tx_modernextbasefrontendedit.settings.editPageUid`       |
+| Page **type** of the JSON endpoints  | `modernextbasefrontendedit.ajaxPageType`           | `plugin.tx_modernextbasefrontendedit.settings.ajaxPageType`      | `plugin.tx_modernextbasefrontendedit.settings.ajaxPageType`      |
+| Folder uploaded images are stored in | `modernextbasefrontendedit.imageUploadFolder`      | `plugin.tx_modernextbasefrontendedit.settings.imageUploadFolder` | `plugin.tx_modernextbasefrontendedit.settings.imageUploadFolder` |
 
 `ajaxPageType` is the odd one: a page *type*, not a page uid, because the
 endpoints answer on whichever page the edit plugin sits on. It also feeds
@@ -137,6 +138,15 @@ so that one line is what makes the site setting win on a site using the set. The
 edit plugin reads it to build its endpoint map, and a value of `0` is what makes
 that map empty and the surface refuse to enhance.
 → [Degradation](edit-plugin.md#degradation)
+
+`imageUploadFolder` is a **combined storage identifier** — `1:/user_upload/profiles/`
+by default — and not a path: `FileUploadConfiguration::ensureValidConfiguration()`
+throws 1711801071 for anything else, and the endpoint calls it early so that a
+typo in the site configuration surfaces at the request that configured it. The
+folder is created on the first upload. It is a setting rather than a constant
+because the storage layout of an installation is not this extension's to assume,
+and it has a default so that a site which configures nothing still works.
+→ [Image handling](image-handling.md)
 
 Three things follow from that layout:
 
@@ -206,16 +216,23 @@ passed on, because both `f:uri.page` and `f:uri.action` resolve a page uid of
 `0` to the *current* page, which for the list plugin would be a link to itself.
 
 > [!NOTE]
-> **Correction.** An earlier revision of this page argued that the URI rule is
-> what would keep `Profile/Card` usable from the edit plugin, which would "pass
-> its own URIs and change nothing here". The edit plugin does not use
-> `Profile/Card` at all. The card bundles the image with the name, and that
-> template needs them on **different sides** of the custom element — the image
-> outside, where nothing can make it disagree with the server, the name inside,
-> where the component edits it. It reuses `Profile/Details`, `AddressList`,
-> `EmailList` and `Image`, and renders its own heading. The rule itself held;
-> the prediction about which partial it would pay off in did not.
-> → [The enhanced surface is client-rendered](edit-plugin.md#the-enhanced-surface-is-client-rendered)
+> **Correction, twice over.** An earlier revision of this page argued that the
+> URI rule is what would keep `Profile/Card` usable from the edit plugin, which
+> would "pass its own URIs and change nothing here". The edit plugin does not use
+> `Profile/Card` at all: the card bundles the image and the name with the links
+> that apply to a profile, and links are not part of an editing surface. It
+> reuses `Profile/Details`, `AddressList`, `EmailList` and `Image`, and renders
+> its own heading. The rule itself held; the prediction about which partial it
+> would pay off in did not.
+>
+> The reason given for the split was wrong as well, and it was corrected once
+> the image became editable. It said the image and the name belong on
+> **different sides** of the custom element — the image outside, where nothing
+> could make it disagree with the server. With an upload endpoint something can:
+> everything outside the element survives the upgrade unchanged, so a copy left
+> there would keep showing the file the page was loaded with next to a surface
+> already showing the new one. Both are rendered **inside**.
+> → [Image handling](image-handling.md#the-image-is-rendered-inside-the-custom-element)
 
 **The heading level is an argument.** `Profile/Card` renders its name heading
 into `{headingTag}`, and both call sites pass a different value: the list
@@ -329,7 +346,12 @@ that ViewHelper needs the Extbase file reference and would pull FAL processing
 into a partial that only displays. An extension that wants processed images
 replaces this one partial and nothing else — which is why the image is a partial
 of its own rather than three lines inside the card.
-→ [Image handling](image-handling.md)
+
+It has two call sites: `Profile/Card`, which the list and detail templates
+render, and the edit template, which renders it **inside** the custom element
+because the image is editable there. That last one is the no-JavaScript view of the image; once the
+element upgrades, the component draws its own.
+→ [Image handling](image-handling.md#the-image-is-rendered-inside-the-custom-element)
 
 ### Why the contract is a comment block and not `<f:argument>`
 
@@ -378,7 +400,9 @@ limitation, and the one to revisit when v13 support is dropped.
   `f:asset.css` and `f:asset.module`, and no inline script is emitted anywhere.
   → [Frontend assets](frontend-assets.md)
 - **No image processing, no cropping, no responsive variants.** See
-  `Profile/Image` above.
+  `Profile/Image` above. The file is served as it was uploaded, and an extension
+  that wants processed images replaces that one partial.
+  → [Image handling](image-handling.md#named-gaps)
 
 ## See also
 

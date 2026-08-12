@@ -13,8 +13,12 @@ import { describe, it } from 'node:test';
 import {
     addChildPayload,
     fieldPayload,
+    imageUidPart,
+    imageUploadBody,
+    imageUploadPart,
     recordPayload,
     removeChildPayload,
+    removeImagePayload,
     reorderPayload,
     visibilityPayload,
 } from '../../../Sources/TypeScript/api/payload.js';
@@ -64,6 +68,37 @@ describe('recordPayload', (): void => {
         data.firstname = 'Ada';
 
         assert.deepEqual(payload, { uid: 42, data: { firstname: 'Augusta' } });
+    });
+});
+
+describe('the image bodies', (): void => {
+    it('names the file part the way Extbase looks it up, or it is never found', (): void => {
+        assert.equal(imageUploadPart, 'tx_modernextbasefrontendedit_ajax[profile][image]');
+        assert.equal(imageUidPart, 'tx_modernextbasefrontendedit_ajax[uid]');
+    });
+
+    it('sends the file and the profile uid, and nothing else', (): void => {
+        const file = new File(['not really a jpeg'], 'holiday.jpg', { type: 'image/jpeg' });
+        const body = imageUploadBody(42, file);
+        const part = body.get(imageUploadPart);
+
+        assert.deepEqual([...body.keys()], [imageUidPart, imageUploadPart]);
+        assert.equal(body.get(imageUidPart), '42', 'every part of a multipart body is text');
+        assert.ok(part instanceof File);
+        assert.equal(part.size, file.size, 'the file goes on the wire as it is, not base64 encoded');
+        assert.equal(part.type, 'image/jpeg');
+    });
+
+    it('keeps the client filename, which is the basename the server suffixes', (): void => {
+        const body = imageUploadBody(42, new File([''], 'holiday.jpg', { type: 'image/jpeg' }));
+        const part = body.get(imageUploadPart);
+
+        assert.ok(part instanceof File);
+        assert.equal(part.name, 'holiday.jpg', 'without it a browser sends "blob"');
+    });
+
+    it('removes the image by profile uid alone, never by a client supplied file uid', (): void => {
+        assert.deepEqual(removeImagePayload(42), { uid: 42 });
     });
 });
 

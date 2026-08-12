@@ -244,9 +244,15 @@ foreach ([
     'ProfilePlugins.csv',
     'ProfileEditPlugin.csv',
     'ProfileAjaxRecords.csv',
+    // Carries the `sys_file_storage` record, without which no upload can
+    // resolve its target folder at all — and the two indexed files and the
+    // profiles referencing them, so that the browser run and the functional run
+    // describe the same FAL fixture.
+    'ProfileImages.csv',
 ] as $fixture) {
     DataSet::import($rootPath . '/Tests/Functional/Fixtures/Database/' . $fixture);
 }
+provideFixtureFiles($rootPath, $instancePath);
 echo 'done' . PHP_EOL;
 
 echo 'Writing the site configuration ... ';
@@ -275,6 +281,35 @@ writeManifest($manifestFile, [
 
 echo PHP_EOL . 'Acceptance instance ready at ' . $instancePath . PHP_EOL;
 echo 'Manifest written to ' . $manifestFile . PHP_EOL;
+
+/**
+ * Copies the committed fixture images into `fileadmin/` of the instance.
+ *
+ * The counterpart of `$pathsToProvideInTestInstance` in the functional suite,
+ * and copied for the same reason it is copied there: `fileadmin/user_upload/`
+ * is the folder an upload writes into, and behind a symlink a browser run that
+ * stores, replaces or deletes a file would be writing into the repository
+ * working tree.
+ *
+ * Without this the two `sys_file` rows of `ProfileImages.csv` would name files
+ * that are not there — an upload would still work, and every page rendering one
+ * of those two profiles would serve a broken image.
+ */
+function provideFixtureFiles(string $rootPath, string $instancePath): void
+{
+    $source = $rootPath . '/Tests/Functional/Fixtures/Files/';
+    $target = $instancePath . '/fileadmin/user_upload/';
+    GeneralUtility::mkdir_deep($target);
+
+    foreach (new \DirectoryIterator($source) as $file) {
+        if ($file->isFile() && !copy($file->getPathname(), $target . $file->getFilename())) {
+            throw new \RuntimeException(
+                sprintf('The fixture file "%s" could not be copied into the instance.', $file->getFilename()),
+                1786800005,
+            );
+        }
+    }
+}
 
 /**
  * Rewrites the entry point `Testbase` generated so that it points the instance

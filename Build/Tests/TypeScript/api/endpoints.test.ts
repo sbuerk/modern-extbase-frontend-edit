@@ -17,11 +17,19 @@ const complete: Record<string, unknown> = {
     removeChild: '/remove-child',
     reorderChildren: '/reorder-children',
     setChildVisibility: '/set-child-visibility',
+    uploadImage: '/upload-image',
+    removeImage: '/remove-image',
 };
 
 describe('parseEndpoints', (): void => {
     it('reads a complete map', (): void => {
         assert.deepEqual(parseEndpoints({ ...complete }), complete);
+    });
+
+    it('expects the two image actions like every other one', (): void => {
+        assert.ok(endpointActions.includes('uploadImage'));
+        assert.ok(endpointActions.includes('removeImage'));
+        assert.equal(endpointActions.length, Object.keys(complete).length);
     });
 
     it('ignores keys that are not endpoint actions', (): void => {

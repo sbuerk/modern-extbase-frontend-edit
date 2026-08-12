@@ -40,7 +40,14 @@ final class ProfileAjaxAuthorizationTest extends AbstractProfileAjaxTestCase
      * incomplete one, and a payload missing a key would let a `400` masquerade
      * as the refusal under test.
      *
-     * @return \Generator<string, array{action: string, payload: array<string, mixed>}>
+     * `uploadImage` is the one entry whose transport is `multipart/form-data`
+     * rather than a JSON body, so its row says so and
+     * `AbstractProfileAjaxTestCase::sendWriteRequest()` builds it accordingly.
+     * It is in this provider rather than in a test of its own because the rules
+     * below are not per endpoint: an endpoint that is exempt from one of them is
+     * a hole in the feature, whatever it transports.
+     *
+     * @return \Generator<string, array{action: string, payload: array<string, mixed>, multipart?: bool}>
      */
     public static function writingEndpoints(): \Generator
     {
@@ -75,6 +82,15 @@ final class ProfileAjaxAuthorizationTest extends AbstractProfileAjaxTestCase
             'action' => 'setChildVisibility',
             'payload' => ['uid' => self::OWNED_PROFILE_UID, 'child' => 'email', 'childUid' => 1, 'hidden' => true],
         ];
+        yield 'uploadImage' => [
+            'action' => 'uploadImage',
+            'payload' => ['uid' => self::OWNED_PROFILE_UID],
+            'multipart' => true,
+        ];
+        yield 'removeImage' => [
+            'action' => 'removeImage',
+            'payload' => ['uid' => self::OWNED_PROFILE_UID],
+        ];
     }
 
     /**
@@ -88,15 +104,19 @@ final class ProfileAjaxAuthorizationTest extends AbstractProfileAjaxTestCase
      */
     #[DataProvider('writingEndpoints')]
     #[Test]
-    public function anUnauthenticatedWriteIsRefusedAndWritesNothing(string $action, array $payload): void
-    {
+    public function anUnauthenticatedWriteIsRefusedAndWritesNothing(
+        string $action,
+        array $payload,
+        bool $multipart = false,
+    ): void {
         $snapshot = $this->recordSnapshot();
 
-        $response = $this->sendAjaxRequest(action: $action, payload: $payload);
+        $response = $this->sendWriteRequest(action: $action, payload: $payload, multipart: $multipart);
 
         $this->assertSame(403, $response->getStatusCode());
         $this->assertSame([1786495904], $this->errorCodes($response));
         $this->assertSame($snapshot, $this->recordSnapshot(), 'No record was written.');
+        $this->assertSame([], $this->storedUploadFileNames(), 'No file reached the storage.');
     }
 
     /**
@@ -113,18 +133,23 @@ final class ProfileAjaxAuthorizationTest extends AbstractProfileAjaxTestCase
      */
     #[DataProvider('writingEndpoints')]
     #[Test]
-    public function aForeignProfileIsIndistinguishableFromAnAbsentOne(string $action, array $payload): void
-    {
+    public function aForeignProfileIsIndistinguishableFromAnAbsentOne(
+        string $action,
+        array $payload,
+        bool $multipart = false,
+    ): void {
         $snapshot = $this->recordSnapshot();
 
-        $foreign = $this->sendAjaxRequest(
+        $foreign = $this->sendWriteRequest(
             action: $action,
             payload: array_replace($payload, ['uid' => self::FOREIGN_PROFILE_UID]),
+            multipart: $multipart,
             frontendUserId: self::OWNER_FRONTEND_USER_ID,
         );
-        $absent = $this->sendAjaxRequest(
+        $absent = $this->sendWriteRequest(
             action: $action,
             payload: array_replace($payload, ['uid' => self::ABSENT_PROFILE_UID]),
+            multipart: $multipart,
             frontendUserId: self::OWNER_FRONTEND_USER_ID,
         );
 
@@ -136,6 +161,7 @@ final class ProfileAjaxAuthorizationTest extends AbstractProfileAjaxTestCase
             'A profile of another user answers exactly like a profile that does not exist.',
         );
         $this->assertSame($snapshot, $this->recordSnapshot(), 'No record was written.');
+        $this->assertSame([], $this->storedUploadFileNames(), 'No file reached the storage.');
     }
 
     /**
