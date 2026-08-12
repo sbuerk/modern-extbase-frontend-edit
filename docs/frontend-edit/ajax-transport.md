@@ -721,10 +721,41 @@ cached HTML to be renewed — stated in the changelog for 13.4.x,
 Important #107062. An inline `<script nonce>` would make every page carrying an
 editable record uncacheable, on top of the `USER_INT` plugin.
 
-If a site enables frontend CSP and our module ever needs a directive the default
-policy lacks, the mechanism is `Configuration/ContentSecurityPolicies.php` in
-the extension. A same-origin module and a same-origin `fetch()` should not need
-one.
+The extension nevertheless ships a
+[`Configuration/ContentSecurityPolicies.php`](../../Configuration/ContentSecurityPolicies.php),
+declaring `'self'` for the four directives it actually uses — `script-src`,
+`style-src`, `connect-src` and `img-src`. Under core's own frontend policy that
+is very nearly a no-op, and it was measured rather than assumed: rendering the
+same page with the file and without it differs by exactly one directive,
+
+```
+style-src 'self' 'report-sample'
+```
+
+which permits precisely what `default-src 'self'` already permits. It survives
+the folding in `Policy::prepare()` only because `'report-sample'` is appended to
+a directive that was declared and not to `default-src`, so the two source sets
+differ by a token that grants nothing. `script-src` and `img-src` are in the
+header either way, because core declares both itself, and `connect-src` folds
+away entirely.
+
+The file earns that one directive in the case where the folding stops applying.
+A site that narrows `default-src` — to `'none'`, or to a host — applies its own
+mutations *after* the ones packages declare, so all four stop being identical to
+their ancestor and survive into the header, and the editing surface keeps
+working rather than failing with console errors and no explanation.
+
+What it deliberately does **not** request was checked against the assets rather
+than omitted: no `style-src 'unsafe-inline'`, because lit installs component
+styles through `adoptedStyleSheets` and its `<style>` fallback is unreachable at
+the build target; no `img-src data:` or `blob:`, because there is no client side
+preview; no `form-action`, because there is no `<form>`.
+
+[`Tests/Functional/Frontend/ContentSecurityPolicyTest.php`](../../Tests/Functional/Frontend/ContentSecurityPolicyTest.php)
+turns the feature flag on and asserts the emitted header, including that ceiling
+— widening `style-src` by `'unsafe-inline'` makes it fail. Without it the policy
+would only ever be reasoned about, and a wrong claim in it would surface in
+somebody else's browser console.
 
 ## v13 vs v14
 
