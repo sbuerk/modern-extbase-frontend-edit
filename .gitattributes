@@ -11,6 +11,12 @@
 /CLAUDE.md export-ignore
 /GEMINI.md export-ignore
 
+# Documentation screenshots. Marked binary so no platform ever applies the line
+# ending normalisation below to them, and so a diff reports "binary files
+# differ" instead of trying to render one.
+*.avif binary
+*.webp binary
+
 # Enforce checkout with linux lf consistent over all platforms
 *.css text eol=lf
 *.html text eol=lf

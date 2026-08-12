@@ -365,6 +365,7 @@ Options:
             - phpstan: phpstan analyze
             - phpstanGenerateBaseline: regenerate phpstan baseline, handy after phpstan updates
             - renderDocumentation: render the extension documentation into Documentation-GENERATED-temp
+            - screenshotDocumentation: regenerate the documentation screenshots (writes into Documentation/)
             - setVersion: apply a version across the repository, "-- <version> <type>"
             - typecheckJs: "tsc --noEmit" over every TypeScript tree, which the build does not do
             - unit (default): PHP unit tests
@@ -788,6 +789,37 @@ case ${TEST_SUITE} in
             # process. The suite fails on nothing else that is written to stderr,
             # so the warning is silenced rather than tolerated as noise.
             ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name acceptance-${SUFFIX} \
+                -e HOME=${ROOT_DIR}/.cache \
+                -e NODE_PATH=${ROOT_DIR}/Build/playwright/node_modules \
+                -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
+                -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+                -e CHROME_SANDBOX=false \
+                ${IMAGE_PLAYWRIGHT} "${COMMAND[@]}"
+            SUITE_EXIT_CODE=$?
+        fi
+        ;;
+    screenshotDocumentation)
+        # Regenerates the screenshots the rendered documentation embeds, by
+        # driving the same seeded instance the acceptance suite drives.
+        #
+        # This is **not a gate**, and the difference matters twice over: it
+        # writes into the tracked tree, which no gate does, and nothing verifies
+        # its output - a screenshot that no longer matches the interface is a
+        # documentation defect a person notices, not a red build. It is
+        # therefore deliberately absent from the CI workflow, and adding a "-s"
+        # suite without adding a job is all that takes: no job enumerates the
+        # suites generically.
+        #
+        # Generation is containerised with no host escape hatch on purpose. The
+        # fonts come from the Playwright image, so a shot taken on a host would
+        # differ from every other one in the manual.
+        if [ "${DBMS}" != "sqlite" ]; then
+            echo "The screenshot generator supports \"-d sqlite\" only." >&2
+            SUITE_EXIT_CODE=1
+        else
+            startAcceptanceInstance
+            COMMAND=(/bin/sh -c 'cd Build/playwright && npm ci --no-audit --no-fund && npm run screenshots -- "$@"' screenshots "$@")
+            ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name screenshot-documentation-${SUFFIX} \
                 -e HOME=${ROOT_DIR}/.cache \
                 -e NODE_PATH=${ROOT_DIR}/Build/playwright/node_modules \
                 -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
