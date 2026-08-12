@@ -274,18 +274,19 @@ docs     ─┤
 assets   ─┘
 ```
 
-| Job                 | Matrix                                   | Runs                                                              |
-|---------------------|------------------------------------------|-------------------------------------------------------------------|
-| `quality`           | lowest PHP, one core version             | The gates that inspect source files                               |
-| `phpstan`           | lowest PHP × both core versions          | The one gate configured per core version                          |
-| `lint`              | all PHP versions × both core versions    | `lintPhp`                                                         |
-| `unit`              | edge PHP versions × both core versions   | `unit`, `unitRandom`                                              |
-| `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                                            |
-| `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                                |
-| `acceptance`        | —                                        | `acceptance`, uploads traces and the TYPO3 log on failure         |
-| `visual-regression` | —                                        | `visualRegression`, uploads the image diffs on failure            |
-| `documentation`     | —                                        | `renderDocumentation`, uploads the artifact                       |
-| `frontend-assets`   | —                                        | `lintTypescript -n`, `typecheckJs`, `unitJs`, `checkJsBuildClean` |
+| Job                         | Matrix                                   | Runs                                                              |
+|-----------------------------|------------------------------------------|-------------------------------------------------------------------|
+| `quality`                   | lowest PHP, one core version             | The gates that inspect source files                               |
+| `phpstan`                   | lowest PHP × both core versions          | The one gate configured per core version                          |
+| `lint`                      | all PHP versions × both core versions    | `lintPhp`                                                         |
+| `unit`                      | edge PHP versions × both core versions   | `unit`, `unitRandom`                                              |
+| `functional-sqlite`         | edge PHP versions × both core versions   | `functional -d sqlite`                                            |
+| `functional-dbms`           | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                                |
+| `acceptance`                | —                                        | `acceptance`, uploads traces and the TYPO3 log on failure         |
+| `visual-regression`         | —                                        | `visualRegression`, uploads the image diffs on failure            |
+| `documentation screenshots` | —                                        | `checkDocumentationScreenshots`, uploads the diffs on failure     |
+| `documentation`             | —                                        | `renderDocumentation`, uploads the artifact                       |
+| `frontend-assets`           | —                                        | `lintTypescript -n`, `typecheckJs`, `unitJs`, `checkJsBuildClean` |
 
 `frontend-assets` is the only job with **no `composerUpdate` step at all**. Its
 suites read `Build/Sources/` and `Resources/Public/` and never `.Build/`, so the

@@ -261,14 +261,18 @@ TYPO3 core reaches this extension as a broken page rather than as a red gate.
 
 `runTests.sh -s visualRegression` compares seven components of the surface
 against committed PNG baselines, using the same instance, page object and reset.
-It is a **gate** — unlike the screenshot generator, which writes into the tracked
-tree and cannot fail — and the two are easy to confuse:
+Four suites now share the harness, and the ones that photograph something are
+easy to confuse:
 
-| Suite                     | Files         | Writes                                    | Can fail |
-|---------------------------|---------------|-------------------------------------------|----------|
-| `acceptance`              | `*.spec.ts`   | nothing                                   | yes      |
-| `visualRegression`        | `*.visual.ts` | baselines, only with `--update-snapshots` | yes      |
-| `screenshotDocumentation` | `*.shots.ts`  | `Documentation/files/images/`             | no       |
+| Suite                           | Files         | Writes                                    | Can fail |
+|---------------------------------|---------------|-------------------------------------------|----------|
+| `acceptance`                    | `*.spec.ts`   | nothing                                   | yes      |
+| `visualRegression`              | `*.visual.ts` | baselines, only with `--update-snapshots` | yes      |
+| `screenshotDocumentation`       | `*.shots.ts`  | `Documentation/files/images/`             | no       |
+| `checkDocumentationScreenshots` | `*.shots.ts`  | nothing                                   | yes      |
+
+The last two are one file in two modes rather than two suites, which is the
+point of them — see below.
 
 ```bash
 Build/Scripts/runTests.sh -s visualRegression
@@ -307,14 +311,62 @@ what to clip to. The runner in
 turns each entry into one Playwright test and encodes the PNG to AVIF with
 `sharp`. Output goes to `Documentation/files/images/`.
 
-**It is a generator, not a gate**, and the difference is why it is not in the CI
-workflow. It writes into the tracked tree, which no gate does, and nothing
-verifies its output: a screenshot that no longer matches the interface is a
-documentation defect a person notices, not a red build. No job in `ci.yml`
-enumerates suites generically, so adding a `-s` target without adding a job is
-all it takes to keep it out.
+**It is a generator, not a gate**: it writes into the tracked tree, which no gate
+does, and it is not in the CI workflow. What checks its output is its sibling.
 
-Three things it does that are easy to get wrong:
+### What checks the generator
+
+```bash
+Build/Scripts/runTests.sh -s checkDocumentationScreenshots
+```
+
+`checkDocumentationScreenshots` takes every configured shot against the same
+seeded instance and **compares** it with the committed image instead of
+overwriting it. It runs in CI, behind `acceptance`, in a job of its own.
+
+It is the same file in two modes rather than a second suite, and that is the
+whole design. A check that reached the surface by its own route would be checking
+that route: the login, the reset, the viewport, the device scale factor, the
+`prepare` steps, the clip, the screenshot options and the encoder settings all
+have to be identical on both sides, or the gate reports differences it created
+itself. `DOCUMENTATION_SCREENSHOTS=check` branches the last statement of the test
+and nothing else. The `-s` suite sets it; nobody sets it by hand.
+
+Three things it answers that a pixel comparison cannot, all by reading files:
+
+- **Every image is produced by a configured shot.** A shot that is renamed leaves
+  its old image behind, and the repository then carries a file nothing produces.
+- **Every image is embedded by a chapter.** An image no `figure::` points at is
+  work nobody sees.
+- **Every embed resolves to a file.** The renderer only *warns* about one that
+  does not and still exits zero — the same trap
+  [`checkRstSectionAdornments`](../development/quality-gates.md) exists for — so
+  `renderDocumentation` is not a second opinion here.
+
+It compares **decoded pixels, not bytes**, with a tolerance of 60 differing
+pixels. A byte comparison is one line and was tried: the generator is byte
+deterministic, and two full runs on one machine produced six identical files. It
+was rejected anyway, because byte equality would additionally require `libaom` to
+take the same code path on a CI runner as on a laptop, and the failure that would
+produce is a gate that is red for everyone for no visible reason. Both sides are
+decoded *from AVIF*, never PNG against AVIF: the encode is lossy, so comparing a
+raw screenshot with a stored image would differ everywhere by a little.
+
+The headroom was measured rather than estimated. Raising
+`--frontend-edit-border-width` from 1px to 2px fails four of the six shots, and
+the **smallest** of those differs by 8858 pixels against the 60 that are
+tolerated. The two that stay green are the ones that do not render the component
+at all, which is the cross-check that the gate is not simply failing everything.
+
+On failure it writes `committed.png`, `taken.png` and `diff.png` per shot into
+`.Build/Web/typo3temp/var/tests/screenshot-check-reports/`, and CI uploads them.
+The failure message names the directory, because "9907 pixels differ" tells
+nobody whether a restyle landed or a label moved.
+
+### What the generator gets wrong if you let it
+
+Five things, and the last two were found by running it twice rather than by
+reading it:
 
 - **Viewport, device scale factor and `javaScriptEnabled` are set with
   `test.use()`**, in a `describe` block per shot, because all three are *context*
@@ -328,12 +380,45 @@ Three things it does that are easy to get wrong:
 - **AVIF is encoded with `chromaSubsampling: '4:4:4'`.** The default `4:2:0`
   smears coloured text and the one pixel focus outline, which is exactly what
   several of the shots exist to show.
+- **The caret is hidden.** `toHaveScreenshot()` hides it by default and a raw
+  `screenshot()` does not. Focus returns to a rejected control asynchronously, so
+  `edit-field-rejected` produced a *different file on every run* — three runs of
+  one commit, three hashes. Hiding the caret alone made the next three byte
+  identical.
+- **Animations are disabled**, which is the half that had actually reached the
+  manual. The 120ms `border-color` transition on buttons is still running when
+  the shutter opens, so three of the six shots showed a `Cancel` button caught
+  part way through a fade — a state the surface never rests in. Disabling
+  animations finishes a transition rather than photographing it.
+
+Both of those had been in the repository since the transitions arrived, and were
+found only when the checking suite was written. The generator's own
+configuration asserted, in a docblock, that the stylesheet had no transitions.
+That was true when it was written and had been false for eight pull requests.
 
 Generation is containerised with no host escape hatch, deliberately: the fonts
 come from the Playwright image, so a shot taken on a host would not match the
 rest of the manual. The image tag is version pinned rather than digest pinned,
 so a rebuild of that tag can shift every pixel at once — regenerate
 deliberately, not incidentally.
+
+### After a styling change
+
+The manual is stale as soon as the surface moves, and two gates say so.
+`visualRegression` fails on the components it has baselines for;
+`checkDocumentationScreenshots` fails on the shots the manual embeds. The order
+is the same for both:
+
+```bash
+# 1. Find out what changed, and look at the diffs the failures name.
+Build/Scripts/runTests.sh -s checkDocumentationScreenshots
+
+# 2. Only once the change is confirmed to be the intended one.
+Build/Scripts/runTests.sh -s screenshotDocumentation
+Build/Scripts/runTests.sh -s visualRegression -- --update-snapshots
+```
+
+Regenerating before looking is the one thing that makes both suites worthless.
 
 ## Known gaps
 

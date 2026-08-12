@@ -13,23 +13,30 @@
  *
  * Run with `Build/Scripts/runTests.sh -s screenshotDocumentation`.
  *
- * ## This is not a test suite, and must not become one
+ * ## Generating and checking are two suites over one list
  *
- * The generator writes into the tracked tree, which no gate does, and nothing
- * verifies its output: a screenshot that no longer matches the interface is a
- * documentation defect a person notices, not a red build. It is deliberately
- * absent from the CI workflow, and its files are named `*.shots.ts` so the
- * acceptance configuration, which collects only `.spec.ts` files, can
- * never pick them up.
+ * The generator writes into the tracked tree, which no gate does. What checks
+ * its output is `-s checkDocumentationScreenshots`, which takes the same shots
+ * from the same list and compares them against the committed images instead of
+ * overwriting them. Adding an entry here therefore adds a shot to both.
+ *
+ * The files are named `*.shots.ts` so the acceptance configuration, which
+ * collects only `*.spec.ts`, can never pick them up.
  *
  * ## Determinism
  *
  * Everything rendered here is fixed: the fixture profile, its birthday, the
- * seeded children. There are no animations and no transitions in the
- * stylesheet, and the database is restored from the snapshot before every shot.
+ * seeded children, and a database restored from the snapshot before every shot.
  * What is *not* fixed is the font set, which comes from the Playwright image —
- * which is the reason generation is containerised and there is no way to run it
- * on a host.
+ * the reason generation is containerised with no way to run it on a host.
+ *
+ * Two things that are not fixed by any of that are handled at the shutter, in
+ * `documentation.shots.ts`, and both were found by running the generator twice
+ * rather than by reading it: the text caret, which made one shot produce a
+ * different file on every run, and the button transitions #24 introduced, which
+ * put three shots in the manual photographed part way through a fade. An earlier
+ * version of this paragraph asserted that the stylesheet had no transitions at
+ * all. It had none when that was written; do not restate it.
  */
 import type { Page } from '@playwright/test';
 import type { Role } from '../../Tests/Acceptance/fixtures';

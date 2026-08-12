@@ -34,6 +34,9 @@ Build/Scripts/runTests.sh -s acceptance
 
 # The appearance of the surface, against committed baseline images.
 Build/Scripts/runTests.sh -s visualRegression
+
+# The screenshots the manual embeds, against the surface they claim to show.
+Build/Scripts/runTests.sh -s checkDocumentationScreenshots
 ```
 
 ## The two tests that must never be dropped
