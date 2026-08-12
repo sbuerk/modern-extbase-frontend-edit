@@ -1,0 +1,146 @@
+# Styling the editing surface
+
+How the editing surface is styled, why the values live where they live, and what
+a site has to do to make it look like the rest of its pages.
+
+Everything here is in `Build/Sources/TypeScript/frontend/style/` and in the one
+emitted stylesheet, `Build/Sources/Css/frontend/frontend-edit.css`.
+
+## The problem this layer solves
+
+The surface is drawn inside a shadow root. That is what keeps the component from
+being broken by a theme it knows nothing about, and it is also what makes it
+unreachable: a site cannot restyle it with a selector, because no selector
+crosses the boundary. Left there, the component either imposes its own look on
+every site that installs it or has no look at all.
+
+Before this layer it had close to none. Each of the three components carried its
+own copy of the field rules, every button said `font: inherit` and nothing else —
+so a user agent button sat between two styled inputs at a different height — and
+the error colour was written as a literal `#a4141a` in three files that had
+already started to drift apart.
+
+Custom properties are the one thing that does cross a shadow boundary, so they
+are the whole interface: **every value the components use is a token, and a site
+themes the surface by setting tokens.**
+
+## Three modules, and what each is for
+
+| Module        | Holds                                                               | Applied to     |
+|---------------|---------------------------------------------------------------------|----------------|
+| `tokens.ts`   | Every colour, distance, radius, duration and the measure. No rules. | `profileEdit`  |
+| `controls.ts` | Buttons, inputs, the focus ring, the invalid ring.                  | all three      |
+| `field.ts`    | The label / value / actions / errors chrome of a field.             | the two fields |
+
+They are `CSSResult` values, not stylesheets: lit takes an array for
+`static styles` and adopts each once per component, so importing the same module
+into three elements costs one constructed stylesheet, not three.
+
+## Only the outer element declares the tokens
+
+`tokens` is part of `ProfileEditElement.styles` and of no other component. This
+is load bearing, and the mistake it prevents is invisible until somebody tries to
+theme the thing.
+
+Custom properties inherit down the flattened tree, so a property set on
+`modern-extbase-frontend-edit-profile` reaches every shadow root below it. A site
+overrides one by declaring it on that element:
+
+```css
+modern-extbase-frontend-edit-profile {
+    --frontend-edit-color-accent: #b8003c;
+}
+```
+
+That works because a declaration in the **outer** tree beats a `:host`
+declaration in the inner tree — the shipped value is a default, which is the
+relationship wanted.
+
+But the override lands on the *profile* element only, and reaches the field and
+image elements by inheritance. If those elements also declared the property on
+their own `:host`, that declaration would be a **direct hit** on the element and
+would beat the inherited, overridden value. The frame would change colour and
+every field inside it would keep the shipped default. Declaring the tokens once,
+at the top, is what makes the override reach the whole surface.
+
+## Why the tokens are not in the stylesheet
+
+The obvious alternative is `frontend-edit.css`, which is greppable without a
+build and is where a CSS author would look first. It was rejected.
+
+That stylesheet is an **optional page asset**. A template that never calls the
+asset ViewHelper, or a cache that served a stale `<head>`, leaves the page
+without it — and if it owned the tokens, every `var()` in every component would
+be invalid at computed value time. The surface would render as unstyled text with
+nothing to indicate why. Shipped inside the component, the tokens arrive with the
+code that consumes them, and the stylesheet is a pure addition that can go
+missing without taking the surface with it.
+
+The stylesheet does *read* the tokens — the dashed outline it draws around the
+element is `var(--frontend-edit-outline-color)`. That is safe without a fallback
+for a reason worth knowing: a rule applies to the same element that `:host`
+declares the properties on, so the values are there whenever the element is
+upgraded, and every declaration reading one is inside a block that
+`&:not(:defined)` switches off while it is not.
+
+## What is deliberately not a token
+
+**The typeface.** `--frontend-edit-font-family` is `inherit` and is meant to stay
+that way. This is an extension rendering into somebody else's page; a surface
+that arrives with its own display face announces itself as a foreign body in a
+design it knows nothing about. The tokens carry structure, weight and rhythm, and
+the host site keeps the voice.
+
+There is also no web font, and there could not be one: `font-src` is not declared
+in `Configuration/ContentSecurityPolicies.php` and therefore falls back to
+`default-src`, so a font from another origin is refused by the policy the
+extension ships. That is the intended outcome, not an obstacle — see
+[the CSP changelog entry](../../Documentation/Changelog/1.0/Feature-ContentSecurityPolicy.rst),
+which is currently the only place the manual documents the policy.
+
+## The measure
+
+`--frontend-edit-measure` caps the surface at `48rem`, and it is the token most
+likely to be overridden.
+
+It exists because of something only a screenshot showed. Without it the surface
+is as wide as the content area it sits in, `.field-value` stretches to fill the
+row, and the `Edit` button belonging to a value is pushed to the far edge — on a
+full width page, a thousand pixels from the value it edits, with the eye having
+to travel the whole line to connect the two. A form has a measure. The first
+version of this layer did not, it looked wrong, and the generated documentation
+screenshots are what made it obvious.
+
+## Colour, and the dark scheme
+
+The light values are the defaults. A `@media (prefers-color-scheme: dark)` block
+redefines eight of them, which is a courtesy for a host page that follows the
+system setting rather than a claim to support every dark theme — a site that
+themes itself by some other means overrides the tokens directly, and that beats
+both branches.
+
+`color-mix()` would express "a border a little lighter than the text" far better
+than eight literals, and it is not used: the browser floor of the import map
+mechanism is `chrome89 / firefox108 / safari16.4`, and `color-mix()` needs
+Chrome 111 and Firefox 113. It cannot be lowered by the build the way nesting can.
+
+## Class names are structural, not presentational
+
+`.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by
+the acceptance suite — `Tests/Acceptance/Support/profileEditPage.ts` selects
+through them precisely because they describe structure and not appearance.
+Renaming one is a test change, not a styling change.
+
+## What this layer does not do yet
+
+- **No button hierarchy.** `Apply` and `Cancel` are the same button. The surface
+  has one button per intent and no competing calls to action, so a primary /
+  secondary distinction would be decoration today. When the record actions grow
+  it is worth revisiting.
+- **No motion beyond two colour transitions.** There is one duration token, and
+  `prefers-reduced-motion` sets it to `0ms` — one declaration rather than an
+  `!important` sweep.
+- **Nothing verifies the appearance.** The acceptance suite proves the surface
+  still works; that it still looks right is a person looking at the six generated
+  screenshots. A visual regression suite would be the honest fix and does not
+  exist.

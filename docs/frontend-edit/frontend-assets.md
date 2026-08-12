@@ -349,15 +349,16 @@ Build/                                      (already export-ignored)
   Sources/
     TypeScript/frontend/frontend-edit.ts    entry point
     TypeScript/frontend/documentState.ts    internal, and its own emitted module
-    TypeScript/frontend/component/          the two lit elements — the only DOM
+    TypeScript/frontend/component/          the three lit elements — the only DOM
     TypeScript/frontend/model/              state, targets, fields, labels, JSON
     TypeScript/frontend/api/                endpoints, payloads, responses, client
+    TypeScript/frontend/style/              the design tokens and the shared CSS
     TypeScript/backend/                     empty, a ".gitkeep" only
     Css/frontend/frontend-edit.css
   Tests/
     TypeScript/                             the "unitJs" suite and its two helpers
 Resources/Public/
-  JavaScript/frontend/**                    17 artifacts, one per source module
+  JavaScript/frontend/**                    20 artifacts, one per source module
   Css/frontend/frontend-edit.css            committed build artifact
 Configuration/JavaScriptModules.php
 ```
@@ -434,7 +435,7 @@ sysexts' `Resources/Public/JavaScript/`, excluding the vendored `Contrib/`
 trees, finds **no relative import at all** — not one `from './…'` in the whole
 of core.
 
-**The cost is that the addressable surface is now 17 specifiers, not one.**
+**The cost is that the addressable surface is now 20 specifiers, not one.**
 Every module below `frontend/` — `model/json.js`, `api/client.js`, all of them —
 is a public entry in the import map that any template on the site may load,
 where a bundled build published exactly the one thing `Edit.html` asks for. That

@@ -101,6 +101,8 @@ import {
 } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js';
 import type { EndpointResult } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/response.js';
 import { ProfileEndpointClient } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/client.js';
+import { controls } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js';
+import { tokens } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/tokens.js';
 import '@sbuerk/modern-extbase-frontend-edit/frontend/component/editField.js';
 import '@sbuerk/modern-extbase-frontend-edit/frontend/component/editImage.js';
 
@@ -118,65 +120,99 @@ interface FocusableControl extends HTMLElement {
 
 @customElement('modern-extbase-frontend-edit-profile')
 export class ProfileEditElement extends LitElement {
-    public static override readonly styles = css`
-        :host {
-            display: block;
-        }
+    /*
+     * This element is the only one that carries {@see tokens}, and that is a
+     * requirement rather than a tidy-up — the token module's docblock explains
+     * why declaring them on a child would break a site's ability to override
+     * them.
+     */
+    public static override readonly styles = [
+        tokens,
+        controls,
+        css`
+            :host {
+                display: block;
+                max-width: var(--frontend-edit-measure);
+            }
 
-        .record {
-            display: grid;
-            gap: 0.5rem;
-            padding: 0.5rem 0;
-        }
+            .record {
+                display: grid;
+                gap: var(--frontend-edit-space-sm);
+                padding: var(--frontend-edit-space-sm) 0;
+            }
 
-        .record-actions,
-        .child-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-        }
+            .record-actions,
+            .child-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--frontend-edit-space-sm);
+                align-items: center;
+            }
 
-        .children {
-            border-top: 1px solid currentColor;
-            margin-top: 1rem;
-            padding-top: 0.5rem;
-        }
+            /*
+             * A hairline in the border colour rather than in "currentColor",
+             * which drew a rule as dark as the body text and made the separator
+             * louder than the records it separates.
+             */
+            .children {
+                border-top: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+                margin-top: var(--frontend-edit-space-lg);
+                padding-top: var(--frontend-edit-space-md);
+            }
 
-        .children-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 0.75rem;
-        }
+            .children-list {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: grid;
+                gap: var(--frontend-edit-space-md);
+            }
 
-        .child {
-            border-inline-start: 3px solid currentColor;
-            padding-inline-start: 0.75rem;
-        }
+            /*
+             * A child is one record inside another, and the marker on its
+             * leading edge is what says so. It is the accent rather than the
+             * text colour because it is a structural cue and not content.
+             */
+            .child {
+                border-inline-start: 3px solid var(--frontend-edit-color-border);
+                border-radius: 0 var(--frontend-edit-radius) var(--frontend-edit-radius) 0;
+                padding-inline-start: var(--frontend-edit-space-md);
+            }
 
-        .child-new {
-            border-inline-start-style: dashed;
-        }
+            /*
+             * The add form is a record that does not exist yet, and the dashed
+             * edge is the whole statement: same shape, not yet real.
+             */
+            .child-new {
+                border-inline-start-style: dashed;
+                border-inline-start-color: var(--frontend-edit-color-border-strong);
+            }
 
-        .state {
-            font-size: 0.875em;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+            /*
+             * A state is a badge, not prose: it labels the record it sits beside
+             * rather than telling the reader something new, so it is set small,
+             * spaced out and quiet.
+             */
+            .state {
+                align-self: center;
+                border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+                border-radius: var(--frontend-edit-radius);
+                padding: 0 var(--frontend-edit-space-xs);
+                font-size: var(--frontend-edit-font-size-sm);
+                color: var(--frontend-edit-color-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
 
-        .errors {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-            color: #a4141a;
-        }
-
-        button {
-            font: inherit;
-        }
-    `;
+            .errors {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+                color: var(--frontend-edit-color-danger);
+                font-size: var(--frontend-edit-font-size-sm);
+            }
+        `,
+    ];
 
     /**
      * The last server known document, and the only thing rendering reads
