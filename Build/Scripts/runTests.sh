@@ -347,6 +347,7 @@ Options:
             - checkExceptionCodes: check for duplicate and missing exception codes
             - checkJsBuildClean: check the committed Resources/Public/ artifacts match Build/Sources/
             - checkMarkdownTables: check markdown tables are formatted, "-- --fix" to format them
+            - checkRstSectionAdornments: check reST adornments match their title, "-- --fix" to adjust them
             - checkTestMethodsPrefix: check test methods do not start with "test"
             - clean: clean up build, cache, rendered documentation and testing related files
             - cleanCache: clean up cache related files and folders
@@ -857,6 +858,11 @@ case ${TEST_SUITE} in
     checkMarkdownTables)
         COMMAND="php -dxdebug.mode=off Build/Scripts/checkMarkdownTables.php $@"
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-markdown-tables-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    checkRstSectionAdornments)
+        COMMAND="php -dxdebug.mode=off Build/Scripts/checkRstSectionAdornments.php $@"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-rst-section-adornments-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
         SUITE_EXIT_CODE=$?
         ;;
     checkTestMethodsPrefix)

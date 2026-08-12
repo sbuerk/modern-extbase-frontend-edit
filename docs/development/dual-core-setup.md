@@ -68,6 +68,7 @@ for core in 13 14; do
   Build/Scripts/runTests.sh -t "$core" -s checkBom
   Build/Scripts/runTests.sh -t "$core" -s checkExceptionCodes
   Build/Scripts/runTests.sh -t "$core" -s checkMarkdownTables
+  Build/Scripts/runTests.sh -t "$core" -s checkRstSectionAdornments
   Build/Scripts/runTests.sh -t "$core" -s checkTestMethodsPrefix
 done
 ```

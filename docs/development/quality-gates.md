@@ -33,6 +33,7 @@ Build/Scripts/runTests.sh -s checkExceptionCodes
 
 # Ensure markdown tables are formatted ("-- --fix" formats them).
 Build/Scripts/runTests.sh -s checkMarkdownTables
+Build/Scripts/runTests.sh -s checkRstSectionAdornments
 
 # Ensure test methods do not start with "test".
 Build/Scripts/runTests.sh -s checkTestMethodsPrefix
@@ -45,20 +46,21 @@ Build/Scripts/runTests.sh -s unitJs
 Build/Scripts/runTests.sh -s checkJsBuildClean
 ```
 
-| Gate                     | Configuration                                                                                        | Core version dependent |
-|--------------------------|------------------------------------------------------------------------------------------------------|------------------------|
-| `cgl`                    | [`Build/php-cs-fixer/config.php`](../../Build/php-cs-fixer/config.php)                               | no                     |
-| `phpstan`                | `Build/phpstan/Core13/`, `Build/phpstan/Core14/`                                                     | **yes**                |
-| `lintPhp`                | —                                                                                                    | no                     |
-| `composerValidate`       | `composer.json`                                                                                      | no                     |
-| `checkBom`               | [`Build/Scripts/checkUtf8Bom.sh`](../../Build/Scripts/checkUtf8Bom.sh)                               | no                     |
-| `checkExceptionCodes`    | [`Build/Scripts/duplicateExceptionCodeCheck.sh`](../../Build/Scripts/duplicateExceptionCodeCheck.sh) | no                     |
-| `checkMarkdownTables`    | [`Build/Scripts/checkMarkdownTables.php`](../../Build/Scripts/checkMarkdownTables.php)               | no                     |
-| `checkTestMethodsPrefix` | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)       | no                     |
-| `lintTypescript`         | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                           | no                     |
-| `typecheckJs`            | [`Build/tsconfig.json`](../../Build/tsconfig.json) and the two projects extending it                 | no                     |
-| `unitJs`                 | [`Build/package.json`](../../Build/package.json), `Build/Tests/TypeScript/`                          | no                     |
-| `checkJsBuildClean`      | [`Build/esbuild.mjs`](../../Build/esbuild.mjs)                                                       | no                     |
+| Gate                        | Configuration                                                                                        | Core version dependent |
+|-----------------------------|------------------------------------------------------------------------------------------------------|------------------------|
+| `cgl`                       | [`Build/php-cs-fixer/config.php`](../../Build/php-cs-fixer/config.php)                               | no                     |
+| `phpstan`                   | `Build/phpstan/Core13/`, `Build/phpstan/Core14/`                                                     | **yes**                |
+| `lintPhp`                   | —                                                                                                    | no                     |
+| `composerValidate`          | `composer.json`                                                                                      | no                     |
+| `checkBom`                  | [`Build/Scripts/checkUtf8Bom.sh`](../../Build/Scripts/checkUtf8Bom.sh)                               | no                     |
+| `checkExceptionCodes`       | [`Build/Scripts/duplicateExceptionCodeCheck.sh`](../../Build/Scripts/duplicateExceptionCodeCheck.sh) | no                     |
+| `checkMarkdownTables`       | [`Build/Scripts/checkMarkdownTables.php`](../../Build/Scripts/checkMarkdownTables.php)               | no                     |
+| `checkRstSectionAdornments` | [`Build/Scripts/checkRstSectionAdornments.php`](../../Build/Scripts/checkRstSectionAdornments.php)   | no                     |
+| `checkTestMethodsPrefix`    | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)       | no                     |
+| `lintTypescript`            | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                           | no                     |
+| `typecheckJs`               | [`Build/tsconfig.json`](../../Build/tsconfig.json) and the two projects extending it                 | no                     |
+| `unitJs`                    | [`Build/package.json`](../../Build/package.json), `Build/Tests/TypeScript/`                          | no                     |
+| `checkJsBuildClean`         | [`Build/esbuild.mjs`](../../Build/esbuild.mjs)                                                       | no                     |
 
 ## PHPStan
 
@@ -173,6 +175,42 @@ alone so a page can show an unformatted one as an example.
 Git-ignored files are skipped, and so are the symlinked agent instruction files,
 which are checked through their target.
 → [Documentation conventions](../Index.md#conventions-of-this-documentation)
+
+## reStructuredText section adornments
+
+`checkRstSectionAdornments` verifies that every overline and every underline
+below `Documentation/` is **exactly** as long as the title it belongs to, and
+that the adornment character matches the level the section occupies.
+
+```bash
+Build/Scripts/runTests.sh -s checkRstSectionAdornments
+Build/Scripts/runTests.sh -s checkRstSectionAdornments -- --fix
+```
+
+It exists for the same reason the table gate does, only more so — nothing else
+in the toolchain can see this defect. reStructuredText itself accepts an
+adornment that is *longer* than its title and treats a shorter one as a warning
+rather than an error. The renderer this repository uses is more permissive
+still: its `TitleRule` asks for two characters in an underline and four in an
+overline and never compares either against the title, so
+`renderDocumentation --fail-on-error` passes either way. The rendered page is
+byte for byte the same. A review of the source reads the words rather than
+counting the `=` signs. The defect survives all three and surfaces later as
+noise in the diff of the next change to that heading.
+
+`--fix` adjusts **lengths only**. A wrong adornment *character* is reported and
+never rewritten, because the character is what assigns a heading its level:
+changing it restructures the document, and deciding which level a heading
+belongs at is editorial work rather than arithmetic.
+
+The convention is TYPO3's: the document title is overlined and underlined with
+`=`, and the levels below it are underlined with `=`, `-` and `~`. Levels are
+resolved the way docutils resolves them — by order of first appearance in the
+document — so the gate reports the level it inferred rather than one it assumed.
+
+Transitions are not headings and are not flagged. A line of punctuation
+surrounded by blank lines carries no title, and its length means nothing;
+`Documentation/Index.rst` contains two.
 
 ## Frontend asset gates
 

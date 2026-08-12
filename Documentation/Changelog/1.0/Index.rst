@@ -15,7 +15,7 @@
     :depth: 1
 
 Breaking Changes
-^^^^^^^^^^^^^^^^
+================
 
 ..  toctree::
     :maxdepth: 1
@@ -25,7 +25,7 @@ Breaking Changes
     Breaking-*
 
 Features
-^^^^^^^^
+========
 
 ..  toctree::
     :maxdepth: 1
@@ -35,7 +35,7 @@ Features
     Feature-*
 
 Deprecation
-^^^^^^^^^^^
+===========
 
 ..  toctree::
     :maxdepth: 1
@@ -45,7 +45,7 @@ Deprecation
     Deprecation-*
 
 Important
-^^^^^^^^^
+=========
 
 ..  toctree::
     :maxdepth: 1
