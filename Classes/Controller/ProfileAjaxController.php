@@ -19,6 +19,7 @@ use SBUERK\ModernExtbaseFrontendEdit\Dto\AddressData;
 use SBUERK\ModernExtbaseFrontendEdit\Dto\EmailData;
 use SBUERK\ModernExtbaseFrontendEdit\Dto\ProfileData;
 use SBUERK\ModernExtbaseFrontendEdit\Http\JsonEnvelope;
+use SBUERK\ModernExtbaseFrontendEdit\Http\ProfileDocumentFactory;
 use SBUERK\ModernExtbaseFrontendEdit\Security\ProfileOwnershipResolverInterface;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\AddressRuleSet;
 use SBUERK\ModernExtbaseFrontendEdit\Validation\DtoValidator;
@@ -131,6 +132,7 @@ final class ProfileAjaxController extends ActionController
     public function __construct(
         private readonly Context $context,
         private readonly JsonEnvelope $jsonEnvelope,
+        private readonly ProfileDocumentFactory $profileDocumentFactory,
         private readonly DtoValidator $dtoValidator,
         private readonly ProfileDataMapper $profileDataMapper,
         private readonly AddressDataMapper $addressDataMapper,
@@ -771,54 +773,23 @@ final class ProfileAjaxController extends ActionController
      * changed a single field. A client that patched its own state optimistically
      * gets the server's version back and cannot drift, and a client that changed
      * a child gets the resulting sorting along with it.
+     *
+     * The document itself is built by {@see ProfileDocumentFactory}, which the
+     * edit plugin uses as well — the attribute it renders into the page and the
+     * body these endpoints answer with are one shape with one producer. The
+     * owner constrained collections are passed in from here, because choosing
+     * them is this controller's decision and not the factory's; see the class
+     * docblock there.
      */
     private function respondWith(Profile $profile): ResponseInterface
     {
-        return $this->jsonResponse($this->jsonEnvelope->data($this->profilePayload($profile)));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function profilePayload(Profile $profile): array
-    {
-        $addresses = [];
-        foreach ($this->ownedAddresses($profile) as $address) {
-            $addresses[] = [
-                'uid' => $address->getUid(),
-                'type' => $address->getType(),
-                'line1' => $address->getLine1(),
-                'line2' => $address->getLine2(),
-                'hidden' => $address->isHidden(),
-            ];
-        }
-
-        $emails = [];
-        foreach ($this->ownedEmails($profile) as $email) {
-            $emails[] = [
-                'uid' => $email->getUid(),
-                'type' => $email->getType(),
-                'email' => $email->getEmail(),
-                'hidden' => $email->isHidden(),
-            ];
-        }
-
-        return [
-            'uid' => $profile->getUid(),
-            'shortname' => $profile->getShortname(),
-            'firstname' => $profile->getFirstname(),
-            'lastname' => $profile->getLastname(),
-            // The wire format is the DTO's constant, so what is read back is
-            // spelled exactly like what may be written; '' is "no birthday",
-            // matching the DTO default.
-            'birthday' => $profile->getBirthday()?->format(ProfileData::BIRTHDAY_FORMAT) ?? '',
-            'bio' => $profile->getBio(),
-            // Readable so the editor can show the state, writable only through
-            // the dedicated action and only for children.
-            'hidden' => $profile->isHidden(),
-            'addresses' => $addresses,
-            'emails' => $emails,
-        ];
+        return $this->jsonResponse($this->jsonEnvelope->data(
+            $this->profileDocumentFactory->create(
+                $profile,
+                $this->ownedAddresses($profile),
+                $this->ownedEmails($profile),
+            ),
+        ));
     }
 
     /**
