@@ -31,7 +31,8 @@ Documentation for people **using** the extension lives in
 | Page                                                                | Contents                                                                                                  |
 |---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | [Domain and schema](frontend-edit/domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                              |
-| [Plugins and the Fluid layer](frontend-edit/plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                               |
+| [Plugins and the Fluid layer](frontend-edit/plugins-and-fluid.md)   | The three plugins, their registration and settings, and the partial API.                                  |
+| [The edit plugin](frontend-edit/edit-plugin.md)                     | The two editing modes, the client-rendered surface, degradation, the one document factory.                |
 | [Persistence and sorting](frontend-edit/persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, and the gaps that remain. |
 | [AJAX transport](frontend-edit/ajax-transport.md)                   | Why a page type rather than eID or a middleware, the seven endpoints, the request token.                  |
 | [Authorization](frontend-edit/authorization.md)                     | Ownership resolved from the session, and the security checklist.                                          |

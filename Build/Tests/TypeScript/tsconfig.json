@@ -1,0 +1,25 @@
+// The type check of the test tree, kept apart from the one of the sources.
+//
+// It inherits every strictness option from "../../tsconfig.json" and changes one
+// thing: "types": ["node"], because a test imports "node:test" and "node:assert".
+//
+// That single difference is the reason this is a second project rather than a
+// wider "include" in the first one. The sources tsconfig says "types": [] and
+// means it — the modules run in a browser, and pulling the node ambient types
+// into their program would let a source file use "process" or "Buffer" and still
+// type check. The sources are still checked without node types by the first
+// project; they merely appear in this one as well, through the imports of the
+// tests.
+//
+// Run by "npm run typecheck", which checks both projects.
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "types": [
+            "node"
+        ]
+    },
+    "include": [
+        "./**/*.ts"
+    ]
+}

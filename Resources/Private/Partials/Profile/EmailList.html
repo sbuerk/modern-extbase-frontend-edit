@@ -19,6 +19,9 @@
 
     The type label is looked up dynamically in the database label file - see
     Profile/AddressList for why.
+
+    A hidden record is marked as such - see Profile/AddressList for why, and for
+    why the marker never appears in the read plugins.
 </f:comment>
 <f:if condition="{emails}">
     <section class="modern-extbase-frontend-edit-profile-emails">
@@ -34,6 +37,11 @@
                         />
                     </span>
                     <f:link.email email="{email.email}" />
+                    <f:if condition="{email.hidden}">
+                        <span class="modern-extbase-frontend-edit-profile-state">
+                            <f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:state.hidden" />
+                        </span>
+                    </f:if>
                 </li>
             </f:for>
         </ul>

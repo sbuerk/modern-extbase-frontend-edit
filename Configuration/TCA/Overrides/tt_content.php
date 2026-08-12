@@ -6,9 +6,13 @@ use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 
 defined('TYPO3') or die();
 
-// Adds the two plugins to the content element type selection, which is what
-// makes "modernextbasefrontendedit_list" and "modernextbasefrontendedit_show"
-// valid CType values of a tt_content record.
+// Adds the three plugins to the content element type selection, which is what
+// makes "modernextbasefrontendedit_list", "modernextbasefrontendedit_show" and
+// "modernextbasefrontendedit_edit" valid CType values of a tt_content record.
+//
+// The JSON endpoint plugin is deliberately not among them: it is an endpoint,
+// not something an editor places on a page, and `configurePlugin()` adds no TCA
+// by itself.
 //
 // No plugin type is passed here and none can be: on TYPO3 v13
 // `ExtensionUtility::registerPlugin()` reads it back from what
@@ -40,4 +44,16 @@ ExtensionUtility::registerPlugin(
     'content-plugin',
     'plugins',
     'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:plugin.show.description',
+);
+
+// The edit plugin takes no arguments and is placed once, on the page the
+// "editPageUid" setting names. It resolves the record from the session, so an
+// editor cannot configure *which* profile it shows and does not have to.
+ExtensionUtility::registerPlugin(
+    'ModernExtbaseFrontendEdit',
+    'Edit',
+    'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:plugin.edit.title',
+    'content-plugin',
+    'plugins',
+    'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:plugin.edit.description',
 );

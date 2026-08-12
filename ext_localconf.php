@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use SBUERK\ModernExtbaseFrontendEdit\Controller\ProfileAjaxController;
 use SBUERK\ModernExtbaseFrontendEdit\Controller\ProfileController;
+use SBUERK\ModernExtbaseFrontendEdit\Controller\ProfileEditController;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 
@@ -66,6 +67,33 @@ ExtensionUtility::configurePlugin(
     ],
     [
         ProfileController::class => 'show',
+    ],
+    ExtensionUtility::PLUGIN_TYPE_CONTENT_ELEMENT,
+);
+
+// The edit plugin: the markup the lit component enhances.
+//
+// It is registered as **non-cacheable**, and here that is not only the
+// ownership argument the two read plugins make. The markup carries a request
+// token signed with a *per browser* nonce, while the page cache identifier
+// varies by frontend user group ids — a cached rendering would hand user B the
+// token, and the profile, of user A. Extbase reads the list back in
+// `Bootstrap::isExtbaseRequestCacheable()` and renders the plugin as USER_INT.
+//
+// The assets survive that: `f:asset.module` and `f:asset.css` are collected
+// during the non-cached pass and rendered into the placeholders of the cached
+// page by
+// `PageRenderer::renderJavaScriptAndCssForProcessingOfUncachedContentObjects()`
+// (`cms-frontend/Classes/Http/RequestHandler.php:300-307`), which re-runs the
+// whole JavaScript and CSS rendering including the import map.
+ExtensionUtility::configurePlugin(
+    'ModernExtbaseFrontendEdit',
+    'Edit',
+    [
+        ProfileEditController::class => 'edit',
+    ],
+    [
+        ProfileEditController::class => 'edit',
     ],
     ExtensionUtility::PLUGIN_TYPE_CONTENT_ELEMENT,
 );

@@ -68,6 +68,7 @@ hosted runners, not of this repository.
 | `checkTestMethodsPrefix`        | Test methods must not start with `test`.                      |
 | `lintTypescript`                | eslint over `Build/Sources/`, fixes in place, `-n` checks.    |
 | `typecheckJs`                   | `tsc --noEmit`, which the asset build does not do.            |
+| `unitJs`                        | TypeScript unit tests, run with `node --test`.                |
 | `buildJs`                       | Compile `Build/Sources/` into `Resources/Public/`.            |
 | `checkJsBuildClean`             | The committed artifacts must match `Build/Sources/`.          |
 | `npm`                           | `npm` with all remaining arguments, run in `Build/`.          |
@@ -84,10 +85,11 @@ hosted runners, not of this repository.
 | `cleanRenderedDocumentation`    | `Documentation-GENERATED-temp/` only.                         |
 | `cleanTests`                    | Test related files and folders only.                          |
 
-The five node based suites — `lintTypescript`, `typecheckJs`, `buildJs`,
-`checkJsBuildClean` and `npm` — run in a node container and ignore `-t`
-entirely. They read `Build/Sources/` and `Resources/Public/`, never the
-installed core, and are the only suites that need no `composerUpdate` first.
+The six node based suites — `lintTypescript`, `typecheckJs`, `unitJs`,
+`buildJs`, `checkJsBuildClean` and `npm` — run in a node container and ignore
+`-t` entirely. They read `Build/Sources/`, `Build/Tests/` and
+`Resources/Public/`, never the installed core, and are the only suites that need
+no `composerUpdate` first.
 → [Frontend assets](../frontend-edit/frontend-assets.md#the-runtestssh-suites)
 
 ## Passing arguments to the underlying tool

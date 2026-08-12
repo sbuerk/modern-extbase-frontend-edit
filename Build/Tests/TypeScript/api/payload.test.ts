@@ -1,0 +1,96 @@
+/**
+ * What a write actually sends.
+ *
+ * The property that matters is a *negative* one and therefore has to be asserted
+ * as a whole object rather than key by key: a single field save carries exactly
+ * the field that was submitted and nothing else. A second field riding along
+ * would make every inline edit a full overwrite, silently discarding whatever
+ * another session changed in the meantime — and it would look completely normal
+ * in the browser, because the client is sending values it believes are current.
+ */
+import { strict as assert } from 'node:assert';
+import { describe, it } from 'node:test';
+import {
+    addChildPayload,
+    fieldPayload,
+    recordPayload,
+    removeChildPayload,
+    reorderPayload,
+    visibilityPayload,
+} from '../../../Sources/TypeScript/api/payload.js';
+import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
+
+describe('fieldPayload', (): void => {
+    it('sends the submitted field and nothing else', (): void => {
+        assert.deepEqual(
+            fieldPayload(42, profileTarget, 'firstname', 'Augusta'),
+            { uid: 42, field: 'firstname', value: 'Augusta' },
+        );
+    });
+
+    it('names the child a child field belongs to', (): void => {
+        assert.deepEqual(
+            fieldPayload(42, childTarget('address', 8), 'line1', 'Analytical Engine'),
+            { uid: 42, child: 'address', childUid: 8, field: 'line1', value: 'Analytical Engine' },
+        );
+    });
+
+    it('keeps a cleared field as an explicit null rather than dropping it', (): void => {
+        const payload = fieldPayload(42, profileTarget, 'bio', null);
+
+        assert.deepEqual(payload, { uid: 42, field: 'bio', value: null });
+        assert.ok('value' in payload);
+    });
+
+    it('omits the child uid of a child that does not exist yet', (): void => {
+        assert.deepEqual(
+            fieldPayload(42, newChildTarget('email'), 'email', 'ada@example.org'),
+            { uid: 42, child: 'email', field: 'email', value: 'ada@example.org' },
+        );
+    });
+});
+
+describe('recordPayload', (): void => {
+    it('sends the whole record under data, unlike a single field save', (): void => {
+        assert.deepEqual(
+            recordPayload(42, profileTarget, { firstname: 'Augusta', lastname: 'King' }),
+            { uid: 42, data: { firstname: 'Augusta', lastname: 'King' } },
+        );
+    });
+
+    it('copies the data so a later change to the source does not reach the wire', (): void => {
+        const data: Record<string, string> = { firstname: 'Augusta' };
+        const payload = recordPayload(42, profileTarget, data);
+        data.firstname = 'Ada';
+
+        assert.deepEqual(payload, { uid: 42, data: { firstname: 'Augusta' } });
+    });
+});
+
+describe('the relation payloads', (): void => {
+    it('sends no position when adding, because the server decides it', (): void => {
+        assert.deepEqual(
+            addChildPayload(42, 'address', { type: 'others', line1: 'Somewhere', line2: '' }),
+            { uid: 42, child: 'address', data: { type: 'others', line1: 'Somewhere', line2: '' } },
+        );
+    });
+
+    it('addresses a removal by profile uid, child type and child uid', (): void => {
+        assert.deepEqual(removeChildPayload(42, 'email', 21), { uid: 42, child: 'email', childUid: 21 });
+    });
+
+    it('sends the wanted visibility rather than a toggle', (): void => {
+        assert.deepEqual(
+            visibilityPayload(42, 'address', 8, true),
+            { uid: 42, child: 'address', childUid: 8, hidden: true },
+        );
+    });
+
+    it('copies the order so the caller cannot mutate a sent payload', (): void => {
+        const order = [9, 7, 8];
+        const payload = reorderPayload(42, 'address', order);
+        order[0] = 99;
+
+        assert.deepEqual(payload, { uid: 42, child: 'address', order: [9, 7, 8] });
+    });
+});
