@@ -69,6 +69,79 @@
             <trans-unit id="profile.emails">
                 <source>E-mail addresses</source>
             </trans-unit>
+
+            <!--
+                Validation messages.
+
+                These are what a rejected save shows next to the field that was
+                rejected, so they address the person filling in the form and say
+                what to do, not what the rule is called.
+
+                The placeholders are positional because that is what
+                "AbstractValidator::translateErrorMessage()" passes on: "%1$s"
+                and "%2$s" are the bounds a length rule was configured with, so
+                the number in the sentence cannot drift away from the number the
+                rule enforces.
+
+                A length rule that configures both a minimum and a maximum can
+                only ever emit its "between" message — "StringLengthValidator"
+                selects by which bounds are set, not by which one was violated —
+                so a rule with two bounds needs exactly one key here, not two.
+            -->
+            <trans-unit id="validation.profile.shortname.empty">
+                <source>Enter a short name.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.shortname.length">
+                <source>The short name has to be between %1$s and %2$s characters long.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.firstname.tooLong">
+                <source>The first name cannot be longer than %1$s characters.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.lastname.tooLong">
+                <source>The last name cannot be longer than %1$s characters.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.birthday.invalid">
+                <source>Enter the date of birth as year-month-day, for example 1815-12-10.</source>
+            </trans-unit>
+            <trans-unit id="validation.profile.bio.tooLong">
+                <source>The biography cannot be longer than %1$s characters.</source>
+            </trans-unit>
+            <trans-unit id="validation.address.type.invalid">
+                <source>Choose one of the offered address types.</source>
+            </trans-unit>
+            <trans-unit id="validation.address.line1.empty">
+                <source>Enter the first address line.</source>
+            </trans-unit>
+            <trans-unit id="validation.address.line1.tooLong">
+                <source>The first address line cannot be longer than %1$s characters.</source>
+            </trans-unit>
+            <trans-unit id="validation.address.line2.tooLong">
+                <source>The second address line cannot be longer than %1$s characters.</source>
+            </trans-unit>
+            <trans-unit id="validation.email.type.invalid">
+                <source>Choose one of the offered e-mail types.</source>
+            </trans-unit>
+            <trans-unit id="validation.email.email.empty">
+                <source>Enter an e-mail address.</source>
+            </trans-unit>
+            <trans-unit id="validation.email.email.invalid">
+                <source>Enter a valid e-mail address.</source>
+            </trans-unit>
+            <trans-unit id="validation.email.email.tooLong">
+                <source>The e-mail address cannot be longer than %1$s characters.</source>
+            </trans-unit>
+
+            <!--
+                Defaults of the two validators this extension adds. A rule set
+                normally names a message of its own; these are what is shown
+                when it does not.
+            -->
+            <trans-unit id="validation.choice.invalid">
+                <source>Choose one of the offered values.</source>
+            </trans-unit>
+            <trans-unit id="validation.date.invalid">
+                <source>Enter a valid date as year-month-day.</source>
+            </trans-unit>
         </body>
     </file>
 </xliff>

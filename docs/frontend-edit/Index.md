@@ -8,19 +8,20 @@ supported core versions.
 > [!NOTE]
 > These pages document the **design and the reasoning behind it**, and the code
 > is landing against them one change at a time. The domain, the schema, the
-> ownership resolver and the two read plugins exist; the write side does not.
+> ownership resolver, the two read plugins and the DTO, validation and mapping
+> layer exist; nothing writes to the database yet and there is no HTTP endpoint.
 > Where a page describes code that does not exist yet, it says so.
 
-| Page                                                  | Contents                                                                                     |
-|-------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                 |
-| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                  |
-| [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.  |
-| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the JSON contract, the request token.       |
-| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence belongs.  |
-| [DTOs and validation](dto-and-validation.md)          | Validation rules as data, full versus partial validation, DTOs that cannot be mass-assigned. |
-| [Image handling](image-handling.md)                   | The modern upload API, why the custom model is a read-side wrapper, replacement and cleanup. |
-| [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain and the gates it needs. |
+| Page                                                  | Contents                                                                                      |
+|-------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                  |
+| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The two read plugins, their registration and settings, and the partial API.                   |
+| [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.   |
+| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the JSON contract, the request token.        |
+| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence belongs.   |
+| [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers. |
+| [Image handling](image-handling.md)                   | The modern upload API, why the custom model is a read-side wrapper, replacement and cleanup.  |
+| [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain and the gates it needs.  |
 
 ## The short version
 
@@ -38,6 +39,14 @@ supported core versions.
 - **Validation rules are data, not attributes.** Three Extbase attributes have
   no spelling that is valid and deprecation-free on both core versions.
   → [Version neutral attributes](../architecture/version-neutral-attributes.md)
+- **The DTOs carry raw JSON strings, never converted values**, because full and
+  partial validation share one rule set and must therefore see one type.
+  Conversion is the mapper's job, and the wire format is pinned by a constant.
+  → [DTOs and validation](dto-and-validation.md#why-every-property-is-a-plain-string)
+- **A payload cannot reach `pid` or `uid`** — not because something checks for
+  them, but because the only path into a model is a closed `switch` over the
+  writable properties, and `_setProperty()` is never called.
+  → [DTOs and validation](dto-and-validation.md#pid-and-uid-are-impossible-by-mechanism-not-by-check)
 - Persistence is **Extbase, not DataHandler** — a deliberate trade that costs
   `sys_history`, DataHandler hooks and reference index maintenance, and puts
   sorting and orphan removal in our hands.

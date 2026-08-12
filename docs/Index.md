@@ -35,7 +35,7 @@ Documentation for people **using** the extension lives in
 | [Persistence and sorting](frontend-edit/persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children.        |
 | [AJAX transport](frontend-edit/ajax-transport.md)                   | Why a page type rather than eID or a middleware, the JSON contract, the request token. |
 | [Authorization](frontend-edit/authorization.md)                     | Ownership resolved from the session, and the security checklist.                       |
-| [DTOs and validation](frontend-edit/dto-and-validation.md)          | Validation rules as data, full versus partial validation.                              |
+| [DTOs and validation](frontend-edit/dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the mappers.                 |
 | [Image handling](frontend-edit/image-handling.md)                   | The modern upload API, the read-side wrapper, replacement and cleanup.                 |
 | [Frontend assets](frontend-edit/frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain.                  |
 
