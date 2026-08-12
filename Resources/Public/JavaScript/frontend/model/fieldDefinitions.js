@@ -28,9 +28,6 @@ function fieldsOfChild(child) {
 function fieldsOf(target) {
   return fieldsOfChild(target.child);
 }
-function fieldDefinition(target, field) {
-  return fieldsOf(target).find((definition) => definition.name === field) ?? null;
-}
 function initialValues(fields) {
   const values = {};
   for (const definition of fields) {
@@ -41,7 +38,6 @@ function initialValues(fields) {
 export {
   addressFields,
   emailFields,
-  fieldDefinition,
   fieldsOf,
   fieldsOfChild,
   initialValues,

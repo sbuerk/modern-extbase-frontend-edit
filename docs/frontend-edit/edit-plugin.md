@@ -117,8 +117,15 @@ to the endpoints, and a disagreement would answer `404` on every write.
 
 ## The two editing modes
 
-Both are the same edit session with a different `mode`, held in one map keyed by
-record — `profile`, `address:7`, `email:new`. What differs is what is sent.
+Both are the same edit session with a different `mode`, held by `EditSessions`
+and keyed by record — `profile`, `address:7`, `email:new`. What differs is what
+is sent.
+
+`EditSessions` is immutable: every method that changes something answers a new
+instance and mutates nothing, which is what lets the component hold it as
+reactive state. `this.edits = this.edits.beginField(…)` is an assignment, and an
+assignment is the only thing lit notices — an in-place mutation would update the
+state and leave the surface showing the previous one.
 
 ### Per-field, inline
 

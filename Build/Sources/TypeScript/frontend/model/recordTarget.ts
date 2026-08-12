@@ -66,9 +66,6 @@ export function targetKey(target: RecordTarget): string {
     return `${target.child}:${target.childUid ?? 'new'}`;
 }
 
-export function targetsEqual(one: RecordTarget, other: RecordTarget): boolean {
-    return one.child === other.child && one.childUid === other.childUid;
-}
 
 /**
  * The label scope of a target: `profile`, `address` or `email`.

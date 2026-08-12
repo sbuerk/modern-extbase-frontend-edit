@@ -84,9 +84,6 @@ export function fieldsOf(target: RecordTarget): readonly FieldDefinition[] {
     return fieldsOfChild(target.child);
 }
 
-export function fieldDefinition(target: RecordTarget, field: string): FieldDefinition | null {
-    return fieldsOf(target).find((definition: FieldDefinition): boolean => definition.name === field) ?? null;
-}
 
 /**
  * The values a new record starts from, keyed by field name.
