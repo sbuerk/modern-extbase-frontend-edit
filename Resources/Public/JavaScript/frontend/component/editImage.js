@@ -11,6 +11,8 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
+import { controls } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js";
+import { field } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js";
 import { actionLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
 import { imageAccept, imageAlternative, imageField, isDisplayable, uploadFailureMessages } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js";
 let EditImageElement = class extends LitElement {
@@ -120,79 +122,44 @@ let EditImageElement = class extends LitElement {
     return label(this.labels, key);
   }
 };
-EditImageElement.styles = css`
-        :host {
-            display: block;
-        }
+EditImageElement.styles = [
+  controls,
+  field,
+  css`
+            :host {
+                display: block;
+            }
 
-        .field {
-            display: grid;
-            gap: 0.25rem;
-            padding: 0.25rem 0;
-        }
+            figure {
+                margin: 0;
+            }
 
-        .field-label {
-            font-weight: 600;
-        }
+            /*
+             * The stored dimensions are written as attributes so the layout does
+             * not jump while the image loads, and bounded here because a
+             * portrait straight from a camera is wider than the surface.
+             *
+             * The frame is what separates a stored image from one the page
+             * happens to contain: it is the same border the controls beside it
+             * carry, so the image reads as part of the editing surface rather
+             * than as content inside it.
+             */
+            img {
+                display: block;
+                max-width: 12rem;
+                height: auto;
+                border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+                border-radius: var(--frontend-edit-radius-lg);
+                background-color: var(--frontend-edit-color-surface-sunken);
+            }
 
-        .field-body {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-
-        .field-value {
-            flex: 1 1 12rem;
-            min-width: 0;
-        }
-
-        .field-value.is-empty::after {
-            content: '—';
-        }
-
-        figure {
-            margin: 0;
-        }
-
-        /*
-         * The stored dimensions are written as attributes so the layout does not
-         * jump while the image loads, and bounded here because a portrait
-         * straight from a camera is wider than the surface.
-         */
-        img {
-            display: block;
-            max-width: 12rem;
-            height: auto;
-        }
-
-        figcaption {
-            font-size: 0.875em;
-        }
-
-        input {
-            font: inherit;
-        }
-
-        button {
-            font: inherit;
-        }
-
-        .field-errors {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-            color: #a4141a;
-        }
-
-        [aria-invalid='true'] {
-            outline: 2px solid #a4141a;
-        }
-
-        :host([busy]) {
-            opacity: 0.6;
-        }
-    `;
+            figcaption {
+                margin-top: var(--frontend-edit-space-xs);
+                font-size: var(--frontend-edit-font-size-sm);
+                color: var(--frontend-edit-color-muted);
+            }
+        `
+];
 __decorateClass([
   property({ attribute: false })
 ], EditImageElement.prototype, "image", 2);

@@ -3,10 +3,10 @@
  *
  * This is the only stylesheet the build emits, and it is deliberately almost
  * empty: the editing surface lives in the shadow root of
- * "modern-extbase-frontend-edit-profile" and is styled there as
- * "static styles = css`…`", which is the only mechanism that can reach it. What
- * is left for a stylesheet is the custom element itself, which is light DOM and
- * which a stylesheet is the only way to lay out.
+ * "modern-extbase-frontend-edit-profile" and is styled there, which is the only
+ * mechanism that can reach it. What is left for a stylesheet is the custom
+ * element itself, which is light DOM and which a stylesheet is the only way to
+ * lay out.
  *
  * Every rule is scoped to ".frontend-edit-loaded", which the entry point sets on
  * <html>. Without that gate the page would style an element that never upgraded
@@ -14,15 +14,19 @@
  * thrown — and the server rendered profile inside it would be laid out as if it
  * were an editing surface.
  *
+ * The values come from the design tokens in
+ * "Build/Sources/TypeScript/frontend/style/tokens.ts", which declares them on
+ * the element's own ":host". A rule here applies to that same element, so its
+ * var() resolves against them; there is no second definition to keep in step,
+ * and a site that overrides a token gets the outline recoloured with everything
+ * else. They are deliberately *not* declared here as well — the surface has to
+ * hold together when this optional page asset is missing, and a stylesheet that
+ * owned the tokens would take the whole component down with it.
+ *
  * There is no sass here: custom properties and nesting cover a stylesheet of this
  * size, and esbuild lowers the nesting to the browser floor the import map sets
  * anyway — Safari 16.4 has import maps but not native nesting.
  */
-:root {
-    --frontend-edit-outline-color: #0a7bd4;
-    --frontend-edit-outline-width: 1px;
-}
-
 .frontend-edit-loaded modern-extbase-frontend-edit-profile {
     display: block;
     outline: var(--frontend-edit-outline-width) dashed var(--frontend-edit-outline-color);
@@ -38,6 +42,11 @@
      * module keeps. It gets the plain block treatment and none of the editing
      * affordances' framing, so a page whose module never arrived does not
      * advertise an editor that is not there.
+     *
+     * This is also what makes the tokens above safe to consume without a
+     * fallback: before the element is defined there is no ":host" rule and every
+     * var() here would be invalid, and every declaration that reads one is
+     * switched off in exactly that window.
      */
     &:not(:defined) {
         outline: none;

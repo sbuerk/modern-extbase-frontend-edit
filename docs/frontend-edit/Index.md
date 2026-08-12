@@ -51,6 +51,7 @@ supported core versions.
 | [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers.   |
 | [Image handling](image-handling.md)                   | The two image endpoints, the upload rules, the read-side wrapper, replacement and cleanup.      |
 | [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain, the gates and the CI job. |
+| [Styling](styling.md)                                 | The design tokens, why only the outer element declares them, and how a site overrides them.     |
 
 ## The short version
 

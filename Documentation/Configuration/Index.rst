@@ -60,3 +60,4 @@ In this chapter
     Settings
     TypoScript
     Templates
+    Styling

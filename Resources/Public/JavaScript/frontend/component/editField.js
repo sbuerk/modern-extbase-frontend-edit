@@ -11,6 +11,8 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
+import { controls } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js";
+import { field } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js";
 import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
 let EditFieldElement = class extends LitElement {
   constructor() {
@@ -221,67 +223,20 @@ let EditFieldElement = class extends LitElement {
     );
   }
 };
-EditFieldElement.styles = css`
-        :host {
-            display: block;
-        }
-
-        .field {
-            display: grid;
-            gap: 0.25rem;
-            padding: 0.25rem 0;
-        }
-
-        .field-label {
-            font-weight: 600;
-        }
-
-        .field-body {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-
-        .field-value {
-            flex: 1 1 12rem;
-            min-width: 0;
-            white-space: pre-wrap;
-        }
-
-        .field-value.is-empty::after {
-            content: '—';
-        }
-
-        input,
-        select,
-        textarea {
-            flex: 1 1 12rem;
-            min-width: 0;
-            font: inherit;
-            padding: 0.25rem;
-        }
-
-        textarea {
-            min-height: 6rem;
-            resize: vertical;
-        }
-
-        .field-errors {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-            color: #a4141a;
-        }
-
-        [aria-invalid='true'] {
-            outline: 2px solid #a4141a;
-        }
-
-        :host([busy]) {
-            opacity: 0.6;
-        }
-    `;
+/*
+ * Everything this element draws is the shared field chrome, so its own block
+ * is one declaration: the custom element is inline by default and has to be
+ * told otherwise before any of the layout below it applies.
+ */
+EditFieldElement.styles = [
+  controls,
+  field,
+  css`
+            :host {
+                display: block;
+            }
+        `
+];
 __decorateClass([
   property({ attribute: false })
 ], EditFieldElement.prototype, "definition", 2);

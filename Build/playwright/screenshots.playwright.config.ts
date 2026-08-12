@@ -19,7 +19,21 @@ export default defineConfig({
     testDir: '../../Tests/Acceptance/Screenshots',
     testMatch: '**/*.shots.ts',
 
-    timeout: 30_000,
+    /*
+     * Generous, because the cost here is not the browser and raising it is not
+     * papering over a hang. A shot clipped to the whole editing surface is about
+     * 1280 by 3000 CSS pixels, taken at twice that, and encoding six megapixels
+     * to AVIF at `effort: 6` is where the seconds go — `edit-record-open` spends
+     * roughly 37 of them and `edit-owner-idle` 25, against browser work measured
+     * in hundreds of milliseconds.
+     *
+     * At 30 seconds the two full surface shots sat on either side of the limit,
+     * so growing the surface by one line of padding turned a slow generator into
+     * a failing one. That is a bad trade for a tool that writes files for a
+     * person to look at: it is not a gate, nothing downstream waits on it, and a
+     * timeout here can only ever cost a rerun.
+     */
+    timeout: 180_000,
     expect: {
         timeout: 10_000,
     },
