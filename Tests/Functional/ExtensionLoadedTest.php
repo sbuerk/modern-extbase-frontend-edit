@@ -50,7 +50,7 @@ final class ExtensionLoadedTest extends AbstractFunctionalTestCase
     /**
      * Both identifiers are asserted, because they are resolved differently:
      * TYPO3 knows the extension by its extension key and composer by its package
-     * name, and the repository initialization rewrites both.
+     * name.
      *
      * @return \Generator<string, array{identifier: string}>
      */

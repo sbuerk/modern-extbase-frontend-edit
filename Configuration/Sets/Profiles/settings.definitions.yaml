@@ -1,11 +1,10 @@
 # Settings definitions of the site set.
 #
 # The keys are prefixed with the compact extension key rather than with a hand
-# written camel cased name, for two reasons: it is the same token the Extbase
-# TypoScript namespace "plugin.tx_modernextbasefrontendedit" is built from
-# (`FrontendConfigurationManager.php:140`), and it is one of the identifiers the
-# repository initialization rewrites, so a repository created from this template
-# does not keep a stale prefix.
+# written camel cased name, because it is the same token the Extbase TypoScript
+# namespace "plugin.tx_modernextbasefrontendedit" is built from
+# (`FrontendConfigurationManager.php:140`), so both spellings of a setting stay
+# derivable from one another.
 #
 # Labels and descriptions live in "labels.xlf" next to this file, keyed
 # "settings.<key>" and "settings.description.<key>".
