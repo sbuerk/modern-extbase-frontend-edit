@@ -262,6 +262,7 @@ Build/Scripts/runTests.sh -t 13 -s unitRandom
 Build/Scripts/runTests.sh -t 13 -s functional -d sqlite
 Build/Scripts/runTests.sh -t 13 -s acceptance
 Build/Scripts/runTests.sh -t 13 -s visualRegression
+Build/Scripts/runTests.sh -t 13 -s checkDocumentationScreenshots
 Build/Scripts/runTests.sh -t 13 -s composerValidate
 Build/Scripts/runTests.sh -t 13 -s checkBom
 Build/Scripts/runTests.sh -t 13 -s checkExceptionCodes
@@ -274,19 +275,26 @@ Build/Scripts/runTests.sh -t 14 -s composerUpdate
 # …
 ```
 
-`-s acceptance` and `-s visualRegression` are the exceptions to the "everything
-twice" rule: both drive a browser against a seeded TYPO3 instance and cover the
-client half of the edit plugin, which is the same JavaScript and the same
-stylesheet on both core versions. They run once, on the version that is
-installed, and CI runs them on v13 only.
+`-s acceptance`, `-s visualRegression` and `-s checkDocumentationScreenshots`
+are the exceptions to the "everything twice" rule: all three drive a browser
+against a seeded TYPO3 instance and cover the client half of the edit plugin,
+which is the same JavaScript and the same stylesheet on both core versions. They
+run once, on the version that is installed, and CI runs them on v13 only.
 → [Acceptance tests](docs/testing/acceptance-tests.md)
 
-`-s visualRegression` compares the surface against committed baseline images. It
-**is** a gate, unlike `-s screenshotDocumentation`, which the next section
-covers. After an intended styling change, re-record with
-`-s visualRegression -- --update-snapshots` — and read the image diff in the
-report before you do, because re-recording without looking is the one thing that
-makes the suite worthless.
+**Two gates guard appearance, and they guard different things.**
+`-s visualRegression` compares seven components of the surface against committed
+baselines. `-s checkDocumentationScreenshots` compares the six screenshots the
+**manual** embeds against the surface they claim to show, and also checks that
+every one of them is produced by a configured shot, embedded by a chapter, and
+resolvable. Both **are** gates, unlike `-s screenshotDocumentation`, which the
+next section covers.
+
+After an intended styling change, both go red and the order is the same: read
+the image diffs the failures name, confirm the change was the intended one, and
+only then re-record — `-s visualRegression -- --update-snapshots` and
+`-s screenshotDocumentation`. Re-recording without looking is the one thing that
+makes both suites worthless.
 
 Further:
 
@@ -309,6 +317,11 @@ Further:
 - `-s setVersion` is release tooling, not a gate: it rewrites the version in
   every file carrying one. Run it only when asked to, and with `--dry-run`
   first.
+- `-s screenshotDocumentation` is the **only** suite that writes into the tracked
+  tree, and the only one that cannot fail. It is a generator; the gate over it is
+  `-s checkDocumentationScreenshots`, which takes the same shots from the same
+  list and compares them. Never run the generator to make that gate green without
+  looking at the diffs it wrote first.
 - The composer download and PHPStan result caches live in `.cache/` at the
   repository root, **not** under `.Build/`. `composerUpdate` starts with
   `rm -rf .Build`, so a cache kept there is deleted before it is ever read —

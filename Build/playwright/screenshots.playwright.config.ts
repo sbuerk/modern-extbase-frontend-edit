@@ -8,9 +8,17 @@
  * generator's own, because `startAcceptanceInstance()` deletes the acceptance
  * report and result directories at the start of every run.
  *
- * `forbidOnly` is off here. This is a generator, not a gate: regenerating one
- * shot while writing a chapter is the normal way to use it, and the `--grep`
- * of a shot name is the supported way to do it.
+ * The same configuration drives the check gate,
+ * `-s checkDocumentationScreenshots`, which is the same shots compared instead
+ * of written. Everything that decides what a shot looks like has to be shared
+ * between the two or the gate reports differences of its own making, and a
+ * second configuration file is precisely how that would start.
+ *
+ * `forbidOnly` is therefore conditional rather than simply off. Regenerating one
+ * shot while writing a chapter is the normal way to use the generator, and
+ * `--grep` of a shot name is the supported way to do it — but a `.only` left in
+ * the shots file would reduce the *gate* to one shot and report success for the
+ * five it never took.
  */
 import { defineConfig } from '@playwright/test';
 import { artifactPath, manifest } from '../../Tests/Acceptance/manifest';
@@ -43,7 +51,7 @@ export default defineConfig({
     fullyParallel: false,
     workers: 1,
     retries: 0,
-    forbidOnly: false,
+    forbidOnly: process.env.DOCUMENTATION_SCREENSHOTS === 'check',
 
     reporter: [['list']],
     outputDir: artifactPath('playwright-screenshot-results'),

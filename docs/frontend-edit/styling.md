@@ -345,6 +345,16 @@ dark tokens would then be pinned, but a second set doubles what a restyle has to
 re-record, and the dark values are a courtesy rather than a supported theme.
 Named rather than hidden.
 
+**And the manual is guarded separately.**
+`Build/Scripts/runTests.sh -s checkDocumentationScreenshots` compares the six
+screenshots `Documentation/` embeds against the surface they claim to show. It
+covers two states these baselines deliberately do not — the anonymous visitor and
+the JavaScript-disabled fallback — so a styling change that only affects those
+still fails something. Together the two suites are why there is **no** baseline
+for the anonymous and server rendered states here: that would be a second copy of
+coverage that already exists, and two more images to re-record on every restyle.
+→ [Acceptance tests](../testing/acceptance-tests.md#what-checks-the-generator)
+
 ## Class names are structural, not presentational
 
 `.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by
@@ -357,6 +367,12 @@ Renaming one is a test change, not a styling change.
 - **No motion beyond two colour transitions.** There is one duration token, and
   `prefers-reduced-motion` sets it to `0ms` — one declaration rather than an
   `!important` sweep.
+
+  Those two transitions had a consequence nobody predicted: the documentation
+  screenshot generator photographed three shots *during* the 120ms fade, and the
+  manual carried a `Cancel` button caught half way through it for eight pull
+  requests. Anything that takes a picture of this surface has to disable
+  animations, and both suites that do now say so.
 - **Legibility is still nobody's assertion.** The visual suite pins that the
   surface has not *changed*; whether a colour has enough contrast, whether the
   focus ring survives a dark host page, and whether the dark scheme is usable at

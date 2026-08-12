@@ -11,9 +11,11 @@ name: "CI"
 #
 #   quality ─┐                                  ┌─> functional (MySQL, MariaDB, …)
 #   phpstan ─┤                                  │
-#   lint    ─┼─> unit ─> functional (SQLite) ───┤
-#            │                                  └─> acceptance ─> visual regression
+#   lint    ─┼─> unit ─> functional (SQLite) ───┤                  ┌─> visual regression
+#            │                                  └─> acceptance ───┤
 #   docs ────┘  (independent, for fast feedback on documentation changes)
+#                                                                 └─> documentation
+#                                                                     screenshots
 #
 # "ci-status" closes the graph. Every other job feeds into it, so there is one
 # stable check name to look at — the matrix job names contain the core version,
@@ -441,6 +443,65 @@ jobs:
           retention-days: 5
           include-hidden-files: true
 
+  documentation-screenshots:
+    name: "documentation screenshots"
+    runs-on: ubuntu-22.04
+    # Behind the acceptance suite for the reason the visual regression job gives,
+    # and beside it rather than after it: the two are independent, and a stale
+    # manual should not be hidden by a styling change that is still being argued
+    # about in the other job.
+    needs: [ "acceptance" ]
+    # A separate job rather than a second step of "visual regression", although
+    # the setup is identical and sharing it would save one "composerUpdate". The
+    # two answer different questions — "did the surface change" and "does the
+    # manual still show the surface" — and folding them together would report a
+    # stale screenshot under a check called "visual regression", which is where
+    # nobody would look for it.
+    #
+    # Pinned to the same runner image, and here it is load bearing rather than
+    # tidy: this job compares pixels the runner rasterised against pixels a
+    # maintainer's machine rasterised.
+    steps:
+
+      - name: "Checkout"
+        uses: actions/checkout@v6
+
+      - name: "Cache composer downloads"
+        uses: actions/cache@v6
+        with:
+          path: ".cache/composer"
+          key: "composer-8.2-v13-${{ hashFiles('composer.json') }}"
+          restore-keys: |
+            composer-8.2-v13-
+            composer-8.2-
+
+      - name: "Cache npm downloads"
+        uses: actions/cache@v6
+        with:
+          path: ".cache/.npm"
+          key: "npm-acceptance-${{ hashFiles('Build/playwright/package-lock.json') }}"
+          restore-keys: "npm-acceptance-"
+
+      - name: "Prepare dependencies for TYPO3 v13"
+        run: "Build/Scripts/runTests.sh -b docker -t 13 -p 8.2 -s composerUpdate"
+
+      - name: "Check the documentation screenshots against the surface"
+        run: "Build/Scripts/runTests.sh -b docker -t 13 -p 8.2 -d sqlite -s checkDocumentationScreenshots"
+
+      # The committed image, the one just taken and the diff, for every shot that
+      # no longer matches. Same reasoning as the visual diffs: the images are the
+      # diagnostic, and the log says nothing they do not say better.
+      - name: "Upload the screenshot diffs"
+        if: "failure()"
+        uses: actions/upload-artifact@v6
+        with:
+          name: "documentation-screenshot-artifacts"
+          path: ".Build/Web/typo3temp/var/tests/screenshot-check-reports/"
+          compression-level: 9
+          if-no-files-found: "warn"
+          retention-days: 5
+          include-hidden-files: true
+
   frontend-assets:
     name: "frontend assets"
     runs-on: ubuntu-latest
@@ -495,6 +556,7 @@ jobs:
       - "functional-dbms"
       - "acceptance"
       - "visual-regression"
+      - "documentation-screenshots"
       - "documentation"
       - "frontend-assets"
     steps:

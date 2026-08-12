@@ -344,6 +344,8 @@ Options:
             - buildJs: compile Build/Sources/ into Resources/Public/
             - cgl: test and fix all php files
             - checkBom: check UTF-8 files do not contain BOM
+            - checkDocumentationScreenshots: check the committed documentation screenshots still
+              match the surface, and that every one of them is produced and embedded
             - checkExceptionCodes: check for duplicate and missing exception codes
             - checkJsBuildClean: check the committed Resources/Public/ artifacts match Build/Sources/
             - checkMarkdownTables: check markdown tables are formatted, "-- --fix" to format them
@@ -365,7 +367,8 @@ Options:
             - phpstan: phpstan analyze
             - phpstanGenerateBaseline: regenerate phpstan baseline, handy after phpstan updates
             - renderDocumentation: render the extension documentation into Documentation-GENERATED-temp
-            - screenshotDocumentation: regenerate the documentation screenshots (writes into Documentation/)
+            - screenshotDocumentation: regenerate the documentation screenshots (writes into
+              Documentation/), checked by checkDocumentationScreenshots
             - setVersion: apply a version across the repository, "-- <version> <type>"
             - typecheckJs: "tsc --noEmit" over every TypeScript tree, which the build does not do
             - unit (default): PHP unit tests
@@ -514,6 +517,11 @@ Examples:
     # Re-record the visual baselines after an intended styling change, then read
     # the diff before committing it.
     ./Build/Scripts/runTests.sh -s visualRegression -- --update-snapshots
+
+    # After a styling change, the manual is stale too. The gate says which shots,
+    # the generator rewrites them, and both take the same "--grep".
+    ./Build/Scripts/runTests.sh -s checkDocumentationScreenshots
+    ./Build/Scripts/runTests.sh -s screenshotDocumentation
 
     # Run functional tests on postgres 10
     ./Build/Scripts/runTests.sh -s functional -d postgres -i 10
@@ -808,13 +816,13 @@ case ${TEST_SUITE} in
         # Regenerates the screenshots the rendered documentation embeds, by
         # driving the same seeded instance the acceptance suite drives.
         #
-        # This is **not a gate**, and the difference matters twice over: it
-        # writes into the tracked tree, which no gate does, and nothing verifies
-        # its output - a screenshot that no longer matches the interface is a
-        # documentation defect a person notices, not a red build. It is
-        # therefore deliberately absent from the CI workflow, and adding a "-s"
-        # suite without adding a job is all that takes: no job enumerates the
-        # suites generically.
+        # This is **not a gate**: it writes into the tracked tree, which no gate
+        # does, and it is deliberately absent from the CI workflow. What verifies
+        # its output is the sibling suite "checkDocumentationScreenshots", which
+        # takes the same shots and compares them instead of writing them. Before
+        # that suite existed, nothing checked these images at all, and three of
+        # the six had been photographed mid-transition for eight pull requests
+        # without anyone noticing.
         #
         # Generation is containerised with no host escape hatch on purpose. The
         # fonts come from the Playwright image, so a shot taken on a host would
@@ -831,6 +839,48 @@ case ${TEST_SUITE} in
                 -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
                 -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
                 -e CHROME_SANDBOX=false \
+                ${IMAGE_PLAYWRIGHT} "${COMMAND[@]}"
+            SUITE_EXIT_CODE=$?
+        fi
+        ;;
+    checkDocumentationScreenshots)
+        # The gate over "-s screenshotDocumentation". Takes every configured shot
+        # against the same seeded instance and compares it with the image the
+        # repository carries, instead of overwriting it.
+        #
+        # One environment variable is the whole difference, and that is the
+        # design: a check that reached the surface by its own route would be
+        # checking that route. The login, the reset, the viewport, the scale
+        # factor, the preparation steps, the clip, the screenshot options and the
+        # encoder settings are the generator's, not a copy of them.
+        #
+        # It also answers the three questions a pixel comparison cannot: whether
+        # every image is produced by a configured shot, whether every image is
+        # embedded by a chapter, and whether every embed resolves. The renderer
+        # only warns about the last one and still exits zero, so
+        # "-s renderDocumentation" is not a second opinion.
+        #
+        # Nothing is written into "Documentation/" here. On failure the three
+        # images a person needs - committed, taken, diff - go to the test
+        # artifact directory, and the failure message names it.
+        if [ "${DBMS}" != "sqlite" ]; then
+            echo "The documentation screenshot check supports \"-d sqlite\" only." >&2
+            SUITE_EXIT_CODE=1
+        else
+            # "startAcceptanceInstance" clears the acceptance report directories
+            # and only those, so this one has to be cleared here - a diff left
+            # over from the previous run is the worst possible thing to hand
+            # somebody who is looking at why the gate just went red.
+            rm -rf "${ROOT_DIR}/.Build/Web/typo3temp/var/tests/screenshot-check-reports"
+            startAcceptanceInstance
+            COMMAND=(/bin/sh -c 'cd Build/playwright && npm ci --no-audit --no-fund && npm run screenshots -- "$@"' screenshots "$@")
+            ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-documentation-screenshots-${SUFFIX} \
+                -e HOME=${ROOT_DIR}/.cache \
+                -e NODE_PATH=${ROOT_DIR}/Build/playwright/node_modules \
+                -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
+                -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+                -e CHROME_SANDBOX=false \
+                -e DOCUMENTATION_SCREENSHOTS=check \
                 ${IMAGE_PLAYWRIGHT} "${COMMAND[@]}"
             SUITE_EXIT_CODE=$?
         fi
