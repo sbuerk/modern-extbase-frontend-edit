@@ -1,0 +1,29 @@
+{
+    "name": "modern-extbase-frontend-edit",
+    "description": "Frontend asset build of the modern_extbase_frontend_edit TYPO3 extension.",
+    "license": "GPL-2.0-or-later",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "node": ">=24",
+        "npm": ">=11"
+    },
+    "scripts": {
+        "build": "node esbuild.mjs",
+        "build:dev": "node esbuild.mjs --dev",
+        "lint": "eslint",
+        "lint:fix": "eslint --fix",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.0",
+        "esbuild": "^0.25.11",
+        "eslint": "^9.39.0",
+        "eslint-plugin-lit": "^2.1.1",
+        "eslint-plugin-wc": "^3.0.2",
+        "globals": "^16.5.0",
+        "lit": "^3.2.0",
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.46.2"
+    }
+}

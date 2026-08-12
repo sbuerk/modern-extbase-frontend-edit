@@ -19,6 +19,16 @@
 # the cache away on every dependency install and make caching it in CI pointless.
 /.cache
 
+# Intermediates of the frontend asset build. The compiled artifacts below
+# "Resources/Public/" are committed, these are not.
+#
+# "node_modules" is more than a size concern here: "Build/php-cs-fixer/config.php"
+# searches "Build/" with "ignoreVCSIgnored()", so this entry is what keeps
+# php-cs-fixer out of the PHP files npm packages ship. That config additionally
+# excludes the directory by name, because the git based filter needs a checkout.
+/Build/node_modules
+/Build/.cache
+
 /.direnv
 /.envrc
 

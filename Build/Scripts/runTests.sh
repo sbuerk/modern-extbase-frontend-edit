@@ -155,6 +155,17 @@ cleanCacheFiles() {
     echo "done"
 }
 
+cleanJsFiles() {
+    # Intermediates of the frontend asset build only. The compiled artifacts in
+    # "Resources/Public/" are committed files and are never removed here - use
+    # "checkJsBuildClean", which deletes and rebuilds them on purpose.
+    echo -n "Clean frontend build related files ... "
+    rm -rf \
+        Build/node_modules \
+        Build/.cache
+    echo "done"
+}
+
 cleanTestFiles() {
     # test related
     echo -n "Clean test related files ... "
@@ -182,14 +193,17 @@ Usage: $0 [options] [file]
 Options:
     -s <...>
         Specifies which test suite to run
+            - buildJs: compile Build/Sources/ into Resources/Public/
             - cgl: test and fix all php files
             - checkBom: check UTF-8 files do not contain BOM
             - checkExceptionCodes: check for duplicate and missing exception codes
+            - checkJsBuildClean: check the committed Resources/Public/ artifacts match Build/Sources/
             - checkMarkdownTables: check markdown tables are formatted, "-- --fix" to format them
             - checkRepositoryInitialization: check initializeRepository.sh rewrites all identifiers
             - checkTestMethodsPrefix: check test methods do not start with "test"
             - clean: clean up build, cache, rendered documentation and testing related files
             - cleanCache: clean up cache related files and folders
+            - cleanJs: clean up frontend build related files and folders (Build/node_modules)
             - cleanRenderedDocumentation: clean up rendered documentation (Documentation-GENERATED-temp)
             - cleanTests: clean up test related files and folders
             - composer: "composer" with all remaining arguments dispatched
@@ -198,14 +212,24 @@ Options:
             - composerValidate: "composer validate --strict" of the root composer.json
             - functional: PHP functional tests
             - lintPhp: PHP linting
+            - lintTypescript: eslint over Build/Sources/, fixes by default, "-n" to only check
+            - npm: "npm" with all remaining arguments dispatched, run in Build/
             - phpstan: phpstan analyze
             - phpstanGenerateBaseline: regenerate phpstan baseline, handy after phpstan updates
             - renderDocumentation: render the extension documentation into Documentation-GENERATED-temp
             - setVersion: apply a version across the repository, "-- <version> <type>"
+            - typecheckJs: "tsc --noEmit" over Build/Sources/, which the build does not do
             - unit (default): PHP unit tests
             - unitRandom: PHP unit tests in random order, "-o <number>" to use a specific seed
             - watchDocumentation: render the documentation and re-render it on every change,
               served on port 1337, a different port as first argument
+
+        The five frontend suites - buildJs, checkJsBuildClean, lintTypescript, npm and
+        typecheckJs - run in a node container and are the only ones that are core version
+        independent: they inspect Build/Sources/ and Resources/Public/ and never the
+        installed core, so "-t" does not change what they do. They also need no
+        composerUpdate, which makes them the only suites that are safe to run while the
+        other core version's dependency set is installed.
 
     -b <docker|podman>
         Container environment:
@@ -302,8 +326,9 @@ Options:
         outputs the used seed at the end. Use that number to replay the unit tests in that order.
 
     -n
-        Only with -s cgl
+        Only with -s cgl|lintTypescript
         Activate dry-run in CGL check that does not actively change files and only prints broken ones.
+        The same for the eslint run of lintTypescript, which fixes in place without it.
 
     -u
         Update existing typo3/core-testing-*:latest container images and remove dangling local volumes.
@@ -332,6 +357,15 @@ Examples:
 
     # Check the coding guidelines without changing files, as CI does
     ./Build/Scripts/runTests.sh -s cgl -n
+
+    # Compile the frontend assets after a change below Build/Sources/
+    ./Build/Scripts/runTests.sh -s buildJs
+
+    # Prove the committed artifacts still match their sources, as CI does
+    ./Build/Scripts/runTests.sh -s checkJsBuildClean
+
+    # Add or update a node dependency, arguments after "--"
+    ./Build/Scripts/runTests.sh -s npm -- install --save-dev lit@latest
 
     # Write documentation with a browser preview reloading on every save
     ./Build/Scripts/runTests.sh -s watchDocumentation
@@ -491,6 +525,12 @@ fi
 
 IMAGE_PHP="ghcr.io/typo3/core-testing-$(echo "php${PHP_VERSION}" | sed -e 's/\.//'):latest"
 IMAGE_DOCS="ghcr.io/typo3-documentation/render-guides:latest"
+# The image TYPO3 core itself uses for its JavaScript suites on 13.4, 14.3 and main.
+# It carries node 24 and npm 11, which match the "engines" range of Build/package.json,
+# and it ships git, which "checkJsBuildClean" needs. Pinned rather than ":latest", the
+# way core pins it - a node major changing under a committed build artifact is exactly
+# the kind of surprise that gate exists to catch, not to produce.
+IMAGE_NODEJS="ghcr.io/typo3/core-testing-nodejs24:1.1"
 IMAGE_MARIADB="docker.io/mariadb:${DBMS_VERSION}"
 IMAGE_MYSQL="docker.io/mysql:${DBMS_VERSION}"
 IMAGE_POSTGRES="docker.io/postgres:${DBMS_VERSION}-alpine"
@@ -550,6 +590,11 @@ fi
 
 # Suite execution
 case ${TEST_SUITE} in
+    buildJs)
+        COMMAND="cd Build && npm ci && npm run build"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name build-js-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
     cgl)
         # Active dry-run for cgl needs not "-n" but specific options
         CSFIXER_DRYRUN=""
@@ -570,6 +615,39 @@ case ${TEST_SUITE} in
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-exception-codes-${SUFFIX} ${IMAGE_PHP} /bin/bash -c "${COMMAND}"
         SUITE_EXIT_CODE=$?
         ;;
+    checkJsBuildClean)
+        # The gate that makes committed build artifacts trustworthy. "Resources/Public/"
+        # is tracked because neither composer nor a TER upload runs a node build, and an
+        # artifact that no longer matches its source passes every review, ships to every
+        # installation and is only noticed when someone wonders why a fix had no effect.
+        #
+        # The artifacts are deleted rather than overwritten, so a source file that stopped
+        # producing an output is caught as well - "git status" then reports the deletion.
+        # A green run leaves the working tree exactly as it found it; a red one leaves the
+        # rebuilt files in place, which is what the diff below is showing.
+        #
+        # "safe.directory" is passed as environment rather than written to a config file:
+        # in CI the container runs as root against a checkout owned by the runner user,
+        # and git refuses to operate in a repository owned by someone else.
+        COMMAND="export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*'; \
+            rm -rf Resources/Public/JavaScript Resources/Public/Css; \
+            cd Build && npm ci && npm run build || exit 1; \
+            cd ${ROOT_DIR} || exit 1; \
+            CHANGED=\$(git status --porcelain --untracked-files=all -- Resources/Public); \
+            if [ -n \"\${CHANGED}\" ]; then \
+                echo ''; \
+                echo 'The committed artifacts below Resources/Public/ do not match Build/Sources/:'; \
+                echo \"\${CHANGED}\"; \
+                echo ''; \
+                git --no-pager diff -- Resources/Public; \
+                echo ''; \
+                echo 'Run \"Build/Scripts/runTests.sh -s buildJs\" and commit the result.'; \
+                exit 1; \
+            fi; \
+            echo 'The committed artifacts below Resources/Public/ match Build/Sources/.'"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-js-build-clean-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
     checkMarkdownTables)
         COMMAND="php -dxdebug.mode=off Build/Scripts/checkMarkdownTables.php $@"
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-markdown-tables-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
@@ -587,12 +665,17 @@ case ${TEST_SUITE} in
         ;;
     clean)
         cleanCacheFiles
+        cleanJsFiles
         cleanRenderedDocumentationFiles
         cleanTestFiles
         SUITE_EXIT_CODE=$?
         ;;
     cleanCache)
         cleanCacheFiles
+        SUITE_EXIT_CODE=$?
+        ;;
+    cleanJs)
+        cleanJsFiles
         SUITE_EXIT_CODE=$?
         ;;
     cleanRenderedDocumentation)
@@ -685,8 +768,29 @@ case ${TEST_SUITE} in
         esac
         ;;
     lintPhp)
-        COMMAND="find . -name \\*.php ! -path "./.Build/\\*" ! -path "./.agent/\\*" ! -path "./.cache/\\*" -print0 | xargs -0 -n1 -P4 php -dxdebug.mode=off -l >/dev/null"
+        # "Build/node_modules" is excluded because npm packages ship PHP files of their
+        # own - test fixtures and vendored tools - and linting them says nothing about
+        # this repository while adding tens of thousands of files to the run.
+        COMMAND="find . -name \\*.php ! -path "./.Build/\\*" ! -path "./.agent/\\*" ! -path "./.cache/\\*" ! -path "./Build/node_modules/\\*" -print0 | xargs -0 -n1 -P4 php -dxdebug.mode=off -l >/dev/null"
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name lint-php-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    lintTypescript)
+        # Mirrors "cgl": it fixes in place, and only checks when "-n" is given.
+        NPM_LINT_SCRIPT="lint:fix"
+        if [ "${CGLCHECK_DRY_RUN}" -eq 1 ]; then
+            NPM_LINT_SCRIPT="lint"
+        fi
+        COMMAND="cd Build && npm ci && npm run ${NPM_LINT_SCRIPT}"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name lint-typescript-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    npm)
+        # Escape hatch, mirroring the "composer" suite:
+        #   ./Build/Scripts/runTests.sh -s npm -- install --save-dev lit@latest
+        # The working directory is overridden to Build/, where package.json lives.
+        COMMAND=(npm "$@")
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} -w ${ROOT_DIR}/Build --name npm-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} "${COMMAND[@]}"
         SUITE_EXIT_CODE=$?
         ;;
     phpstan)
@@ -711,6 +815,13 @@ case ${TEST_SUITE} in
         #   ./Build/Scripts/runTests.sh -s setVersion -- 1.2.0 release
         COMMAND=(Build/Scripts/setVersion.sh "$@")
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name set-version-${SUFFIX} ${IMAGE_PHP} "${COMMAND[@]}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    typecheckJs)
+        # Its own suite precisely because esbuild does not type check: without this the
+        # build succeeds on TypeScript that does not compile.
+        COMMAND="cd Build && npm ci && npm run typecheck"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name typecheck-js-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} /bin/sh -c "${COMMAND}"
         SUITE_EXIT_CODE=$?
         ;;
     unit)

@@ -37,7 +37,7 @@ Documentation for people **using** the extension lives in
 | [Authorization](frontend-edit/authorization.md)                     | Ownership resolved from the session, and the security checklist.                                          |
 | [DTOs and validation](frontend-edit/dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the mappers.                                    |
 | [Image handling](frontend-edit/image-handling.md)                   | The modern upload API, the read-side wrapper, replacement and cleanup.                                    |
-| [Frontend assets](frontend-edit/frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain.                                     |
+| [Frontend assets](frontend-edit/frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain and the gates it needs.              |
 
 ## [Testing](testing/Index.md)
 

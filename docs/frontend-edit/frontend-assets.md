@@ -6,11 +6,16 @@ root and one page-level stylesheet. Everything about that sentence was contested
 at least once, so this page records what was verified and what was decided.
 
 > [!NOTE]
-> **The toolchain itself lands in a later pull request.** `Build/package.json`,
-> `Build/esbuild.mjs`, the `runTests.sh` suites and the `.gitignore` entries
-> described below do not exist in the repository yet. This page documents the
-> design and the decisions behind it, so the change that adds them is a
-> review of code rather than a review of the concept.
+> **The toolchain exists.** `Build/package.json`, `Build/esbuild.mjs`,
+> `Build/tsconfig.json`, `Build/eslint.config.mjs`, `Build/Sources/`, the five
+> `runTests.sh` suites, `Configuration/JavaScriptModules.php` and the compiled
+> artifacts below `Resources/Public/` are in the repository, and the CI workflow
+> has a job for them.
+>
+> What does **not** exist yet is the edit UI itself: the entry point is
+> scaffolding that sets one class on `<html>`, no Fluid template calls
+> `f:asset.module` yet, and no test asserts that the specifier resolves. Those
+> are named again where this page describes them.
 
 ## Import maps work in the frontend, on both core versions
 
@@ -123,17 +128,39 @@ cheapest one:
    second extension shipping a lit component, is enough to hit it.
 
 The build therefore marks `lit`, `lit-html`, `lit-element`, `@lit/*` and
-`@typo3/*` **external**, and the sources import the bare specifier (`lit`,
-`lit/decorators.js`) and never a path. `lit` is a `devDependency` of the build —
-it is present for `tsc` and the editor and is never emitted.
+`@typo3/*` **external** (`Build/esbuild.mjs:37-47`), and the sources import the
+bare specifier (`lit`, `lit/decorators.js`) and never a path. `lit` is a
+`devDependency` of the build — it is present for `tsc` and the editor and is
+never emitted.
+
+`Configuration/JavaScriptModules.php` is therefore three lines of substance:
+
+```php
+return [
+    'dependencies' => ['core'],
+    'imports' => [
+        '@sbuerk/modern-extbase-frontend-edit/' => 'EXT:modern_extbase_frontend_edit/Resources/Public/JavaScript/',
+    ],
+];
+```
+
+`dependencies` names **`core`, not `backend`** — that single word is what makes
+`lit` resolvable from a frontend page without bundling it, because the six `lit`
+specifiers are declared in `EXT:core`'s own module map. Naming `backend` instead
+would pull in the backend's module map, which a frontend page has no business
+loading, and would still not be the place `lit` comes from. No `tags` are
+declared: tags exist so the backend can eagerly load whole groups of modules,
+while a frontend page loads exactly the one module its template asks for.
 
 Stated honestly, the accepted downsides: our components run against *core's* lit
 patch version, so a future lit major in core changes the API under us; and using
 `<f:asset.module>` in the frontend puts core's Contrib specifiers into the
-anonymous import map. The first is mitigated by a functional test asserting the
-module resolves, so the change surfaces as a red gate. The second is not a
-security issue — those are core's own file names and the core version is
-discoverable anyway.
+anonymous import map. The second is not a security issue — those are core's own
+file names and the core version is discoverable anyway. The first is currently
+**unmitigated**: the functional test asserting that the specifier resolves is
+named here as the intended safety net and does not exist yet, so a lit major in
+core would surface as a broken page rather than as a red gate. It lands with the
+component that first imports `lit`.
 
 ## The toolchain, and why it is smaller than core's
 
@@ -171,6 +198,18 @@ That pair is the legacy decorator mode lit 3 requires; getting it wrong produces
 diverges from core: `strict: true` where core has `strict: false`. Core carries
 years of legacy, a new extension has no reason to start relaxed.
 
+The browser target of the build is not a taste decision either. `esbuild.mjs:55`
+sets `['chrome89', 'firefox108', 'safari16.4']`, which is the floor of the
+import-map mechanism itself. Targeting anything older would emit transpiled
+output for browsers that cannot resolve the module in the first place — and it
+is the reason the stylesheet may use native nesting: esbuild lowers nesting to
+that same floor, and Safari 16.4 has import maps but not native nesting.
+
+Type aware eslint rules are deliberately **not** enabled. `tsc --noEmit` is the
+type gate; what the lit and web-component plugins add are the mistakes a
+compiler does not see — legacy `lit` imports, reflected native attributes,
+listeners without teardown, constructor parameters on a custom element.
+
 Deliberately deferred, and named as gaps rather than hidden: real-browser
 JavaScript unit tests (`@web/test-runner` needs a ~700 MB Chrome image and a
 hand-written import map), and stylelint 16 — to be added if and when the CSS
@@ -184,13 +223,20 @@ Build/                                       (already export-ignored)
   tsconfig.json  eslint.config.mjs  esbuild.mjs
   Sources/
     TypeScript/frontend-edit.ts              entry point
-    TypeScript/element/edit-toolbar.ts       internal, bundled into the entry
+    TypeScript/documentState.ts              internal, bundled into the entry
     Css/frontend-edit.css
 Resources/Public/
   JavaScript/frontend-edit.js                committed build artifact
   Css/frontend-edit.css                      committed build artifact
 Configuration/JavaScriptModules.php
 ```
+
+`frontend-edit.ts` is the entry point that stays; its body is scaffolding that
+the edit UI replaces. `documentState.ts` is the one thing the entry does today:
+it sets `frontend-edit-loaded` on `<html>`, and every rule in the stylesheet is
+scoped to that class. A stylesheet loaded through `f:asset.css` applies whether
+or not the module behind `f:asset.module` ran, so without that gate a page whose
+module failed to resolve would show edit affordances that nothing responds to.
 
 Three conventions hold this together:
 
@@ -210,6 +256,13 @@ Source maps are not committed — inline maps in the dev build only, matching
 core's `*.js.map` ignore.
 
 ## How Fluid loads it
+
+> [!NOTE]
+> **No template does this yet.** The import map entry and the artifacts exist;
+> the two tags below land with the edit plugin that needs them. Until then the
+> module is addressable and nothing addresses it, which is why the `f:asset.css`
+> and `f:asset.module` calls are shown here as the intended wiring rather than
+> quoted from a template.
 
 ```html
 <f:asset.css
@@ -278,60 +331,204 @@ files. This is not a preference:
 The consequence has to be stated plainly: **a committed artifact that no longer
 matches its source is a silent defect.** It passes every review, ships to every
 installation, and is only discovered when someone wonders why a fix had no
-effect. `checkJsBuildClean` — rebuild from scratch, then assert the working
-tree is clean — is therefore **mandatory, not optional**. Without it,
-committing artifacts is a liability rather than a distribution mechanism. Core
-solves it the same way with `checkGruntClean`.
+effect. Nothing else in the repository can notice it: `cgl`, PHPStan and the
+PHPUnit suites never look at `Resources/Public/`, and the artifact keeps
+serving the previous behaviour perfectly happily. `checkJsBuildClean` —
+rebuild from scratch, then assert the working tree is clean — is therefore
+**mandatory, not optional**. Without it, committing artifacts is a liability
+rather than a distribution mechanism. Core solves it the same way with
+`checkGruntClean`.
 
-## Gate plumbing that has to come first
+Three details of how it is implemented follow from that, and each is a decision:
 
-Three existing gates break the moment `Build/node_modules/` exists, and each
-failure looks like something else. Read this before the first `npm install`:
+- **The artifacts are deleted before the rebuild, not overwritten.** A source
+  file that stopped producing an output is then caught too — `git status`
+  reports the deletion. Overwriting would leave the stale file in place and the
+  tree clean.
+- **The working tree is inspected with `git status --porcelain
+  --untracked-files=all -- Resources/Public`,** so a *new* untracked artifact
+  counts as drift as well. A green run leaves the tree exactly as it found it; a
+  red one leaves the rebuilt files in place, which is what the printed diff is
+  showing.
+- **`safe.directory` is passed as `GIT_CONFIG_*` environment,** not written to a
+  config file. In CI the container runs as root against a checkout owned by the
+  runner user, and git refuses to operate in a repository owned by someone else.
 
-| Gate       | Where it breaks                       | Required change                                                                                                                                                                                                                                                  |
-|------------|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cgl`      | `Build/php-cs-fixer/config.php:51,58` | `.gitignore` must list `/Build/node_modules` (and `/Build/.cache`). The finder combines `ignoreVCSIgnored(true)` with `->in([… '/../../Build'])`, so php-cs-fixer walks `node_modules` unless git ignores it.                                                    |
-| `checkBom` | `Build/Scripts/checkUtf8Bom.sh:11-15` | Add `! -path "./Build/node_modules/*"` to the `find`. It currently excludes only `.Build/`, `.git/`, the php-cs-fixer cache and the generated documentation, so it runs `file` over tens of thousands of npm files — slow, and npm packages do ship BOM'd files. |
-| `lintPhp`  | `Build/Scripts/runTests.sh:688`       | Same exclusion on `find . -name \*.php ! -path "./.Build/*"`, which otherwise descends into `node_modules`.                                                                                                                                                      |
+## Correction: `.gitignore` was never what kept php-cs-fixer out
 
-Two smaller items in the same change: `.gitattributes` gains `*.ts` and `*.mjs`
-in the `text eol=lf` block, and `Build/Scripts/checkMarkdownTables.php` and
-`Build/Scripts/duplicateExceptionCodeCheck.sh` need **no** change — both are
+An earlier revision of this page stated that adding `/Build/node_modules` to
+`.gitignore` is what stops `cgl` from walking the npm dependencies, because
+`Build/php-cs-fixer/config.php` combines `ignoreVCSIgnored(true)` with an
+`in()` on `Build/`. **That is wrong, and the way it is wrong is worth keeping:
+the protection everyone assumed was in place had never once been active.**
+
+`ignoreVCSIgnored(true)` was a complete no-op in this repository. Symfony's
+`VcsIgnoredFilterIterator` walks up from the `in()` path looking for a `.git`
+directory and keeps **the string it walked to** as its base:
+
+```php
+// .Build/vendor/symfony/finder/Iterator/VcsIgnoredFilterIterator.php:36-48
+public function __construct(\Iterator $iterator, string $baseDir)
+{
+    $this->baseDir = $this->normalizePath($baseDir);
+
+    foreach ([$this->baseDir, ...$this->parentDirectoriesUpwards($this->baseDir)] as $directory) {
+        if (@is_dir("{$directory}/.git")) {
+            $this->baseDir = $directory;
+            break;
+        }
+    }
+    // …
+}
+```
+
+`normalizePath()` only converts backslashes on Windows
+(`VcsIgnoredFilterIterator.php:165-172`) and `parentDirectoriesUpwards()` is
+plain repeated `dirname()` (`:102-120`) — neither resolves `..`. The finder was
+handed `__DIR__ . '/../../Build'`, so the first parent that has a `.git` beside
+it is the literal string `…/Build/php-cs-fixer/../..`, and that is what `baseDir`
+became.
+
+The files being filtered, however, arrive as **real** paths — `accept()` calls
+`getRealPath()` (`:50-57`). Selecting the directories whose `.gitignore` should
+apply is a string prefix test against that base:
+
+```php
+// .Build/vendor/symfony/finder/Iterator/VcsIgnoredFilterIterator.php:122-128
+private function parentDirectoriesUpTo(string $from, string $upTo): array
+{
+    return array_filter(
+        $this->parentDirectoriesUpwards($from),
+        static fn (string $directory): bool => str_starts_with($directory, $upTo)
+    );
+}
+```
+
+No real path starts with `…/Build/php-cs-fixer/../..`. The array came back
+empty, the loop over candidate directories (`:71-94`) never ran, **no
+`.gitignore` was ever read**, and `isIgnored()` returned `false` for every file.
+The `.gitignore` entry was doing nothing at all; php-cs-fixer walked
+`Build/node_modules` and the only reason nobody noticed is that eslint's
+dependency tree happens to contain exactly one PHP file,
+`Build/node_modules/flatted/php/flatted.php`.
+
+The fix is two changes in `Build/php-cs-fixer/config.php`, and both are needed:
+
+1. **Resolve the paths.** `$root = dirname(__DIR__, 2)` and `$root . '/Build'`
+   instead of `__DIR__ . '/../../Build'`. `baseDir` then becomes the repository
+   root, the prefix test matches, and `ignoreVCSIgnored()` does what its name
+   says.
+2. **Exclude the directory by name as well.** `->exclude(['node_modules/', …])`
+   does not depend on git at all, so it also holds in an exported tree with no
+   `.git` — a checkout is not something a code-style run should require.
+
+The lesson generalizes past this one finder: **an option whose failure mode is
+"silently filters nothing" needs to be observed working, not configured.** The
+observation here is one line of output — the same `Finder` over the same
+directory returns eight PHP files with the relative `in()` path and seven with
+the resolved one.
+
+The two neighbouring gates needed the exclusion spelled out for their own
+reasons, unrelated to git:
+
+| Gate       | What changed                                            | Why                                                                                                                                  |
+|------------|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `checkBom` | `! -path "./Build/node_modules/*"` added to the `find`  | Running `file` over tens of thousands of npm files takes minutes, and npm packages do ship BOM'd files this repository does not own. |
+| `lintPhp`  | *(no exclusion in the `find` yet — see the note below)* | `php -l` over the same tree is slow for the same reason, and reports on code that is not ours.                                       |
+
+> [!NOTE]
+> `lintPhp` still descends into `Build/node_modules`. The suite carries a
+> comment saying it does not, but its `find` excludes only `.Build/`, `.agent/`
+> and `.cache/`. It costs a few seconds today because exactly one PHP file is
+> down there and it happens to be syntactically valid; it is a real
+> inconsistency and belongs in the next change that touches `runTests.sh`.
+
+`Build/Scripts/checkMarkdownTables.php` and
+`Build/Scripts/duplicateExceptionCodeCheck.sh` needed **no** change — both are
 already scoped to explicit paths.
 
-## New `runTests.sh` suites
+## The `runTests.sh` suites
 
-All of them run in `ghcr.io/typo3/core-testing-nodejs24:1.1`, the image core
-itself uses on 13.4, 14.3 and main. It carries node 24 and npm 11 matching the
-`engines` range, and it ships `git`, which `checkJsBuildClean` needs. Each
-suite gets `-e HOME=${ROOT_DIR}/.cache` so npm's cache lands in the `.cache/`
-directory CI already caches — the same reason the composer and PHPStan caches
-live there and
+All of them run in **`ghcr.io/typo3/core-testing-nodejs24:1.1`**, the image TYPO3
+core uses for its own JavaScript suites. It answers `v24.14.1`, `11.11.0` and
+`git version 2.39.5` — node and npm inside the `engines` range of
+`Build/package.json`, and the `git` that `checkJsBuildClean` needs, which is not
+something a node image can be assumed to carry.
+
+It is **pinned to `:1.1`, not `:latest`** — deliberately, and the way core pins
+it. The PHP and documentation images this repository uses are `:latest`, so the
+difference needs a reason: a node major changing under a *committed* build
+artifact would produce a `checkJsBuildClean` failure in a pull request that
+changed no JavaScript at all. That is precisely the surprise the gate exists to
+catch, not to manufacture. Moving to a new node major is then a visible one-line
+commit rather than a Tuesday.
+
+Each suite gets `-e HOME=${ROOT_DIR}/.cache` so npm's cache lands in the
+`.cache/` directory CI already caches — the same reason the composer and PHPStan
+caches live there and
 [not under `.Build/`](../development/quality-gates.md#the-composer-cache).
 
-| Suite               | Runs                                                        | Purpose                                                                                                                  |
-|---------------------|-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `buildJs`           | `npm ci && npm run build` in `Build/`                       | Compiles TypeScript and CSS into `Resources/Public/`. Run after every source change.                                     |
-| `checkJsBuildClean` | Delete the artifacts, rebuild, assert `git status` is empty | The gate that makes committed artifacts trustworthy. CI critical.                                                        |
-| `lintTypescript`    | `npm run lint`, or `lint:fix` unless `-n` is given          | eslint 9 with typescript-eslint and the lit/wc plugins. Mirrors `cgl`, which fixes by default and only checks with `-n`. |
-| `typecheckJs`       | `npm run typecheck`                                         | `tsc --noEmit`. A separate suite precisely because esbuild does not type check.                                          |
-| `npm`               | `npm "$@"` with the working directory set to `Build/`       | Escape hatch, mirroring the existing `composer` suite: `-s npm -- install lit@latest`.                                   |
+| Suite               | Runs                                                                          | Purpose                                                                                                                  |
+|---------------------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `buildJs`           | `npm ci && npm run build` in `Build/`                                         | Compiles TypeScript and CSS into `Resources/Public/`. Run after every source change, and commit the result.              |
+| `checkJsBuildClean` | Delete the artifacts, `npm ci && npm run build`, assert `git status` is empty | The gate that makes committed artifacts trustworthy. CI critical.                                                        |
+| `lintTypescript`    | `npm run lint:fix`, or `lint` when `-n` is given                              | eslint 9 with typescript-eslint and the lit/wc plugins. Mirrors `cgl`, which fixes by default and only checks with `-n`. |
+| `typecheckJs`       | `npm run typecheck`                                                           | `tsc --noEmit`. A separate suite precisely because esbuild does not type check.                                          |
+| `npm`               | `npm "$@"` with the working directory set to `Build/`                         | Escape hatch, mirroring the existing `composer` suite: `-s npm -- install --save-dev lit@latest`.                        |
+| `cleanJs`           | `rm -rf Build/node_modules Build/.cache`                                      | Intermediates only. It never removes `Resources/Public/` — those are committed files.                                    |
 
-Plus a `cleanJs` helper removing `Build/node_modules` and `Build/.cache`, wired
-into `clean`, next to the existing `cleanCacheFiles()`/`cleanTestFiles()`.
+`cleanJs` is also wired into `clean`, next to the existing
+`cleanCacheFiles()`/`cleanTestFiles()`. That `checkJsBuildClean` deletes
+`Resources/Public/JavaScript` and `Resources/Public/Css` while `cleanJs` refuses
+to is not an inconsistency: the gate deletes them *in order to* rebuild them in
+the same command, and a `clean` that leaves the working tree with deleted
+tracked files would be a trap.
 
 Two properties of these suites differ from every gate documented so far, and the
-help text must say so:
+`-h` output says so:
 
 - **They are core version independent.** They inspect `Build/Sources/` and
-  `Resources/Public/`, never the installed core, so running them in both halves
-  of the `-t 13` / `-t 14` matrix tests the same files twice. CI gets **one**
-  job outside the matrix, the way core runs its JavaScript gates in a single
-  integrity job rather than per PHP version.
+  `Resources/Public/`, never the installed core, so `-t` does not change what
+  they do and running them in both halves of the `-t 13` / `-t 14` matrix would
+  check the same files twice.
 - **They need no `composerUpdate`,** because they never touch `.Build/`. That
   makes them the only suites that are safe to run while the *other* core
   version's dependency set is installed — the one exception to the rule in
   [Dual core setup](../development/dual-core-setup.md).
+
+## The CI job
+
+`.github/workflows/ci.yml` gets **one** job, `frontend-assets`, and it is listed
+in the `needs` of `ci-status` like every other job — a skipped or cancelled job
+fails the aggregate, so the gate cannot quietly disappear.
+
+```yaml
+frontend-assets:
+  name: "frontend assets"
+  runs-on: ubuntu-latest
+  steps:
+    # checkout, then cache ".cache/.npm" keyed on Build/package-lock.json
+    - run: "Build/Scripts/runTests.sh -b docker -s lintTypescript -n"
+    - run: "Build/Scripts/runTests.sh -b docker -s typecheckJs"
+    - run: "Build/Scripts/runTests.sh -b docker -s checkJsBuildClean"
+```
+
+Three things about it are deliberate:
+
+- **No matrix.** The suites never touch PHP or the installed core, so repeating
+  them across PHP and core versions would check the same TypeScript four times.
+  This is how core runs its JavaScript gates as well — a single integrity job
+  rather than one per PHP version.
+- **No `composerUpdate` step.** Nothing here reads `.Build/`, so the job skips
+  the most expensive step in the workflow entirely. It is the only job that
+  does.
+- **`checkJsBuildClean` runs last.** Lint and type errors are cheaper to produce
+  and easier to read than a diff of minified output; running the expensive,
+  hardest-to-read gate first would bury them.
+
+`-b docker` is passed for the same reason
+[every other job passes it](../development/quality-gates.md#why-ci-passes--b-docker),
+and has nothing to do with node.
 
 ## See also
 

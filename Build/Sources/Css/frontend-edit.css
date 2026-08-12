@@ -1,0 +1,28 @@
+/*
+ * Page level, light DOM styles of the frontend editing assets.
+ *
+ * This is the only stylesheet the build emits. Styles of the edit UI itself live
+ * in the shadow root of its component as "static styles = css`…`" and cannot come
+ * from a <link> at all, so there is no third mechanism and no inline style block.
+ *
+ * Every rule is scoped to ".frontend-edit-loaded", which the entry point sets on
+ * <html>. Without that gate the page would show edit affordances even when the
+ * module failed to load.
+ *
+ * There is no sass here: custom properties and nesting cover a stylesheet of this
+ * size, and esbuild lowers the nesting to the browser floor the import map sets
+ * anyway — Safari 16.4 has import maps but not native nesting.
+ */
+:root {
+    --frontend-edit-outline-color: #0a7bd4;
+    --frontend-edit-outline-width: 1px;
+}
+
+.frontend-edit-loaded [data-frontend-edit] {
+    outline: var(--frontend-edit-outline-width) dashed var(--frontend-edit-outline-color);
+    outline-offset: 2px;
+
+    &:focus-within {
+        outline-style: solid;
+    }
+}

@@ -42,10 +42,19 @@ indent_size = 3
 indent_style = space
 indent_size = 4
 
-# TypoScript
-[*.ts]
+# TypeScript and the node based build configuration.
+# ".ts" was the legacy TypoScript extension, which TYPO3 no longer reads - the
+# section below claims it for TypoScript's replacement, ".typoscript". Leaving
+# ".ts" at the TypoScript indentation would have every editor reformat the
+# sources of the frontend asset build on save.
+[*.{ts,mjs}]
 indent_style = space
-indent_size = 2
+indent_size = 4
+
+# CSS-Files
+[*.css]
+indent_style = space
+indent_size = 4
 
 # SQL-Files
 [*.sql]
