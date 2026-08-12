@@ -1,0 +1,17 @@
+{
+    "name": "modern-extbase-frontend-edit-acceptance",
+    "description": "Playwright acceptance suite of the modern_extbase_frontend_edit TYPO3 extension.",
+    "license": "GPL-2.0-or-later",
+    "private": true,
+    "engines": {
+        "node": ">=22",
+        "npm": ">=10"
+    },
+    "scripts": {
+        "test": "playwright test"
+    },
+    "devDependencies": {
+        "@playwright/test": "1.56.1",
+        "@types/node": "^24.10.1"
+    }
+}

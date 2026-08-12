@@ -293,6 +293,7 @@ assets   ─┘
 | `unit`              | edge PHP versions × both core versions   | `unit`, `unitRandom`                                              |
 | `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                                            |
 | `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                                |
+| `acceptance`        | —                                        | `acceptance`, uploads traces and the TYPO3 log on failure         |
 | `documentation`     | —                                        | `renderDocumentation`, uploads the artifact                       |
 | `frontend-assets`   | —                                        | `lintTypescript -n`, `typecheckJs`, `unitJs`, `checkJsBuildClean` |
 
@@ -314,6 +315,13 @@ Two further decisions are worth knowing:
   version.** They inspect source files rather than the installed core, so
   repeating them tests the same files again. Only `phpstan` is genuinely per
   core version.
+- **`acceptance` is gated on SQLite too, and has no matrix.** What it covers is
+  the browser half — the custom element upgrading, `lit` resolving from the
+  import map, a save surviving a reload — and the server half of every one of
+  those paths is already covered by `functional` on both core versions. Running
+  it per matrix cell would quadruple the two largest image pulls of the workflow
+  to re-prove the same JavaScript.
+  → [Acceptance tests](../testing/acceptance-tests.md)
 
 ### Why CI passes `-b docker`
 

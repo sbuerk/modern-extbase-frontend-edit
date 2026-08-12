@@ -187,6 +187,7 @@ Build/Scripts/runTests.sh -s lintPhp
 # Tests.
 Build/Scripts/runTests.sh -s unit
 Build/Scripts/runTests.sh -s functional -d sqlite
+Build/Scripts/runTests.sh -s acceptance
 
 # All available options.
 Build/Scripts/runTests.sh -h
