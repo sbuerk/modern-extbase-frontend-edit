@@ -192,6 +192,18 @@ The surface marks two kinds of button, and leaves the rest plain:
         -   :guilabel:`Edit`, :guilabel:`Cancel`, :guilabel:`Move up`,
             :guilabel:`Move down`, :guilabel:`Hide`
 
+Every button also carries an icon. They are drawn inline in the extension's own
+JavaScript rather than loaded from anywhere, so they need no font, make no
+request and are unaffected by the Content Security Policy. They take their colour
+from the button they sit in and their size from the surrounding text, so a change
+to :css:`--frontend-edit-color-danger` or to the page's font size moves them too.
+
+In the toolbar of a child record — :guilabel:`Move up`, :guilabel:`Move down`,
+:guilabel:`Hide`, :guilabel:`Remove` — the text is hidden and only the icon is
+shown, because those four repeat once per address and e-mail address. The label
+is still announced by a screen reader and still read by automated tests; it is
+hidden visually, not removed.
+
 There is no setting for this and no class to override. The distinction is
 carried in a :html:`data-variant` attribute on the button, so a site that wants
 a different treatment styles it directly — this is one of the few things a

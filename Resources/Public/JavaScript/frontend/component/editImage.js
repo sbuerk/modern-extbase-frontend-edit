@@ -11,6 +11,7 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
+import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
 import { controls } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js";
 import { field } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js";
 import { actionLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
@@ -50,7 +51,8 @@ let EditImageElement = class extends LitElement {
                             ?disabled="${this.busy || this.image === null}"
                             @click="${this.onRemove}"
                         >
-                            ${this.text(actionLabelKey("remove"))}
+                            ${icon("remove")}
+                            <span class="button-label">${this.text(actionLabelKey("remove"))}</span>
                         </button>
                     </span>
                 </div>
