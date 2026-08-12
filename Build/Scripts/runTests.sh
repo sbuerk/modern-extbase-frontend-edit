@@ -220,16 +220,17 @@ Options:
             - setVersion: apply a version across the repository, "-- <version> <type>"
             - typecheckJs: "tsc --noEmit" over Build/Sources/, which the build does not do
             - unit (default): PHP unit tests
+            - unitJs: TypeScript unit tests over Build/Sources/, run with "node --test"
             - unitRandom: PHP unit tests in random order, "-o <number>" to use a specific seed
             - watchDocumentation: render the documentation and re-render it on every change,
               served on port 1337, a different port as first argument
 
-        The five frontend suites - buildJs, checkJsBuildClean, lintTypescript, npm and
-        typecheckJs - run in a node container and are the only ones that are core version
-        independent: they inspect Build/Sources/ and Resources/Public/ and never the
-        installed core, so "-t" does not change what they do. They also need no
-        composerUpdate, which makes them the only suites that are safe to run while the
-        other core version's dependency set is installed.
+        The six frontend suites - buildJs, checkJsBuildClean, lintTypescript, npm,
+        typecheckJs and unitJs - run in a node container and are the only ones that are
+        core version independent: they inspect Build/Sources/, Build/Tests/ and
+        Resources/Public/ and never the installed core, so "-t" does not change what they
+        do. They also need no composerUpdate, which makes them the only suites that are
+        safe to run while the other core version's dependency set is installed.
 
     -b <docker|podman>
         Container environment:
@@ -828,6 +829,24 @@ case ${TEST_SUITE} in
         PHPUNIT_CONFIG_FILE="Build/phpunit/UnitTests.xml"
         COMMAND=(.Build/bin/phpunit -c ${PHPUNIT_CONFIG_FILE} --exclude-group not-core-${CORE_VERSION} "$@")
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name unit-${SUFFIX} ${XDEBUG_MODE} -e XDEBUG_CONFIG="${XDEBUG_CONFIG}" ${IMAGE_PHP} "${COMMAND[@]}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    unitJs)
+        # The logic of the edit plugin that is not DOM shaped - payloads, the last
+        # server known state, the edit sessions, the response interpretation and the
+        # endpoint client - lives in modules of its own precisely so it can be covered
+        # without a browser. "node --test" is therefore the whole runner: no jsdom, no
+        # bundler, no second toolchain, and nothing in "package.json" that is not
+        # already there.
+        #
+        # Arguments for the test runner go after "--", for instance:
+        #   ./Build/Scripts/runTests.sh -s unitJs -- --test-name-pattern 'cancel'
+        #
+        # The arguments are handed to "sh -c" as positional parameters rather than
+        # interpolated into the string, so a pattern containing spaces survives as one
+        # argument. "unitJs" is the $0 the shell reports in an error message.
+        COMMAND=(/bin/sh -c 'cd Build && npm ci && npm test -- "$@"' unitJs "$@")
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name unit-js-${SUFFIX} -e HOME=${ROOT_DIR}/.cache ${IMAGE_NODEJS} "${COMMAND[@]}"
         SUITE_EXIT_CODE=$?
         ;;
     unitRandom)

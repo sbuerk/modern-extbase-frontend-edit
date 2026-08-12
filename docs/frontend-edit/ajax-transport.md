@@ -381,10 +381,16 @@ a fixed order and identical on both core versions, so there is no `Core13/` and
 ### The editing plugin is `USER_INT`
 
 The request token is signed with a per-browser nonce, so markup containing one
-can never be page-cached — user B would otherwise receive user A's token and
-every write would be rejected. The plugin that renders the editable record is
+can never be page-cached. The plugin that renders the editable record is
 therefore non-cacheable, which is exactly what core does for felogin (its
 `configurePlugin()` call lists every action in both arrays).
+
+The consequence is worse than the rejected write it looks like at first. The
+page cache identifier varies by frontend user **group** ids, so a cached
+rendering would be served to every member of one group — and that markup carries
+the request token *and* the whole profile document in `data-profile`. It is a
+disclosure, not merely a broken save.
+→ [The edit plugin](edit-plugin.md#what-is-registered-and-how)
 
 The alternative — cacheable markup plus a `tokenAction` round trip to fetch a
 token — was rejected for the extra request and for the operational sharpness of
@@ -718,6 +724,8 @@ Consequences for this extension:
 - [Modern frontend editing](Index.md) — the other pages of this design.
 - [Plugins and the Fluid layer](plugins-and-fluid.md) — the same
   `configurePlugin()` rule applied to the two read plugins.
+- [The edit plugin](edit-plugin.md) — the client that calls six of these seven
+  endpoints, and why it never calls `read`.
 - [Authorization](authorization.md) — who may edit which record, and why the
   request token does not answer that.
 - [DTOs and validation](dto-and-validation.md) — why rules are data rather than

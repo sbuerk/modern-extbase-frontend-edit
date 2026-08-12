@@ -1,16 +1,24 @@
 /**
  * Entry point of the frontend editing assets.
  *
- * This module is scaffolding, not the feature: it exists so the toolchain is
- * proven end to end — TypeScript source, an internal module bundled into it, an
- * ES module in "Resources/Public/JavaScript/" and a stylesheet keyed on what it
- * does. The edit UI replaces the body of this file in a later change; the entry
- * point itself and its import-map specifier stay.
+ * It does two things and delegates everything else:
  *
- * One entry point per import-map specifier: "documentState.ts" is imported here
- * and therefore bundled into this file rather than addressable on its own.
+ * 1. Registers the custom elements, by importing the modules that define them.
+ *    A Fluid template loads this module with `f:asset.module`, and the elements
+ *    upgrade whichever markup the server rendered — no initialisation call, no
+ *    inline script, nothing to pass in.
+ * 2. Marks the document as carrying a working module, which is what the page
+ *    level stylesheet gates every rule on.
+ *
+ * One entry point per import-map specifier: everything imported here is bundled
+ * into this file and gets no specifier of its own. `lit` is the exception and
+ * is deliberately **not** bundled — it is declared in `EXT:core`'s own module
+ * map and resolved through the import map, because a second lit runtime on the
+ * page means a second `ReactiveElement` registry and a duplicate
+ * `customElements.define()`.
  */
 import { markAssetsLoaded } from './documentState.js';
+import './component/profileEdit.js';
 
 markAssetsLoaded(document.documentElement);
 

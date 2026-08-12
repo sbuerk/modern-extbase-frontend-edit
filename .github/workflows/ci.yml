@@ -346,6 +346,12 @@ jobs:
       - name: "Type check"
         run: "Build/Scripts/runTests.sh -b docker -s typecheckJs"
 
+      # The logic modules of the edit plugin, covered without a browser. Same
+      # container, same "npm ci", no matrix: these tests import TypeScript
+      # sources directly and know nothing about PHP or the installed core.
+      - name: "TypeScript unit tests"
+        run: "Build/Scripts/runTests.sh -b docker -s unitJs"
+
       # Last, and the one that matters most: the compiled assets are committed,
       # because composer and TER run no build step. That makes it possible to
       # change a source and forget to rebuild, which nothing else would notice —

@@ -40,10 +40,11 @@ Build/Scripts/runTests.sh -s checkRepositoryInitialization
 # Ensure test methods do not start with "test".
 Build/Scripts/runTests.sh -s checkTestMethodsPrefix
 
-# The frontend assets: lint, type check, and prove the committed artifacts
-# still match their sources.
+# The frontend assets: lint, type check, run the TypeScript unit tests, and
+# prove the committed artifacts still match their sources.
 Build/Scripts/runTests.sh -s lintTypescript -n
 Build/Scripts/runTests.sh -s typecheckJs
+Build/Scripts/runTests.sh -s unitJs
 Build/Scripts/runTests.sh -s checkJsBuildClean
 ```
 
@@ -60,6 +61,7 @@ Build/Scripts/runTests.sh -s checkJsBuildClean
 | `checkTestMethodsPrefix`        | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)             | no                     |
 | `lintTypescript`                | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                                 | no                     |
 | `typecheckJs`                   | [`Build/tsconfig.json`](../../Build/tsconfig.json)                                                         | no                     |
+| `unitJs`                        | [`Build/package.json`](../../Build/package.json), `Build/Tests/TypeScript/`                                | no                     |
 | `checkJsBuildClean`             | [`Build/esbuild.mjs`](../../Build/esbuild.mjs)                                                             | no                     |
 
 ## PHPStan
@@ -178,7 +180,7 @@ which are checked through their target.
 
 ## Frontend asset gates
 
-Three gates and two helpers cover `Build/Sources/`. They run in
+Four gates and two helpers cover `Build/Sources/` and `Build/Tests/`. They run in
 `ghcr.io/typo3/core-testing-nodejs24:1.1` — the image TYPO3 core uses for its
 own JavaScript suites, **pinned rather than floating**, because a node major
 changing underneath a committed build artifact would fail a pull request that
@@ -188,17 +190,26 @@ touched no JavaScript at all.
 |---------------------|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
 | `lintTypescript`    | `npm run lint:fix`, or `lint` with `-n`                                 | eslint 9, typescript-eslint and the lit/web-component plugins. Mirrors `cgl`.       |
 | `typecheckJs`       | `npm run typecheck`                                                     | `tsc --noEmit`. Its own gate because esbuild emits without type checking.           |
+| `unitJs`            | `npm test`, which is `node --test`                                      | The logic modules of the edit plugin, covered without a browser.                    |
 | `checkJsBuildClean` | Delete the artifacts, `npm ci && npm run build`, assert nothing changed | Proves the committed artifacts still match their sources.                           |
 | `buildJs`           | `npm ci && npm run build`                                               | Not a gate — the build itself. Run it after a source change and commit the result.  |
 | `npm`               | `npm "$@"` in `Build/`                                                  | Escape hatch, like the `composer` suite: `-s npm -- install --save-dev lit@latest`. |
 | `cleanJs`           | `rm -rf Build/node_modules Build/.cache`                                | Intermediates only, and wired into `clean`. Never touches `Resources/Public/`.      |
 
 Two properties set them apart from every other gate: **`-t` does not change what
-they do**, because they read `Build/Sources/` and `Resources/Public/` and never
-the installed core — and they **need no `composerUpdate`**, because they never
-read `.Build/`. They are therefore the only suites that may be run while the
-other core version's dependency set is installed, the single exception to the
-rule in [Dual core setup](dual-core-setup.md).
+they do**, because they read `Build/Sources/`, `Build/Tests/` and
+`Resources/Public/` and never the installed core — and they **need no
+`composerUpdate`**, because they never read `.Build/`. They are therefore the
+only suites that may be run while the other core version's dependency set is
+installed, the single exception to the rule in
+[Dual core setup](dual-core-setup.md).
+
+`unitJs` needs no runner beyond node itself. Everything outside
+`Build/Sources/TypeScript/component/` contains only erasable syntax, so node
+strips the types and executes the sources directly; the one piece of setup is a
+resolve hook that retries a relative `.js` specifier as `.ts`. Arguments go
+after `--`, for instance `-s unitJs -- --test-name-pattern 'cancel'`.
+→ [The testable-module split](../frontend-edit/edit-plugin.md#the-testable-module-split)
 
 `checkJsBuildClean` is the one that has to be understood rather than just run.
 The compiled assets below `Resources/Public/` are **committed files** — neither
@@ -274,16 +285,16 @@ docs     ─┤
 assets   ─┘
 ```
 
-| Job                 | Matrix                                   | Runs                                                    |
-|---------------------|------------------------------------------|---------------------------------------------------------|
-| `quality`           | lowest PHP, one core version             | The gates that inspect source files                     |
-| `phpstan`           | lowest PHP × both core versions          | The one gate configured per core version                |
-| `lint`              | all PHP versions × both core versions    | `lintPhp`                                               |
-| `unit`              | edge PHP versions × both core versions   | `unit`, `unitRandom`                                    |
-| `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                                  |
-| `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                      |
-| `documentation`     | —                                        | `renderDocumentation`, uploads the artifact             |
-| `frontend-assets`   | —                                        | `lintTypescript -n`, `typecheckJs`, `checkJsBuildClean` |
+| Job                 | Matrix                                   | Runs                                                              |
+|---------------------|------------------------------------------|-------------------------------------------------------------------|
+| `quality`           | lowest PHP, one core version             | The gates that inspect source files                               |
+| `phpstan`           | lowest PHP × both core versions          | The one gate configured per core version                          |
+| `lint`              | all PHP versions × both core versions    | `lintPhp`                                                         |
+| `unit`              | edge PHP versions × both core versions   | `unit`, `unitRandom`                                              |
+| `functional-sqlite` | edge PHP versions × both core versions   | `functional -d sqlite`                                            |
+| `functional-dbms`   | edge PHP × both cores × 4 DBMS — 16 jobs | `functional` against each database                                |
+| `documentation`     | —                                        | `renderDocumentation`, uploads the artifact                       |
+| `frontend-assets`   | —                                        | `lintTypescript -n`, `typecheckJs`, `unitJs`, `checkJsBuildClean` |
 
 `frontend-assets` is the only job with **no `composerUpdate` step at all**. Its
 suites read `Build/Sources/` and `Resources/Public/` and never `.Build/`, so the

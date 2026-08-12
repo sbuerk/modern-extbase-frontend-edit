@@ -10,6 +10,10 @@ This page records three things that are easy to get wrong: the plugin
 registration call that is correct on both core versions, how the site set and
 the classic TypoScript relate, and the contract of the Fluid partials.
 
+A third plugin — the **edit** surface — is registered the same way and reuses
+four of the partials described here. Everything specific to it, including why it
+has a controller of its own, is [The edit plugin](edit-plugin.md).
+
 > [!IMPORTANT]
 > **The `editable` flag that reaches the templates is a display decision, not an
 > authorization boundary.** It decides whether an edit link is drawn. A link that
@@ -24,12 +28,18 @@ the classic TypoScript relate, and the contract of the Fluid partials.
 | File                                         | Call                                  | Effect                                                                                       |
 |----------------------------------------------|---------------------------------------|----------------------------------------------------------------------------------------------|
 | `ext_localconf.php`                          | `ExtensionUtility::configurePlugin()` | Controller/action map, the non-cacheable actions, and the `EXTBASEPLUGIN` TypoScript object. |
-| `Configuration/TCA/Overrides/tt_content.php` | `ExtensionUtility::registerPlugin()`  | The two `CType` values and their entries in the content element wizard.                      |
+| `Configuration/TCA/Overrides/tt_content.php` | `ExtensionUtility::registerPlugin()`  | The three `CType` values and their entries in the content element wizard.                    |
 
 The plugin signature — and therefore the `CType` — is
 `strtolower($extensionName) . '_' . strtolower($pluginName)`
-(`ExtensionUtility.php:125`), so the two content elements are
-`modernextbasefrontendedit_list` and `modernextbasefrontendedit_show`.
+(`ExtensionUtility.php:125`), so the three content elements are
+`modernextbasefrontendedit_list`, `modernextbasefrontendedit_show` and
+`modernextbasefrontendedit_edit`.
+
+`configurePlugin()` is called a fourth time, for the `Ajax` plugin, and
+`registerPlugin()` deliberately is not: the endpoints are an endpoint, not
+something an editor places on a page, and `configurePlugin()` adds no TCA by
+itself. → [AJAX transport](ajax-transport.md)
 
 The order of the two files matters on v13 and is the natural one:
 `ext_localconf.php` is loaded before the TCA overrides, v13's `configurePlugin()`
@@ -91,6 +101,12 @@ served to user B. Extbase reads the non-cacheable list back in
 which removes the question rather than defending against it.
 → [The group-keyed page cache](authorization.md#the-group-keyed-page-cache)
 
+The edit plugin's single action is registered the same way, for a sharper
+version of the same reason: its markup carries a request token signed with a
+per-browser nonce *and* the whole profile document, so a cached rendering would
+hand user B the token and the profile of user A.
+→ [The edit plugin](edit-plugin.md#what-is-registered-and-how)
+
 ## A site set **and** classic TypoScript
 
 The extension ships both, and that is a deliberate duplication rather than a
@@ -104,13 +120,23 @@ through `sys_template` records never sees it. Core's own `felogin` ships both fo
 exactly that reason: a set under `Configuration/Sets/Felogin/` next to
 `addTypoScriptConstants()` and `addTypoScriptSetup()` in its `ext_localconf.php`.
 
-The two carry the same three settings in two namespaces:
+The two carry the same four settings in two namespaces:
 
 | Meaning                              | Site set setting (`settings.definitions.yaml`)     | Classic TypoScript constant                                  | Plugin path                                                  |
 |--------------------------------------|----------------------------------------------------|--------------------------------------------------------------|--------------------------------------------------------------|
 | Storage pages of the profile records | `modernextbasefrontendedit.persistence.storagePid` | `plugin.tx_modernextbasefrontendedit.persistence.storagePid` | `plugin.tx_modernextbasefrontendedit.persistence.storagePid` |
 | Page holding the show plugin         | `modernextbasefrontendedit.showPageUid`            | `plugin.tx_modernextbasefrontendedit.settings.showPageUid`   | `plugin.tx_modernextbasefrontendedit.settings.showPageUid`   |
 | Page holding the edit plugin         | `modernextbasefrontendedit.editPageUid`            | `plugin.tx_modernextbasefrontendedit.settings.editPageUid`   | `plugin.tx_modernextbasefrontendedit.settings.editPageUid`   |
+| Page **type** of the JSON endpoints  | `modernextbasefrontendedit.ajaxPageType`           | `plugin.tx_modernextbasefrontendedit.settings.ajaxPageType`  | `plugin.tx_modernextbasefrontendedit.settings.ajaxPageType`  |
+
+`ajaxPageType` is the odd one: a page *type*, not a page uid, because the
+endpoints answer on whichever page the edit plugin sits on. It also feeds
+`view.formatToPageTypeMapping.json`, and the set restates it on the endpoint
+`PAGE` object's `typeNum` — a site setting cannot reach a TypoScript *constant*,
+so that one line is what makes the site setting win on a site using the set. The
+edit plugin reads it to build its endpoint map, and a value of `0` is what makes
+that map empty and the surface refuse to enhance.
+→ [Degradation](edit-plugin.md#degradation)
 
 Three things follow from that layout:
 
@@ -152,9 +178,10 @@ paths work without configuration and an integrator's own paths still win.
 
 | File                                | Role                                                                                |
 |-------------------------------------|-------------------------------------------------------------------------------------|
-| `Layouts/Default.html`              | The single wrapper element of both plugins, one `Main` section.                     |
+| `Layouts/Default.html`              | The single wrapper element of all three plugins, one `Main` section.                |
 | `Templates/Profile/List.html`       | Composes the list: heading, empty state, one card per entry.                        |
 | `Templates/Profile/Show.html`       | Composes the detail view: card, details, addresses, e-mails.                        |
+| `Templates/ProfileEdit/Edit.html`   | The edit plugin: three states, the custom element, and the four `data-` attributes. |
 | `Partials/Profile/Card.html`        | The identifying block: image, name, and the links that apply to a profile.          |
 | `Partials/Profile/Details.html`     | The scalar fields that are not part of the card: birthday and biography.            |
 | `Partials/Profile/AddressList.html` | The postal addresses including their section heading.                               |
@@ -173,12 +200,22 @@ it is checkable by grep.
 
 **URIs are built in templates, not in partials.** Only a template knows which
 plugin it links to. `Profile/Card` receives `showUri` and `editUri` as finished
-strings and carries no knowledge of a plugin, controller or action name, which is
-what keeps it usable from the edit plugin that is added later — that plugin
-passes its own URIs and changes nothing here. A page uid of `0` means "not
-configured" and is guarded in the template rather than passed on, because both
-`f:uri.page` and `f:uri.action` resolve a page uid of `0` to the *current* page,
-which for the list plugin would be a link to itself.
+strings and carries no knowledge of a plugin, controller or action name. A page
+uid of `0` means "not configured" and is guarded in the template rather than
+passed on, because both `f:uri.page` and `f:uri.action` resolve a page uid of
+`0` to the *current* page, which for the list plugin would be a link to itself.
+
+> [!NOTE]
+> **Correction.** An earlier revision of this page argued that the URI rule is
+> what would keep `Profile/Card` usable from the edit plugin, which would "pass
+> its own URIs and change nothing here". The edit plugin does not use
+> `Profile/Card` at all. The card bundles the image with the name, and that
+> template needs them on **different sides** of the custom element — the image
+> outside, where nothing can make it disagree with the server, the name inside,
+> where the component edits it. It reuses `Profile/Details`, `AddressList`,
+> `EmailList` and `Image`, and renders its own heading. The rule itself held;
+> the prediction about which partial it would pay off in did not.
+> → [The enhanced surface is client-rendered](edit-plugin.md#the-enhanced-surface-is-client-rendered)
 
 **The heading level is an argument.** `Profile/Card` renders its name heading
 into `{headingTag}`, and both call sites pass a different value: the list
@@ -193,7 +230,9 @@ example. Every user-visible string comes from
 `Resources/Private/Language/locallang.xlf`, except the address and e-mail *type*
 labels, which are select item labels and are looked up dynamically in
 `locallang_db.xlf` so that a type added to the TCA later needs no template
-change.
+change. The editing surface labels the same six values from `locallang.xlf`
+instead, which is a real duplication and is
+[recorded as one](edit-plugin.md#the-six-choice-labels-exist-twice).
 
 ### The partial API
 
@@ -250,8 +289,16 @@ empty. The iteration order is the manual sorting order, because the
 
 Does not know: which profile the collection belongs to. Passing the collection
 rather than the profile is what makes the partial reusable for a collection that
-was assembled elsewhere — which is exactly what the edit flow does, since it
+was assembled elsewhere — which is exactly what the edit plugin does, since it
 loads children through their own repositories instead of off the parent.
+
+Both mark a **hidden** record as hidden. The read plugins never pass one — their
+collections come off the parent and are reconstituted with enable fields applied
+— so the marker is invisible there. The edit plugin does pass them, precisely so
+the owner sees the records they hid, and an unmarked hidden address in that view
+would read as published. This is the one place where a partial renders something
+only one of its three call sites can ever trigger, and it is worth knowing that
+the read plugins are not what covers it.
 
 `EmailList` uses `f:link.email` rather than a hand-written `mailto:` href,
 because it honours the installation's `spamProtectEmailAddresses` configuration,
@@ -315,24 +362,29 @@ limitation, and the one to revisit when v13 support is dropped.
 
 ## What this layer deliberately does not do
 
-- **The edit link carries no profile argument.** It points at the configured
-  page and stops there. An Extbase action URI into the edit plugin would encode
-  a plugin name, a controller and an argument name that nothing verifies yet.
-  The argument is added together with that plugin.
+- **The edit link carries no profile argument, and now never will.** It points at
+  the configured page and stops there. The edit plugin takes no arguments at
+  all: it resolves the record from the session, so there is nothing for a link
+  to say. What read as a deferral in an earlier revision of this page turned out
+  to be the final shape.
 - **The show template has no "back to the list" link.** No setting names the page
   the list plugin sits on, and guessing it — the referrer, the current page —
   would be wrong on some installations. It is added when a setting for it is,
-  together with its label.
+  together with its label. The edit template carries the same gap for a link to
+  a login page, for the same reason.
 - **The layout declares no `HeaderAssets`/`FooterAssets` sections.** Their
   automatic rendering is deprecated since v14.0 (changelog #107057) and stops
-  working in v15.0. When this extension ships assets, they go through
-  `f:asset.script` and `f:asset.css`. → [Frontend assets](frontend-assets.md)
+  working in v15.0. The edit template loads its stylesheet and its module with
+  `f:asset.css` and `f:asset.module`, and no inline script is emitted anywhere.
+  → [Frontend assets](frontend-assets.md)
 - **No image processing, no cropping, no responsive variants.** See
   `Profile/Image` above.
 
 ## See also
 
 - [Modern frontend editing](Index.md) — the other pages of this design.
+- [The edit plugin](edit-plugin.md) — the third plugin, its controller, and the
+  four partials it reuses from here.
 - [Authorization](authorization.md) — where the real boundary lives, and the
   group-keyed page cache this registration works around.
 - [Domain and schema](domain-schema.md) — the tables and TCA behind the models

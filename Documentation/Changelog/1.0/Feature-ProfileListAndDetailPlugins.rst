@@ -109,10 +109,12 @@ Caching
     cached rendering. Expect the same page performance as for any other
     uncached plugin.
 
-No edit plugin yet
-    The setting for the edit page exists and the links point at it, but the
-    plugin that edits a profile is part of a later release. Until then the
-    setting is best left empty, which suppresses the link.
+The edit link needs a page to point at
+    The link is only rendered once the edit page setting names a page, and only
+    for a profile the logged-in website user owns. Leaving the setting empty
+    suppresses the link entirely, which is the right state for a site that
+    shows profiles but does not let anyone edit them. The plugin the link leads
+    to is described in :ref:`feature-profile-edit-plugin`.
 
 Detail links are not scoped to the storage page
     The detail plugin displays any profile a visitor may see, including one

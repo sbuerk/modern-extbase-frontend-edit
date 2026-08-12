@@ -18,6 +18,13 @@
     and a template that switched over the known types would silently miss a type
     added to the TCA later. The raw value is the fallback so that a missing
     label is visible instead of blank.
+
+    A hidden record is marked as such. The read plugins never pass one - their
+    collection comes off the parent and is reconstituted with enable fields
+    applied - so the marker is invisible there. The edit plugin does pass them:
+    it reads the collection through the edit repository precisely so the owner
+    sees the records they have hidden, and an unmarked hidden address in that
+    view would read as published.
 </f:comment>
 <f:if condition="{addresses}">
     <section class="modern-extbase-frontend-edit-profile-addresses">
@@ -35,6 +42,11 @@
                     <span class="modern-extbase-frontend-edit-profile-address">
                         {address.line1}<f:if condition="{address.line2}"><br />{address.line2}</f:if>
                     </span>
+                    <f:if condition="{address.hidden}">
+                        <span class="modern-extbase-frontend-edit-profile-state">
+                            <f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:state.hidden" />
+                        </span>
+                    </f:if>
                 </li>
             </f:for>
         </ul>

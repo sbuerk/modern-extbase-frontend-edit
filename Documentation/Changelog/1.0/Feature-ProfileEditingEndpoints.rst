@@ -178,6 +178,10 @@ Only the default language, and never in a workspace
     because it would silently change the published record instead of creating a
     workspace version. Editing applies to records of the default language.
 
-No editing interface yet
-    This release ships the endpoints, not the JavaScript that talks to them.
-    There is no visible change in the frontend until the edit plugin lands.
+This entry describes the endpoints, not an interface
+    These are the addresses an editing interface talks to; on their own they
+    change nothing a visitor sees. The plugin that uses them is described in
+    :ref:`feature-profile-edit-plugin`, and ships in the same release. The
+    endpoints are documented separately because they are a supported surface in
+    their own right: a different interface may be built against them, and the
+    security rules above apply to it just the same.

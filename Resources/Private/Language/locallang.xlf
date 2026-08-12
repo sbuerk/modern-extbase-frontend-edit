@@ -22,6 +22,12 @@
             <trans-unit id="plugin.show.description">
                 <source>Renders one profile with its addresses, e-mail addresses and image. The profile is selected by the link the list plugin renders.</source>
             </trans-unit>
+            <trans-unit id="plugin.edit.title">
+                <source>Profiles: edit</source>
+            </trans-unit>
+            <trans-unit id="plugin.edit.description">
+                <source>Renders the profile of the logged-in website user as an editable surface. It takes no arguments: the record is resolved from the session, so the plugin shows every visitor their own profile and nobody else's.</source>
+            </trans-unit>
 
             <!-- List plugin. -->
             <trans-unit id="list.heading">
@@ -29,6 +35,25 @@
             </trans-unit>
             <trans-unit id="list.empty">
                 <source>No profiles available.</source>
+            </trans-unit>
+
+            <!--
+                Edit plugin, the strings its template renders. Everything the
+                lit component renders is further down, under "Editing surface".
+
+                The two empty states are separate sentences on purpose: "log in
+                first" and "you have no profile yet" are different instructions,
+                and one vague sentence covering both would be actionable for
+                neither visitor.
+            -->
+            <trans-unit id="edit.heading">
+                <source>Your profile</source>
+            </trans-unit>
+            <trans-unit id="edit.notLoggedIn">
+                <source>You are not logged in. Log in to view and edit your profile.</source>
+            </trans-unit>
+            <trans-unit id="edit.noProfile">
+                <source>There is no profile assigned to your account yet.</source>
             </trans-unit>
 
             <!--
@@ -68,6 +93,177 @@
             </trans-unit>
             <trans-unit id="profile.emails">
                 <source>E-mail addresses</source>
+            </trans-unit>
+
+            <!--
+                Editing surface.
+
+                These are the strings the lit component renders, and they reach
+                it as a JSON map in the "data-labels" attribute rather than as
+                markup: the component draws its own controls, so a template
+                cannot translate them for it and a literal in a TypeScript file
+                would be a string no XLIFF file knows about.
+
+                The "id" of every unit below is the key the component looks up,
+                letter for letter, and the same list is spelled in
+                "Controller\ProfileEditController::LABEL_KEYS" - which is what
+                makes the contract greppable from either side. A key that is
+                missing here is not fatal: "model/labels.ts" answers with the
+                key itself, so the surface shows "action.save" rather than a
+                blank button.
+
+                The keys are structural and are built at runtime from a scope
+                and a name, so nothing in the TypeScript build can notice one
+                that was never translated:
+                    field.<scope>.<name>            fieldLabelKey()
+                    choice.<scope>.<field>.<value>  choiceLabelKey()
+                    action.<name>                   actionLabelKey()
+                    section.<scope>                 sectionLabelKey()
+                    state.<name>                    stateLabelKey()
+                The scope is part of a field key because "type" exists on both
+                child collections and means a different thing in each.
+            -->
+            <trans-unit id="field.profile.shortname">
+                <source>Short name</source>
+            </trans-unit>
+            <trans-unit id="field.profile.firstname">
+                <source>First name</source>
+            </trans-unit>
+            <trans-unit id="field.profile.lastname">
+                <source>Last name</source>
+            </trans-unit>
+            <trans-unit id="field.profile.birthday">
+                <source>Birthday</source>
+            </trans-unit>
+            <trans-unit id="field.profile.bio">
+                <source>Biography</source>
+            </trans-unit>
+            <trans-unit id="field.address.type">
+                <source>Address type</source>
+            </trans-unit>
+            <trans-unit id="field.address.line1">
+                <source>Address line 1</source>
+            </trans-unit>
+            <trans-unit id="field.address.line2">
+                <source>Address line 2</source>
+            </trans-unit>
+            <trans-unit id="field.email.type">
+                <source>E-mail type</source>
+            </trans-unit>
+            <trans-unit id="field.email.email">
+                <source>E-mail address</source>
+            </trans-unit>
+
+            <!--
+                The accepted values of the two select fields.
+
+                These say the same thing as the TCA select item labels in
+                "locallang_db.xlf", which the read partials look up
+                dynamically, and that duplication is deliberate but not free:
+                an installation overriding only one of the two files makes the
+                read view and the editing surface disagree about the same
+                value. The alternative - resolving these six keys out of the
+                database label file - keeps one source and was rejected because
+                the component's label contract would then be spread over two
+                files. Revisit it if a third consumer appears.
+            -->
+            <trans-unit id="choice.address.type.home">
+                <source>Home</source>
+            </trans-unit>
+            <trans-unit id="choice.address.type.work">
+                <source>Work</source>
+            </trans-unit>
+            <trans-unit id="choice.address.type.others">
+                <source>Other</source>
+            </trans-unit>
+            <trans-unit id="choice.email.type.private">
+                <source>Private</source>
+            </trans-unit>
+            <trans-unit id="choice.email.type.business">
+                <source>Business</source>
+            </trans-unit>
+            <trans-unit id="choice.email.type.others">
+                <source>Other</source>
+            </trans-unit>
+
+            <!--
+                Buttons.
+
+                "edit" and "apply" belong to one field, "editRecord" and "save"
+                to a whole record. They are worded differently on purpose: the
+                two editing modes sit next to each other on the same surface,
+                and a user who cannot tell them apart saves one field while
+                believing they saved five.
+            -->
+            <trans-unit id="action.edit">
+                <source>Edit</source>
+            </trans-unit>
+            <trans-unit id="action.apply">
+                <source>Apply</source>
+            </trans-unit>
+            <trans-unit id="action.cancel">
+                <source>Cancel</source>
+            </trans-unit>
+            <trans-unit id="action.editRecord">
+                <source>Edit all fields</source>
+            </trans-unit>
+            <trans-unit id="action.save">
+                <source>Save all fields</source>
+            </trans-unit>
+            <trans-unit id="action.add">
+                <source>Add</source>
+            </trans-unit>
+            <trans-unit id="action.remove">
+                <source>Remove</source>
+            </trans-unit>
+            <trans-unit id="action.moveUp">
+                <source>Move up</source>
+            </trans-unit>
+            <trans-unit id="action.moveDown">
+                <source>Move down</source>
+            </trans-unit>
+            <trans-unit id="action.hide">
+                <source>Hide</source>
+            </trans-unit>
+            <trans-unit id="action.show">
+                <source>Show</source>
+            </trans-unit>
+
+            <!-- Section headings of the two child collections. -->
+            <trans-unit id="section.address">
+                <source>Addresses</source>
+            </trans-unit>
+            <trans-unit id="section.email">
+                <source>E-mail addresses</source>
+            </trans-unit>
+
+            <!--
+                A record state the surface shows and cannot change. It is also
+                rendered by the AddressList and EmailList partials, which the
+                edit plugin feeds with the collections including the hidden
+                records.
+            -->
+            <trans-unit id="state.hidden">
+                <source>Hidden</source>
+            </trans-unit>
+
+            <!--
+                What a failed request says when it is not a validation failure.
+
+                The endpoint's own "message" is written for a developer and is
+                deliberately never shown. Only "error.request" has to exist; the
+                component prefers "error.request.<status>" when the site
+                provides one, and the two below are the failures a person can
+                actually act on.
+            -->
+            <trans-unit id="error.request">
+                <source>The change could not be saved. Please try again.</source>
+            </trans-unit>
+            <trans-unit id="error.request.403">
+                <source>Your session has expired. Reload the page and log in again.</source>
+            </trans-unit>
+            <trans-unit id="error.request.409">
+                <source>Records cannot be edited while a workspace is active.</source>
             </trans-unit>
 
             <!--

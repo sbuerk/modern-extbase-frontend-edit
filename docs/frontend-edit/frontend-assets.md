@@ -6,16 +6,18 @@ root and one page-level stylesheet. Everything about that sentence was contested
 at least once, so this page records what was verified and what was decided.
 
 > [!NOTE]
-> **The toolchain exists.** `Build/package.json`, `Build/esbuild.mjs`,
-> `Build/tsconfig.json`, `Build/eslint.config.mjs`, `Build/Sources/`, the five
-> `runTests.sh` suites, `Configuration/JavaScriptModules.php` and the compiled
-> artifacts below `Resources/Public/` are in the repository, and the CI workflow
-> has a job for them.
+> **The toolchain and the edit UI both exist.** `Build/package.json`,
+> `Build/esbuild.mjs`, `Build/tsconfig.json`, `Build/eslint.config.mjs`,
+> `Build/Sources/`, `Build/Tests/`, the six `runTests.sh` suites,
+> `Configuration/JavaScriptModules.php` and the compiled artifacts below
+> `Resources/Public/` are in the repository, the CI workflow has a job for them,
+> and `Templates/ProfileEdit/Edit.html` loads the module and the stylesheet.
+> What the component does with them is
+> [The edit plugin](edit-plugin.md).
 >
-> What does **not** exist yet is the edit UI itself: the entry point is
-> scaffolding that sets one class on `<html>`, no Fluid template calls
-> `f:asset.module` yet, and no test asserts that the specifier resolves. Those
-> are named again where this page describes them.
+> One gap named on this page is still open: nothing asserts that **`lit`**
+> resolves from the frontend import map. It is named again where this page
+> describes it.
 
 ## Import maps work in the frontend, on both core versions
 
@@ -156,11 +158,18 @@ Stated honestly, the accepted downsides: our components run against *core's* lit
 patch version, so a future lit major in core changes the API under us; and using
 `<f:asset.module>` in the frontend puts core's Contrib specifiers into the
 anonymous import map. The second is not a security issue — those are core's own
-file names and the core version is discoverable anyway. The first is currently
-**unmitigated**: the functional test asserting that the specifier resolves is
-named here as the intended safety net and does not exist yet, so a lit major in
-core would surface as a broken page rather than as a red gate. It lands with the
-component that first imports `lit`.
+file names and the core version is discoverable anyway.
+
+The first is **still unmitigated**, and the shape of the gap has changed rather
+than closed. `ProfileEditPluginTest::theAssetsOfTheEditingSurfaceAreEmitted()`
+now asserts that an import map is emitted and that it carries
+`@sbuerk/modern-extbase-frontend-edit/frontend-edit.js`, which is what a
+`USER_INT` plugin has to get out of the non-cached pass. It asserts nothing
+about `lit`: our own specifier resolving says nothing about the specifier our
+module imports. A lit major in core would therefore still surface as a broken
+page rather than as a red gate, and closing that needs either an assertion on
+the emitted map's `lit` entry or a real browser — see
+[what only an acceptance harness can cover](edit-plugin.md#what-only-an-acceptance-harness-can-cover).
 
 ## The toolchain, and why it is smaller than core's
 
@@ -210,10 +219,17 @@ type gate; what the lit and web-component plugins add are the mistakes a
 compiler does not see — legacy `lit` imports, reflected native attributes,
 listeners without teardown, constructor parameters on a custom element.
 
-Deliberately deferred, and named as gaps rather than hidden: real-browser
-JavaScript unit tests (`@web/test-runner` needs a ~700 MB Chrome image and a
+Deliberately deferred, and named as gaps rather than hidden: **real-browser**
+JavaScript tests (`@web/test-runner` needs a ~700 MB Chrome image and a
 hand-written import map), and stylelint 16 — to be added if and when the CSS
 grows beyond a single file.
+
+What is *not* deferred is unit testing the logic. `node --test` covers every
+module outside `component/` with no runner, no jsdom and no dependency that is
+not already in `package.json`, which is what the
+[testable-module split](edit-plugin.md#the-testable-module-split) exists for. It
+is the `unitJs` suite, and it is why `@types/node` is a devDependency of a build
+whose output runs in a browser.
 
 ## Layout
 
@@ -224,19 +240,31 @@ Build/                                       (already export-ignored)
   Sources/
     TypeScript/frontend-edit.ts              entry point
     TypeScript/documentState.ts              internal, bundled into the entry
+    TypeScript/component/                    the two lit elements — the only DOM
+    TypeScript/model/                        state, targets, fields, labels, JSON
+    TypeScript/api/                          endpoints, payloads, responses, client
     Css/frontend-edit.css
+  Tests/
+    TypeScript/                              the "unitJs" suite and its two helpers
 Resources/Public/
   JavaScript/frontend-edit.js                committed build artifact
   Css/frontend-edit.css                      committed build artifact
 Configuration/JavaScriptModules.php
 ```
 
-`frontend-edit.ts` is the entry point that stays; its body is scaffolding that
-the edit UI replaces. `documentState.ts` is the one thing the entry does today:
-it sets `frontend-edit-loaded` on `<html>`, and every rule in the stylesheet is
-scoped to that class. A stylesheet loaded through `f:asset.css` applies whether
-or not the module behind `f:asset.module` ran, so without that gate a page whose
-module failed to resolve would show edit affordances that nothing responds to.
+`frontend-edit.ts` does two things and delegates the rest: it imports the
+modules that define the custom elements — which is the whole registration, there
+is no initialisation call and no inline script — and it sets
+`frontend-edit-loaded` on `<html>` through `documentState.ts`. Every rule in the
+stylesheet is scoped to that class. A stylesheet loaded through `f:asset.css`
+applies whether or not the module behind `f:asset.module` ran, so without that
+gate a page whose module failed to resolve would show edit affordances that
+nothing responds to.
+
+The split between `component/` and the rest is not a filing convention. Only
+`component/` may touch the DOM; everything else is plain functions and one class
+in erasable syntax, which is what lets `node --test` import the sources directly.
+→ [The testable-module split](edit-plugin.md#the-testable-module-split)
 
 Three conventions hold this together:
 
@@ -257,19 +285,18 @@ core's `*.js.map` ignore.
 
 ## How Fluid loads it
 
-> [!NOTE]
-> **No template does this yet.** The import map entry and the artifacts exist;
-> the two tags below land with the edit plugin that needs them. Until then the
-> module is addressable and nothing addresses it, which is why the `f:asset.css`
-> and `f:asset.module` calls are shown here as the intended wiring rather than
-> quoted from a template.
+`Resources/Private/Templates/ProfileEdit/Edit.html` is the one template that
+does it, and it does it in **one branch only** — the branch that renders an
+editable profile. A visitor who is not logged in, or who owns no profile, gets
+no module and no stylesheet, because there is nothing on the page for them to
+enhance:
 
 ```html
 <f:asset.css
     identifier="modernExtbaseFrontendEdit"
     href="EXT:modern_extbase_frontend_edit/Resources/Public/Css/frontend-edit.css"
 />
-<f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend-edit.js"/>
+<f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend-edit.js" />
 ```
 
 `f:asset.module` exists on both versions with the same single `identifier`
@@ -289,8 +316,20 @@ puts the import map into the page.
 
 and `PrepareTypoScriptFrontendRendering` restores both on a cache hit. A cached
 content element therefore still yields the import map and the script tag; no
-`USER_INT` is needed for the assets. (The edit plugin markup is `USER_INT` for
-an unrelated reason — the request token must not be cached.)
+`USER_INT` is needed for the assets.
+
+**They survive `USER_INT` as well, by a different mechanism**, and that is the
+one the edit plugin actually relies on — it is non-cacheable because its markup
+carries a per-browser request token and the whole profile document. Assets
+collected while the non-cached pass runs are rendered into the placeholders of
+the already-cached page by
+`PageRenderer::renderJavaScriptAndCssForProcessingOfUncachedContentObjects()`
+(`cms-frontend/Classes/Http/RequestHandler.php:300-307`), which re-runs the
+whole JavaScript and CSS rendering, import map included. A leftover
+`<!-- ###JS_LIBS` marker in the body is what that step failing looks like, and
+`ProfileEditPluginTest::theAssetsOfTheEditingSurfaceAreEmitted()` asserts its
+absence separately — a missing tag and an unsubstituted placeholder are
+different defects.
 
 Two things are deliberately not used:
 
@@ -302,8 +341,12 @@ Two things are deliberately not used:
   replacement.
 
 Data reaches the component as **attributes on the custom element in the Fluid
-template**, not as `JavaScriptModuleInstruction` items. That keeps the markup
-cacheable and the component testable in isolation.
+template**, not as `JavaScriptModuleInstruction` items and not as an inline
+`<script>`. An inline script would need a CSP nonce, and a nonce makes every
+page carrying an editable record uncacheable; four `data-` attributes keep the
+data in the markup, keep the component testable in isolation, and keep the
+refusal path — a malformed attribute is "do not enhance", not an exception.
+→ [The Fluid contract](edit-plugin.md#the-fluid-contract-four-attributes)
 
 One operational caveat belongs in an integrator's head: the computed import map
 is cached in `cache.assets`, and for a `'prefix/' => 'EXT:…/'` mapping the file
@@ -431,17 +474,17 @@ the resolved one.
 The two neighbouring gates needed the exclusion spelled out for their own
 reasons, unrelated to git:
 
-| Gate       | What changed                                            | Why                                                                                                                                  |
-|------------|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `checkBom` | `! -path "./Build/node_modules/*"` added to the `find`  | Running `file` over tens of thousands of npm files takes minutes, and npm packages do ship BOM'd files this repository does not own. |
-| `lintPhp`  | *(no exclusion in the `find` yet — see the note below)* | `php -l` over the same tree is slow for the same reason, and reports on code that is not ours.                                       |
+| Gate       | What changed                                           | Why                                                                                                                                  |
+|------------|--------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `checkBom` | `! -path "./Build/node_modules/*"` added to the `find` | Running `file` over tens of thousands of npm files takes minutes, and npm packages do ship BOM'd files this repository does not own. |
+| `lintPhp`  | `! -path "./Build/node_modules/*"` added to the `find` | `php -l` over the same tree is slow for the same reason, and reports on code that is not ours.                                       |
 
-> [!NOTE]
-> `lintPhp` still descends into `Build/node_modules`. The suite carries a
-> comment saying it does not, but its `find` excludes only `.Build/`, `.agent/`
-> and `.cache/`. It costs a few seconds today because exactly one PHP file is
-> down there and it happens to be syntactically valid; it is a real
-> inconsistency and belongs in the next change that touches `runTests.sh`.
+Both exclusions were verified by planting a file rather than by reading the
+`find`. For `lintPhp` that meant an unparseable PHP file in two places: inside
+the installed packages the gate stays green, in `Classes/` it turns red. The
+distinction matters, because an exclusion that is too broad silently stops the
+gate seeing the code it exists for — which is the failure mode `checkBom` was
+in for its whole life.
 
 `Build/Scripts/checkMarkdownTables.php` and
 `Build/Scripts/duplicateExceptionCodeCheck.sh` needed **no** change — both are
@@ -473,7 +516,8 @@ caches live there and
 | `buildJs`           | `npm ci && npm run build` in `Build/`                                         | Compiles TypeScript and CSS into `Resources/Public/`. Run after every source change, and commit the result.              |
 | `checkJsBuildClean` | Delete the artifacts, `npm ci && npm run build`, assert `git status` is empty | The gate that makes committed artifacts trustworthy. CI critical.                                                        |
 | `lintTypescript`    | `npm run lint:fix`, or `lint` when `-n` is given                              | eslint 9 with typescript-eslint and the lit/wc plugins. Mirrors `cgl`, which fixes by default and only checks with `-n`. |
-| `typecheckJs`       | `npm run typecheck`                                                           | `tsc --noEmit`. A separate suite precisely because esbuild does not type check.                                          |
+| `typecheckJs`       | `npm run typecheck`                                                           | `tsc --noEmit` over the sources *and* over `Build/Tests/TypeScript/`, which is a second project.                         |
+| `unitJs`            | `npm ci && npm test`, which is `node --test`                                  | The logic modules, covered without a browser. Arguments after `--`, e.g. `-- --test-name-pattern 'cancel'`.              |
 | `npm`               | `npm "$@"` with the working directory set to `Build/`                         | Escape hatch, mirroring the existing `composer` suite: `-s npm -- install --save-dev lit@latest`.                        |
 | `cleanJs`           | `rm -rf Build/node_modules Build/.cache`                                      | Intermediates only. It never removes `Resources/Public/` — those are committed files.                                    |
 
@@ -487,10 +531,10 @@ tracked files would be a trap.
 Two properties of these suites differ from every gate documented so far, and the
 `-h` output says so:
 
-- **They are core version independent.** They inspect `Build/Sources/` and
-  `Resources/Public/`, never the installed core, so `-t` does not change what
-  they do and running them in both halves of the `-t 13` / `-t 14` matrix would
-  check the same files twice.
+- **They are core version independent.** They inspect `Build/Sources/`,
+  `Build/Tests/` and `Resources/Public/`, never the installed core, so `-t` does
+  not change what they do and running them in both halves of the `-t 13` /
+  `-t 14` matrix would check the same files twice.
 - **They need no `composerUpdate`,** because they never touch `.Build/`. That
   makes them the only suites that are safe to run while the *other* core
   version's dependency set is installed — the one exception to the rule in
@@ -510,10 +554,11 @@ frontend-assets:
     # checkout, then cache ".cache/.npm" keyed on Build/package-lock.json
     - run: "Build/Scripts/runTests.sh -b docker -s lintTypescript -n"
     - run: "Build/Scripts/runTests.sh -b docker -s typecheckJs"
+    - run: "Build/Scripts/runTests.sh -b docker -s unitJs"
     - run: "Build/Scripts/runTests.sh -b docker -s checkJsBuildClean"
 ```
 
-Three things about it are deliberate:
+Four things about it are deliberate:
 
 - **No matrix.** The suites never touch PHP or the installed core, so repeating
   them across PHP and core versions would check the same TypeScript four times.
@@ -522,9 +567,13 @@ Three things about it are deliberate:
 - **No `composerUpdate` step.** Nothing here reads `.Build/`, so the job skips
   the most expensive step in the workflow entirely. It is the only job that
   does.
-- **`checkJsBuildClean` runs last.** Lint and type errors are cheaper to produce
-  and easier to read than a diff of minified output; running the expensive,
-  hardest-to-read gate first would bury them.
+- **`unitJs` runs in the same job and the same container**, not in a job of its
+  own. It shares the `npm ci` with its neighbours, it imports the TypeScript
+  sources directly and it knows nothing about PHP or the installed core, so a
+  separate job would buy an extra checkout and an extra install for nothing.
+- **`checkJsBuildClean` runs last.** Lint, type and test failures are cheaper to
+  produce and easier to read than a diff of minified output; running the
+  expensive, hardest-to-read gate first would bury them.
 
 `-b docker` is passed for the same reason
 [every other job passes it](../development/quality-gates.md#why-ci-passes--b-docker),
@@ -532,6 +581,8 @@ and has nothing to do with node.
 
 ## See also
 
+- [The edit plugin](edit-plugin.md) — what the module these assets ship actually
+  does, and the testable-module split behind `unitJs`.
 - [Quality gates](../development/quality-gates.md)
 - [Development environment](../development/environment.md)
 - [Dual core setup](../development/dual-core-setup.md)
