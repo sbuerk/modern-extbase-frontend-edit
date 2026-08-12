@@ -165,7 +165,17 @@ Addresses and e-mail addresses
 ==============================
 
 Each collection is a list of records, each with its own buttons, followed by an
-empty form for a new entry:
+empty form for a new entry.
+
+Every record is headed by its own content — its type and its first line, so
+:guilabel:`Work · Difference Engine Road 1` — and the buttons that act on it sit
+on that same line. The heading is deliberately **not** a number: the records can
+be reordered, and a numbered heading would rename every entry below the one that
+was just moved. A record keeps its heading wherever it ends up. A record with
+neither a type nor a first line has no heading, and gains one as soon as
+something is entered.
+
+The buttons of a record are:
 
 ..  list-table::
     :header-rows: 1

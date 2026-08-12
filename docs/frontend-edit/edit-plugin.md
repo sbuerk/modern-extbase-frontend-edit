@@ -247,6 +247,34 @@ discard. A rejected upload is the one case that needs a sentence of its own —
 nothing was moved into storage, so the file has to be picked again, and
 `error.imageNotStored` says so below whatever the server's validators reported.
 
+## A child record is named by its content, never by its position
+
+Each rendered child carries a heading built from its own values — the translated
+type and the one field that tells two records of the same type apart, so
+`Work · Difference Engine Road 1`. `model/childIdentity.ts` decides which field
+that is, and it is a pure function with its own unit tests because the choice is
+a rule rather than a detail: an address is identified by `line1` and never by
+`line2`, since two addresses in one street differ in the first line far more
+often than in the second.
+
+**Numbering was rejected, and the reason is a feature this surface has.**
+"Address 1, Address 2" names a *position*, and this surface reorders records —
+so pressing `Move up` would rename every entry below the one that moved, at
+exactly the moment a reader most needs to keep track of the thing they just
+moved. Content stays put when the order does not.
+`Tests/Acceptance/Frontend/ChildIdentity.spec.ts` asserts precisely that: a
+heading follows its record through a reorder rather than staying with the row.
+
+The heading is also what gives the toolbar a referent. `Move up` and `Remove`
+used to sit at the foot of a record with nothing naming what they would move or
+delete; they are now on the heading's line.
+
+Both halves may be missing, and the separator is drawn only when both are
+present, so an incomplete record produces a shorter heading rather than a stray
+middle dot. When neither is there the heading is skipped entirely — an empty
+element with a border would say that something is missing rather than that
+nothing was entered.
+
 ## Degradation
 
 **The server-rendered profile is the no-JavaScript view.** It sits inside the

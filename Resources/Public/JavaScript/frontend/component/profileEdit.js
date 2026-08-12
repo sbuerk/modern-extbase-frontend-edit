@@ -32,9 +32,10 @@ import {
   parseProfileRecord,
   recordValues
 } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/profileRecord.js";
+import { childIdentity } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/childIdentity.js";
 import { imageField } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js";
 import { EditSessions } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js";
-import { actionLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
+import { actionLabelKey, choiceLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
 import { readJson } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/json.js";
 import { parseEndpoints } from "@sbuerk/modern-extbase-frontend-edit/frontend/api/endpoints.js";
 import {
@@ -239,7 +240,9 @@ let ProfileEditElement = class extends LitElement {
     const hidden = isChildHidden(profile, child, record.uid);
     return html`
             <li class="child">
-                ${this.renderRecord(profile, target)}
+                <header class="child-header">
+                    ${this.renderChildTitle(child, record)}
+                    ${hidden ? html`<span class="state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
                 <div class="child-actions">
                     <button
                         type="button"
@@ -278,10 +281,34 @@ let ProfileEditElement = class extends LitElement {
                         ${icon("remove")}
                         <span class="button-label">${this.text(actionLabelKey("remove"))}</span>
                     </button>
-                    ${hidden ? html`<span class="state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
                 </div>
+                </header>
+                ${this.renderRecord(profile, target)}
             </li>
         `;
+  }
+  /**
+   * The heading of one child record.
+   *
+   * Its content is the record's own — the translated type, and the value that
+   * tells two records of the same type apart. Never its position: the surface
+   * reorders these records, and a number would rename every row below the one
+   * that was just moved.
+   *
+   * Both halves may be empty, and the separator is drawn only when both are
+   * present, so an incomplete record produces a shorter heading rather than a
+   * stray middle dot. When neither is there, the heading is skipped entirely —
+   * the toolbar keeps the row, and an empty element with a border would say
+   * that something is missing rather than that nothing was entered.
+   */
+  renderChildTitle(child, record) {
+    const identity = childIdentity(child, record);
+    const type = identity.type === "" ? "" : this.text(choiceLabelKey(child, "type", identity.type));
+    const parts = [type, identity.detail].filter((part) => part !== "");
+    if (parts.length === 0) {
+      return nothing;
+    }
+    return html`<span class="child-title">${parts.join(" \xB7 ")}</span>`;
   }
   /**
    * The form that creates a child.
@@ -690,6 +717,40 @@ ProfileEditElement.styles = [
                 border-inline-start: 3px solid var(--frontend-edit-color-border);
                 border-radius: 0 var(--frontend-edit-radius) var(--frontend-edit-radius) 0;
                 padding-inline-start: var(--frontend-edit-space-md);
+            }
+
+            /*
+             * The heading of a child, and the toolbar that acts on it, on one
+             * line. The toolbar used to sit at the foot of the record with
+             * nothing naming what it would move or delete; beside the title it
+             * has a referent, and a list of four addresses stops being four
+             * identical blocks.
+             *
+             * "space-between" rather than a column, because the title is as long
+             * as the data makes it and the buttons are not — pushing the toolbar
+             * to the far edge is what keeps it in one column down the list.
+             */
+            .child-header {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--frontend-edit-space-sm);
+                border-bottom: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+                padding-bottom: var(--frontend-edit-gap-within);
+            }
+
+            /*
+             * "min-width: 0" so a long address line wraps inside the header
+             * instead of pushing the toolbar out of it, and "margin-inline-end:
+             * auto" so the toolbar stays at the edge even when the title is
+             * missing entirely.
+             */
+            .child-title {
+                flex: 1 1 auto;
+                min-width: 0;
+                margin-inline-end: auto;
+                font-weight: var(--frontend-edit-label-weight);
             }
 
             /*
