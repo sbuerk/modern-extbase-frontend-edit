@@ -17,7 +17,7 @@
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import type { EditMap } from '../../../Sources/TypeScript/model/editState.js';
+import type { EditMap } from '../../../Sources/TypeScript/frontend/model/editState.js';
 import {
     applyErrors,
     beginFieldEdit,
@@ -34,10 +34,10 @@ import {
     isEditing,
     setBusy,
     setDraft,
-} from '../../../Sources/TypeScript/model/editState.js';
-import { fieldValue, parseProfileRecord, recordValues } from '../../../Sources/TypeScript/model/profileRecord.js';
-import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
-import type { ProfileRecord } from '../../../Sources/TypeScript/model/types.js';
+} from '../../../Sources/TypeScript/frontend/model/editState.js';
+import { fieldValue, parseProfileRecord, recordValues } from '../../../Sources/TypeScript/frontend/model/profileRecord.js';
+import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/frontend/model/recordTarget.js';
+import type { ProfileRecord } from '../../../Sources/TypeScript/frontend/model/types.js';
 import { profileDocument, profileDocumentWith } from '../profileDocument.js';
 
 function parsed(document: unknown = profileDocument): ProfileRecord {

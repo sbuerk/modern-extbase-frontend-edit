@@ -489,7 +489,7 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
      * (`cms-frontend/Classes/Http/RequestHandler.php:300-307`) re-runs the whole
      * JavaScript and CSS rendering into the placeholders of the page — the
      * import map included, which is what the module needs to resolve
-     * `@sbuerk/modern-extbase-frontend-edit/frontend-edit.js` at all. A leftover
+     * `@sbuerk/modern-extbase-frontend-edit/frontend/frontend-edit.js` at all. A leftover
      * `<!-- ###JS_LIBS` marker in the body is what that step failing looks like,
      * and it is asserted because a missing tag and an unsubstituted placeholder
      * are different defects.
@@ -501,11 +501,11 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
 
         $this->assertStringContainsString('<script type="importmap"', $body);
         $this->assertStringContainsString(
-            '@sbuerk/modern-extbase-frontend-edit/frontend-edit.js',
+            '@sbuerk/modern-extbase-frontend-edit/frontend/frontend-edit.js',
             $body,
         );
         $this->assertStringContainsString(
-            'modern_extbase_frontend_edit/Resources/Public/Css/frontend-edit.css',
+            'modern_extbase_frontend_edit/Resources/Public/Css/frontend/frontend-edit.css',
             $body,
         );
         $this->assertStringNotContainsString('<!-- ###JS_LIBS', $body);

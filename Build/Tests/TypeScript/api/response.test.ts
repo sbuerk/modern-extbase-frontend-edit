@@ -19,7 +19,7 @@ import {
     interpretResponse,
     noResponseStatus,
     validationErrorsFrom,
-} from '../../../Sources/TypeScript/api/response.js';
+} from '../../../Sources/TypeScript/frontend/api/response.js';
 import { profileDocument, profileDocumentWith } from '../profileDocument.js';
 
 describe('interpretResponse on a 200', (): void => {

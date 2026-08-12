@@ -8,16 +8,17 @@ at least once, so this page records what was verified and what was decided.
 > [!NOTE]
 > **The toolchain and the edit UI both exist.** `Build/package.json`,
 > `Build/esbuild.mjs`, `Build/tsconfig.json`, `Build/eslint.config.mjs`,
-> `Build/Sources/`, `Build/Tests/`, the six `runTests.sh` suites,
+> `Build/Sources/`, `Build/Tests/`, the `runTests.sh` suites listed below,
 > `Configuration/JavaScriptModules.php` and the compiled artifacts below
 > `Resources/Public/` are in the repository, the CI workflow has a job for them,
 > and `Templates/ProfileEdit/Edit.html` loads the module and the stylesheet.
 > What the component does with them is
 > [The edit plugin](edit-plugin.md).
 >
-> One gap named on this page is still open: nothing asserts that **`lit`**
-> resolves from the frontend import map. It is named again where this page
-> describes it.
+> The gap this page used to name as open — that nothing asserted **`lit`**
+> actually resolving from the frontend import map — is closed. The acceptance
+> suite imports it in the page's own realm and asserts what comes back, and it
+> now asserts the per module entries of this extension as well.
 
 ## Import maps work in the frontend, on both core versions
 
@@ -59,6 +60,14 @@ declared `dependencies`, and nothing else. A specifier that is neither declared
 nor depended on is not silently missing — `JavaScriptRenderer::render()` throws
 `1728220800` naming the module and pointing at
 `Configuration/JavaScriptModules.php` (`JavaScriptRenderer.php:117-124`).
+
+Its sibling `includeTaggedImports()` (`ImportMap.php:71-83`) is the second way a
+map could be widened, and it is worth recording that on 14.3 it is **dead
+code**: nothing calls it but the one-line delegation in
+`JavaScriptRenderer.php:84-87`, and not one of the three `JavaScriptModules.php`
+files core ships — `EXT:core`, `EXT:backend`, `EXT:filelist` — declares a `tags`
+key for it to match. `tags` is therefore not a backend mechanism this extension
+declines to use; it is a mechanism nothing uses.
 
 ### Consequence: asset loading needs no `Core13`/`Core14` split
 
@@ -129,11 +138,15 @@ cheapest one:
    *shared* dependency in this ecosystem: an editor viewing the frontend, or any
    second extension shipping a lit component, is enough to hit it.
 
-The build therefore marks `lit`, `lit-html`, `lit-element`, `@lit/*` and
-`@typo3/*` **external** (`Build/esbuild.mjs:37-47`), and the sources import the
-bare specifier (`lit`, `lit/decorators.js`) and never a path. `lit` is a
-`devDependency` of the build — it is present for `tsc` and the editor and is
-never emitted.
+The build therefore needs no `external` list at all, and no longer has one. It
+bundles nothing (`Build/esbuild.mjs:104`), so esbuild resolves no specifier and
+every one of them — `lit`, `lit/decorators.js`, `lit/directives/repeat.js` —
+survives into the emitted module exactly as written, for the browser to resolve
+through the import map (`Build/esbuild.mjs:25-38`). An `external` list is what a
+bundler has to be handed in order to be told which imports *not* to follow; a
+build that follows no import needs none, and cannot drift out of step with the
+set of packages core happens to declare. `lit` is a `devDependency` of the build
+— it is present for `tsc` and the editor and is never emitted.
 
 `Configuration/JavaScriptModules.php` is therefore three lines of substance:
 
@@ -141,18 +154,30 @@ never emitted.
 return [
     'dependencies' => ['core'],
     'imports' => [
-        '@sbuerk/modern-extbase-frontend-edit/' => 'EXT:modern_extbase_frontend_edit/Resources/Public/JavaScript/',
+        '@sbuerk/modern-extbase-frontend-edit/frontend/' => 'EXT:modern_extbase_frontend_edit/Resources/Public/JavaScript/frontend/',
     ],
 ];
 ```
+
+The mapped prefix is **`frontend/`, not the whole `JavaScript/` directory**, and
+that is a convention rather than a mechanism. TYPO3 has nothing that scopes a
+map entry to one application type — `ImportMap` builds both maps from the same
+declarations, and the only primitives that narrow anything are the `tags` above
+and the backend's `includeAllImports()`. Mapping the two trees separately is
+where the separation is written down: when this extension grows backend
+JavaScript it gets a mapping of its own next to this one, and until then the
+declaration cannot silently publish a backend module to a frontend page.
+`Build/Sources/TypeScript/backend/` exists for that reason and holds nothing but
+a `.gitkeep`.
 
 `dependencies` names **`core`, not `backend`** — that single word is what makes
 `lit` resolvable from a frontend page without bundling it, because the six `lit`
 specifiers are declared in `EXT:core`'s own module map. Naming `backend` instead
 would pull in the backend's module map, which a frontend page has no business
 loading, and would still not be the place `lit` comes from. No `tags` are
-declared: tags exist so the backend can eagerly load whole groups of modules,
-while a frontend page loads exactly the one module its template asks for.
+declared, and per the finding above that costs nothing: a `tags` key is only
+read by `includeTaggedImports()`, which nothing calls. A frontend page loads
+exactly the one module its template asks for regardless.
 
 Stated honestly, the accepted downsides: our components run against *core's* lit
 patch version, so a future lit major in core changes the API under us; and using
@@ -163,7 +188,7 @@ file names and the core version is discoverable anyway.
 The first is **closed**, and by the second of the two routes. It stayed open
 while `ProfileEditPluginTest::theAssetsOfTheEditingSurfaceAreEmitted()` was the
 only assertion: it asserts that an import map is emitted and that it carries
-`@sbuerk/modern-extbase-frontend-edit/frontend-edit.js`, which is what a
+`@sbuerk/modern-extbase-frontend-edit/frontend/frontend-edit.js`, which is what a
 `USER_INT` plugin has to get out of the non-cached pass — and it asserts nothing
 about `lit`, because our own specifier resolving says nothing about the specifier
 our module imports.
@@ -176,27 +201,42 @@ are functions, and that both custom elements are registered afterwards. A lit
 major version bump in core now reaches this extension as a red gate rather than
 as a broken page.
 
+The same spec is where the unbundled emit is held in place. It enumerates the
+map entries under our prefix and asserts that there is more than one, that
+`…/frontend/model/editState.js` is among them, and that each carries a `?bust=`
+value. Asserting the prefix alone would not do it: a regression to a single
+bundled file leaves the prefix entry looking exactly as it does now, and only
+the per-module entries — the thing the cache busting depends on — disappear.
+
 ## The toolchain, and why it is smaller than core's
 
 Core builds JavaScript with `grunt → tsc → rollup` plus a second `esbuild` pass
-for vendor libraries. That chain is not overhead; it buys core something
-specific that an extension does not need: **unbundled 1:1 emit**. Every one of
-core's roughly 800 TypeScript modules becomes exactly one `.js` file,
-individually addressable by specifier and shared across sysexts, with every
-import left intact. Grunt sequences the tasks across thirty extensions, and
-rollup does the per-file rewriting and the tagged-template minification.
+for vendor libraries. That chain is not overhead; it buys core **unbundled 1:1
+emit**. Every one of core's roughly 800 TypeScript modules becomes exactly one
+`.js` file, individually addressable by specifier and shared across sysexts,
+with every import left intact. Grunt sequences the tasks across thirty
+extensions, and rollup does the per-file rewriting and the tagged-template
+minification.
 
-We ship a handful of modules behind one or two entry points. The pipeline that
-follows from that is:
+This build emits 1:1 as well, which is the one property of it that is not
+smaller than core's; why bundling was given up is
+[below](#the-sources-import-each-other-by-bare-specifier). What does not follow
+from it is the chain. esbuild produces the same shape by itself from
+`bundle: false` and an `outbase`, in ten lines (`Build/esbuild.mjs:102-111`),
+because neither job rollup carries for core exists here: there is no per-file
+rewriting to do, since the sources already spell their imports the way the
+emitted module has to — with the `.js` extension, and as the bare specifier the
+import map resolves — and there is no tagged-template minification to do,
+because nothing here is minified at all. The pipeline that follows is:
 
 | Core's choice                                         | Here           | Reason                                                                                                                                                 |
 |-------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `grunt` as task runner                                | drop           | Two tasks, not fifteen. One `esbuild.mjs` called from an npm script has no plugin-maintenance surface.                                                 |
 | `tsc` for **emit**                                    | drop           | esbuild transpiles TypeScript directly and honours `experimentalDecorators`/`useDefineForClassFields` from `tsconfig.json`.                            |
 | `tsc` for **type checking**                           | **keep**       | esbuild does not type check. Without `tsc --noEmit` the build succeeds on code that does not compile. The non-obvious keep.                            |
-| `rollup` + `litnano` + `rollup-plugin-esbuild`        | drop           | Exists for 1:1 emit over a huge shared graph and for minifying `css`/`html` templates. Neither applies at this size.                                   |
-| `esbuild`                                             | keep, promoted | Becomes the whole build: TypeScript to ESM, per-entry bundling of our own modules, CSS minification.                                                   |
-| `sass` + `postcss` + `autoprefixer` + `cssnano`       | drop           | Core needs sass because Bootstrap is sass. Native nesting and custom properties cover a component stylesheet; esbuild minifies it.                     |
+| `rollup` + `litnano` + `rollup-plugin-esbuild`        | drop           | esbuild emits 1:1 by itself, and minifying `css`/`html` templates has no counterpart in a build that minifies nothing.                                 |
+| `esbuild`                                             | keep, promoted | Becomes the whole build: TypeScript to ESM, one emitted module per source module, and the one stylesheet.                                              |
+| `sass` + `postcss` + `autoprefixer` + `cssnano`       | drop           | Core needs sass because Bootstrap is sass. Native nesting and custom properties cover a component stylesheet; esbuild lowers the nesting.              |
 | `eslint` 9 + `typescript-eslint` + `lit`/`wc` plugins | **keep**       | They catch mistakes no compiler sees: `lit/no-legacy-imports`, `lit/no-native-attributes`, `wc/require-listener-teardown`, `wc/no-constructor-params`. |
 | `stylelint` 14 + a 160-line rc file                   | drop           | Core pins the stylelint-14 stylistic ruleset, most of which was removed in stylelint 15+. Adopting it means inheriting a dead end.                     |
 
@@ -212,7 +252,22 @@ That pair is the legacy decorator mode lit 3 requires; getting it wrong produces
 diverges from core: `strict: true` where core has `strict: false`. Core carries
 years of legacy, a new extension has no reason to start relaxed.
 
-The browser target of the build is not a taste decision either. `esbuild.mjs:55`
+A third setting is there to pay for something the browser gets for free. Because
+the sources import each other by the bare specifier the import map resolves —
+[the reason is below](#the-sources-import-each-other-by-bare-specifier) — every
+tool that reads them outside a browser has to be told where that specifier
+lives. `tsconfig.json:46-50` does it with a `paths` entry onto
+`./Sources/TypeScript/frontend/*`, deliberately without a `baseUrl`: with
+`moduleResolution: bundler` the mapping targets already resolve relative to the
+configuration file, and a `baseUrl` would additionally make every directory
+below it importable as a bare specifier of its own. `node --test` needs the same
+mapping and cannot read `paths`, so the resolve hook in
+`Build/Tests/TypeScript/sourceResolve.mjs:36-40` rewrites the prefix onto the
+source tree — next to the `.js`-to-`.ts` rewrite it already performed. Node's
+own import-map support is behind `--experimental-*` flags and was not taken.
+Two small mappings, in two files, is the price of the specifier.
+
+The browser target of the build is not a taste decision either. `esbuild.mjs:46`
 sets `['chrome89', 'firefox108', 'safari16.4']`, which is the floor of the
 import-map mechanism itself. Targeting anything older would emit transpiled
 output for browsers that cannot resolve the module in the first place — and it
@@ -284,24 +339,35 @@ whose output runs in a browser.
 
 ## Layout
 
+The source tree is split by **application type** one level below `TypeScript/`
+and `Css/`, and the emitted tree mirrors that split exactly:
+
 ```
-Build/                                       (already export-ignored)
+Build/                                      (already export-ignored)
   package.json  package-lock.json
   tsconfig.json  eslint.config.mjs  esbuild.mjs
   Sources/
-    TypeScript/frontend-edit.ts              entry point
-    TypeScript/documentState.ts              internal, bundled into the entry
-    TypeScript/component/                    the two lit elements — the only DOM
-    TypeScript/model/                        state, targets, fields, labels, JSON
-    TypeScript/api/                          endpoints, payloads, responses, client
-    Css/frontend-edit.css
+    TypeScript/frontend/frontend-edit.ts    entry point
+    TypeScript/frontend/documentState.ts    internal, and its own emitted module
+    TypeScript/frontend/component/          the two lit elements — the only DOM
+    TypeScript/frontend/model/              state, targets, fields, labels, JSON
+    TypeScript/frontend/api/                endpoints, payloads, responses, client
+    TypeScript/backend/                     empty, a ".gitkeep" only
+    Css/frontend/frontend-edit.css
   Tests/
-    TypeScript/                              the "unitJs" suite and its two helpers
+    TypeScript/                             the "unitJs" suite and its two helpers
 Resources/Public/
-  JavaScript/frontend-edit.js                committed build artifact
-  Css/frontend-edit.css                      committed build artifact
+  JavaScript/frontend/**                    17 artifacts, one per source module
+  Css/frontend/frontend-edit.css            committed build artifact
 Configuration/JavaScriptModules.php
 ```
+
+The `backend/` directory holds nothing yet, and it exists anyway: the mapping in
+`Configuration/JavaScriptModules.php` publishes `frontend/` and not
+`JavaScript/`, so a backend module dropped into the tree later cannot reach a
+frontend page by accident. That separation has no enforcement behind it — TYPO3
+scopes no import-map entry by application type — so the directory is where the
+convention is written down.
 
 `frontend-edit.ts` does two things and delegates the rest: it imports the
 modules that define the custom elements — which is the whole registration, there
@@ -319,20 +385,70 @@ in erasable syntax, which is what lets `node --test` import the sources directly
 
 Three conventions hold this together:
 
-- **One entry point per import-map specifier.** Only entry points appear in
-  `entryPoints`; modules they import are bundled into them and get no specifier
-  of their own. This is the opposite of core's 1:1 mapping, and it is the right
-  trade at this size — the addressable surface stays exactly as large as the
-  set of things a template may load.
+- **One emitted module per source module.** `entryPoints` is every `.ts` file
+  below `Sources/TypeScript/`, walked by `modulesIn()`
+  (`Build/esbuild.mjs:52-67`), and `outbase` mirrors the tree into
+  `Resources/Public/JavaScript/`. Nothing is bundled and nothing is minified,
+  which is core's 1:1 mapping rather than the opposite of it. The cost is
+  stated below.
 - **Shadow-DOM styles live in the TypeScript**, as ``static styles = css`…` ``.
   They cannot come from a `<link>`, and this is what core's own lit components
   do. The build has nothing to do for them.
 - **Only page-level, light-DOM CSS is emitted as a file**, from
-  `Build/Sources/Css/*.css`. There is no third mechanism, and no inline style
-  block.
+  `Build/Sources/Css/frontend/*.css`. There is no third mechanism, and no inline
+  style block.
 
 Source maps are not committed — inline maps in the dev build only, matching
-core's `*.js.map` ignore.
+core's `*.js.map` ignore. The `--dev` flag does nothing else: `minify` is
+`false` unconditionally (`Build/esbuild.mjs:75`), so the development and the
+committed build differ by the source map and by nothing that could change
+behaviour.
+
+### The sources import each other by bare specifier
+
+Not relatively. `documentState.ts` is imported as
+`@sbuerk/modern-extbase-frontend-edit/frontend/documentState.js`, never as
+`./documentState.js`, and that is load bearing rather than stylistic.
+
+**Only a specifier resolved through the import map gets a cache-busting key.**
+For a mapping whose specifier ends in a slash, `resolvePaths()` hands off to
+`resolveRecursiveImportMap()` (`ImportMap.php:240-280`), which enumerates every
+`.js` file below the mapped directory and emits one map entry per file with
+`?bust=` appended (`ImportMap.php:276`). A relative specifier never reaches any
+of that: the browser resolves it against the URL of the *importing* module,
+which drops the query string. The entry module would then be fetched with a
+fresh bust value while its dependencies were fetched at the URLs they had
+before, so a deploy could pair a new entry point with a dependency the browser
+still holds from the previous release — the worst shape of cache bug, because
+each file is individually current and only the combination is wrong. Bundling
+hid this by having nothing to pair; an unbundled build has to face it.
+
+Core reached the same conclusion and states it as a rule, in
+`14.0/Deprecation-106618-GeneralUtilityresolveBackPath.rst`:
+
+> References to JavaScript modules (ES6 modules) should be managed through
+> import maps using module names instead of relative paths.
+
+It also holds itself to it. Grepping the 319 shipped `.js` files below the
+sysexts' `Resources/Public/JavaScript/`, excluding the vendored `Contrib/`
+trees, finds **no relative import at all** — not one `from './…'` in the whole
+of core.
+
+**The cost is that the addressable surface is now 17 specifiers, not one.**
+Every module below `frontend/` — `model/json.js`, `api/client.js`, all of them —
+is a public entry in the import map that any template on the site may load,
+where a bundled build published exactly the one thing `Edit.html` asks for. That
+is a real loss of encapsulation and it is accepted knowingly, because the
+alternative is either the stale-dependency bug above or giving up 1:1 emit
+altogether.
+
+There is no third option, and in particular `exclude` is not one. It is
+available on a recursive mapping (`ImportMap.php:294`, applied at
+`ImportMap.php:271-275`), but it only suppresses the *bust entry* for the files
+it names: the trailing-slash specifier itself stays in the map untouched
+(`ImportMap.php:306`), and a trailing-slash entry is resolved by the browser as
+a prefix. An excluded module therefore remains loadable at its own specifier and
+merely loses its cache-busting key — strictly worse than not excluding it.
 
 ## How Fluid loads it
 
@@ -345,10 +461,14 @@ enhance:
 ```html
 <f:asset.css
     identifier="modernExtbaseFrontendEdit"
-    href="EXT:modern_extbase_frontend_edit/Resources/Public/Css/frontend-edit.css"
+    href="EXT:modern_extbase_frontend_edit/Resources/Public/Css/frontend/frontend-edit.css"
 />
-<f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend-edit.js" />
+<f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend/frontend-edit.js" />
 ```
+
+The one specifier named here is the entry point. The other sixteen are in the
+map as well and no template loads them; the browser fetches them because the
+entry point imports them.
 
 `f:asset.module` exists on both versions with the same single `identifier`
 argument and does nothing but call `AssetCollector::addJavaScriptModule()`; the
@@ -385,11 +505,46 @@ different defects.
 Two things are deliberately not used:
 
 - **`useNonce`** on `f:asset.css`/`f:asset.script` — deprecated in favour of
-  `csp` by Deprecation #100887 (v14.2). Passing neither argument is
-  version neutral and is what we do.
+  `csp` by Deprecation #100887 (v14.2), and its successor is not passed either.
+  That is *not* version neutral, and the next paragraphs say what it costs.
 - **The `HeaderAssets`/`FooterAssets` Fluid sections** — deprecated by
   Deprecation #107057 (v14.0), which names `f:asset.script`/`f:asset.css` as the
   replacement.
+
+The rename in Deprecation #100887 came with a changed default, and an earlier
+revision of this page missed it. Feature #100887 states it: "The new default is
+`true` for external files, that is, static resources, and `false` for inline
+content." `resolveCspOption()` implements exactly that — both arguments are
+registered with a `null` default (`CssViewHelper.php:81-82`), and when neither
+was given it returns whether the asset is an external file
+(`CssViewHelper.php:124-137`, `:100-101`). Our `<f:asset.css>` has an `href` and
+no `inline`, so on v14.2+ it is collected with `csp => true`. On 13.4 the same
+tag is collected with `useNonce => false`: that view helper registers no `csp`
+argument at all and gives `useNonce` a default of `false`, so an omitted
+argument means "do nothing" there and "collect" here.
+
+Two things follow from that, and neither is a defect. A SHA-256 hash of the
+stylesheet is registered with the `DirectiveHashCollection` at render time
+(`AssetRenderer.php:116-123`), and the `<link>` gains a `nonce` attribute
+(`AssetRenderer.php:162-163`) — the latter only when a `ConsumableNonce` reached
+the `PageRenderer` at all, which in the frontend happens only for a site that
+configures `contentSecurityPolicies`
+(`cms-frontend/Classes/Middleware/ContentSecurityPolicyHeaders.php:70-83`,
+`cms-frontend/Classes/Http/RequestHandler.php:101-103`). **The emitted CSP
+header does not change either way**: collected hashes are only applied when
+`behavior.useHash` is enabled, and that property defaults to `null`, which
+Feature #100887 defines as off (`Configuration/Behavior.php:40`).
+
+The honest part is that there is **no version-neutral way to suppress it**.
+`csp="0"` does not exist before 14.2, and `useNonce="0"` triggers
+`E_USER_DEPRECATED` on v14 from the mere presence of the argument, whatever its
+value (`CssViewHelper.php:139-147`) — which this repository's
+[strictness policy](../testing/phpunit-configuration.md#strictness-policy) turns
+into a failing suite. Suppressing it would therefore require the very
+`Core13`/`Core14` split that
+[the section above](#consequence-asset-loading-needs-no-core13core14-split)
+argues asset loading does not need. The difference is a hash that is computed
+and then not used, on one stylesheet, so it is left alone.
 
 Data reaches the component as **attributes on the custom element in the Fluid
 template**, not as `JavaScriptModuleInstruction` items and not as an inline
@@ -399,16 +554,21 @@ data in the markup, keep the component testable in isolation, and keep the
 refusal path — a malformed attribute is "do not enhance", not an exception.
 → [The Fluid contract](edit-plugin.md#the-fluid-contract-four-attributes)
 
-One operational caveat belongs in an integrator's head: the computed import map
-is cached in `cache.assets`, and for a `'prefix/' => 'EXT:…/'` mapping the file
-list is enumerated once and cached. Adding a new `.js` file in production needs
-a cache flush; in `Development` context the bust value is
-`$GLOBALS['EXEC_TIME']` and it recomputes per request.
+One operational caveat belongs in an integrator's head, and the unbundled build
+sharpened it: the computed import map is cached in `cache.assets`, and for a
+`'prefix/' => 'EXT:…/'` mapping the file list is enumerated once and cached.
+Adding a new `.js` file in production needs a cache flush; in `Development`
+context the bust value is `$GLOBALS['EXEC_TIME']` and it recomputes per request.
+A bundled build only ever added a file when a template gained an entry point,
+which nobody does by accident. Now every new source module is a new file below
+the mapped directory, so "I added a module and the browser reports it missing"
+is a cache flush rather than a bug.
 
 ## Artifacts are committed, and that makes a gate mandatory
 
-`Resources/Public/JavaScript/*.js` and `Resources/Public/Css/*.css` are tracked
-files. This is not a preference:
+`Resources/Public/JavaScript/**/*.js` and `Resources/Public/Css/**/*.css` are
+tracked files — seventeen of the former since the build stopped bundling, where
+there used to be one. This is not a preference:
 
 - **Core does the same** — its `Contrib/` JavaScript and `backend.css` are
   tracked, and only the intermediates (`Build/JavaScript`, `Build/node_modules`,
@@ -623,8 +783,8 @@ Four things about it are deliberate:
   sources directly and it knows nothing about PHP or the installed core, so a
   separate job would buy an extra checkout and an extra install for nothing.
 - **`checkJsBuildClean` runs last.** Lint, type and test failures are cheaper to
-  produce and easier to read than a diff of minified output; running the
-  expensive, hardest-to-read gate first would bury them.
+  produce and easier to read than a rebuild diff spread over seventeen files;
+  running the expensive, hardest-to-read gate first would bury them.
 
 `-b docker` is passed for the same reason
 [every other job passes it](../development/quality-gates.md#why-ci-passes--b-docker),

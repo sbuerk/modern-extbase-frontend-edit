@@ -20,12 +20,28 @@ declare(strict_types=1);
  * No `tags` are declared. Those exist so the backend can eagerly load whole
  * groups of modules; a frontend page loads exactly the one module its template
  * asks for.
+ *
+ * ## Frontend and backend are separate mappings
+ *
+ * Only `frontend/` is mapped, rather than the whole `JavaScript/` directory.
+ * TYPO3 offers no mechanism that scopes an import map entry to one application
+ * type — both maps are built from the same declarations, and the only scoping
+ * primitives are `tags` and the backend's `includeAllImports()` — so the
+ * separation is a convention, and a convention is only worth anything if it is
+ * expressed somewhere. Mapping the two trees separately is where it is
+ * expressed here: backend modules get their own entry alongside this one when
+ * there are any, and until then the mapping cannot silently publish them.
+ *
+ * The prefix ends in a slash, which makes it recursive: every `.js` below the
+ * directory becomes addressable, each with its own cache busting key. That is
+ * the deliberate trade of an unbundled build — see `Build/esbuild.mjs`, which
+ * explains why the alternative is worse.
  */
 return [
     'dependencies' => [
         'core',
     ],
     'imports' => [
-        '@sbuerk/modern-extbase-frontend-edit/' => 'EXT:modern_extbase_frontend_edit/Resources/Public/JavaScript/',
+        '@sbuerk/modern-extbase-frontend-edit/frontend/' => 'EXT:modern_extbase_frontend_edit/Resources/Public/JavaScript/frontend/',
     ],
 ];

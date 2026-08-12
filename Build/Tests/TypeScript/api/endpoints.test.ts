@@ -8,7 +8,7 @@
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import { endpointActions, parseEndpoints } from '../../../Sources/TypeScript/api/endpoints.js';
+import { endpointActions, parseEndpoints } from '../../../Sources/TypeScript/frontend/api/endpoints.js';
 
 const complete: Record<string, unknown> = {
     save: '/save',

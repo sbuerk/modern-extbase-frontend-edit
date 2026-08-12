@@ -39,11 +39,14 @@ notably :js:`lit` — resolves inside it without a copy being shipped here.
 
 ..  note::
 
-    The module currently only marks the document, by setting the CSS class
-    :html:`frontend-edit-loaded` on :html:`<html>`. The editing user interface
-    that uses it is part of a later release, and no plugin template loads the
-    assets yet. What this release delivers is the asset pipeline and its
-    addressing, not a visible change on the website.
+    Both statements above were true when this entry was written and are not any
+    more. The editing user interface arrived with the profile edit plugin, whose
+    template loads both assets, and the single bundled module has since been
+    replaced by one emitted module per source module under a
+    :file:`frontend/` directory — which also changed both paths and the import
+    map prefix quoted above. See
+    :ref:`important-frontend-assets-ship-as-es6-modules` for the paths that
+    apply now.
 
 No build step is required
 =========================

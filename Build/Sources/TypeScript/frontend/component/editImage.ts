@@ -39,10 +39,10 @@
 import { css, html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import type { ProfileImageRecord } from '../model/types.js';
-import type { LabelMap } from '../model/labels.js';
-import { actionLabelKey, fieldLabelKey, label } from '../model/labels.js';
-import { imageAccept, imageAlternative, imageField, isDisplayable, uploadFailureMessages } from '../model/imageEdit.js';
+import type { ProfileImageRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
+import { actionLabelKey, fieldLabelKey, label } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
+import { imageAccept, imageAlternative, imageField, isDisplayable, uploadFailureMessages } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js';
 
 @customElement('modern-extbase-frontend-edit-image')
 export class EditImageElement extends LitElement {

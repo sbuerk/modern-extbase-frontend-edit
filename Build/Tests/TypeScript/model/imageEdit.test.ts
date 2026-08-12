@@ -9,13 +9,13 @@
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import type { ProfileImageRecord } from '../../../Sources/TypeScript/model/types.js';
+import type { ProfileImageRecord } from '../../../Sources/TypeScript/frontend/model/types.js';
 import {
     imageAlternative,
     isDisplayable,
     uploadFailureMessages,
-} from '../../../Sources/TypeScript/model/imageEdit.js';
-import { parseProfileImage } from '../../../Sources/TypeScript/model/profileRecord.js';
+} from '../../../Sources/TypeScript/frontend/model/imageEdit.js';
+import { parseProfileImage } from '../../../Sources/TypeScript/frontend/model/profileRecord.js';
 
 function image(changes: Readonly<Record<string, unknown>> = {}): ProfileImageRecord {
     const parsed = parseProfileImage({

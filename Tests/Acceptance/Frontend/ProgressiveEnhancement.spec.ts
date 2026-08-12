@@ -88,8 +88,23 @@ test.describe('Progressive enhancement', (): void => {
                 (JSON.parse(element.textContent ?? '{}') as { imports?: Record<string, string> }).imports ?? {},
         );
         expect(imports.lit).toContain('/typo3/sysext/core/Resources/Public/JavaScript/Contrib/lit/');
-        expect(imports['@sbuerk/modern-extbase-frontend-edit/'])
-            .toContain('/typo3conf/ext/modern_extbase_frontend_edit/Resources/Public/JavaScript/');
+        expect(imports['@sbuerk/modern-extbase-frontend-edit/frontend/'])
+            .toContain('/typo3conf/ext/modern_extbase_frontend_edit/Resources/Public/JavaScript/frontend/');
+
+        // The build is unbundled, so every module of this extension is enumerated
+        // into the map as an entry of its own, carrying the cache busting key
+        // that a relative import between two of them would not get. A regression
+        // to a single bundled file would leave the prefix above intact and only
+        // these entries would disappear, which is why they are asserted rather
+        // than inferred from the prefix.
+        const own = Object.keys(imports)
+            .filter((specifier: string): boolean => specifier.startsWith('@sbuerk/modern-extbase-frontend-edit/frontend/')
+                && specifier.endsWith('.js'));
+        expect(own.length).toBeGreaterThan(1);
+        expect(own).toContain('@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js');
+        for (const specifier of own) {
+            expect(imports[specifier]).toContain('?bust=');
+        }
 
         // The resolution: a bare specifier, imported in the page's own realm,
         // yielding the class the components extend. This is the assertion a lit

@@ -24,8 +24,8 @@
  * component treat the map as reactive state, and it is what makes the whole
  * module testable without a DOM.
  */
-import type { RecordTarget } from './recordTarget.js';
-import { targetKey } from './recordTarget.js';
+import type { RecordTarget } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
+import { targetKey } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
 
 export type EditMode = 'field' | 'record';
 

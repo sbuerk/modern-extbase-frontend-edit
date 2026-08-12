@@ -13,12 +13,12 @@
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import type { EndpointAction, EndpointMap } from '../../../Sources/TypeScript/api/endpoints.js';
-import type { Payload } from '../../../Sources/TypeScript/api/payload.js';
-import { ProfileEndpointClient } from '../../../Sources/TypeScript/api/client.js';
-import { fieldPayload, imageUploadBody, imageUploadPart } from '../../../Sources/TypeScript/api/payload.js';
-import { noResponseStatus } from '../../../Sources/TypeScript/api/response.js';
-import { profileTarget } from '../../../Sources/TypeScript/model/recordTarget.js';
+import type { EndpointAction, EndpointMap } from '../../../Sources/TypeScript/frontend/api/endpoints.js';
+import type { Payload } from '../../../Sources/TypeScript/frontend/api/payload.js';
+import { ProfileEndpointClient } from '../../../Sources/TypeScript/frontend/api/client.js';
+import { fieldPayload, imageUploadBody, imageUploadPart } from '../../../Sources/TypeScript/frontend/api/payload.js';
+import { noResponseStatus } from '../../../Sources/TypeScript/frontend/api/response.js';
+import { profileTarget } from '../../../Sources/TypeScript/frontend/model/recordTarget.js';
 import { profileDocument, profileDocumentWith } from '../profileDocument.js';
 
 const endpoints: EndpointMap = {

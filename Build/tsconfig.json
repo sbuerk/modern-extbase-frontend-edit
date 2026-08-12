@@ -36,7 +36,18 @@
         "noUnusedParameters": true,
         "skipLibCheck": true,
 
-        "noEmit": true
+        "noEmit": true,
+
+        // The sources import each other by the bare specifier the import map
+        // resolves in the browser, so "tsc" needs to be told where that lives.
+        // No "baseUrl": with "moduleResolution": "bundler" the mapping targets
+        // are resolved relative to this file, and a "baseUrl" would additionally
+        // make every directory below it importable as a bare specifier.
+        "paths": {
+            "@sbuerk/modern-extbase-frontend-edit/frontend/*": [
+                "./Sources/TypeScript/frontend/*"
+            ]
+        }
     },
     "include": [
         "Sources/TypeScript/**/*.ts"

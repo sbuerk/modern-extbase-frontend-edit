@@ -27,10 +27,10 @@
  * and an unhandled rejection there would leave a control disabled with no
  * explanation.
  */
-import type { EndpointAction, EndpointMap } from './endpoints.js';
-import type { EndpointResult } from './response.js';
-import type { RequestBody } from './payload.js';
-import { interpretResponse, noResponseStatus } from './response.js';
+import type { EndpointAction, EndpointMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/endpoints.js';
+import type { EndpointResult } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/response.js';
+import type { RequestBody } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js';
+import { interpretResponse, noResponseStatus } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/response.js';
 
 /**
  * The subset of `fetch` this client uses, so a test can pass a function instead

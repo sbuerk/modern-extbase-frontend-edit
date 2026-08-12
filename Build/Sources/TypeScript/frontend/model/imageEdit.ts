@@ -9,7 +9,7 @@
  * What is left is four decisions, and all four are pure functions over the
  * document so that a test can make them without a browser.
  */
-import type { ProfileImageRecord } from './types.js';
+import type { ProfileImageRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
 
 /**
  * The field name the endpoint reports an upload failure under.

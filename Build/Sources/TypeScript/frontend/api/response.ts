@@ -21,8 +21,8 @@
  *   displayed; the component shows a translated sentence of its own and keeps
  *   the code for whoever reads the DOM.
  */
-import type { ProfileRecord } from '../model/types.js';
-import { parseProfileRecord } from '../model/profileRecord.js';
+import type { ProfileRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import { parseProfileRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/profileRecord.js';
 
 export interface ValidationErrors {
     /**

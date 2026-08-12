@@ -20,8 +20,8 @@
  * Seven of the eight are a JSON object. The eighth, {@see imageUploadBody}, is a
  * `FormData` — see the note there.
  */
-import type { ChildType } from '../model/types.js';
-import type { RecordTarget } from '../model/recordTarget.js';
+import type { ChildType } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
+import type { RecordTarget } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/recordTarget.js';
 
 export type Payload = Record<string, unknown>;
 
