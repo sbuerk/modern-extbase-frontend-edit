@@ -1,6 +1,28 @@
 /* Generated from Build/Sources/TypeScript — do not edit. */
 import { css } from "lit";
 const controls = css`
+    /*
+     * Every control this module sizes is a border box, and stating it for all
+     * four is not redundancy — it is the fix for a real defect.
+     *
+     * The user agent stylesheet already gives \`button\` \`border-box\` and does
+     * **not** give it to \`input\`, \`select\` or \`textarea\`. The rules below set
+     * the same \`min-height\` and the same padding on all of them, which then
+     * produced two different heights: a button resolved to exactly the 36 pixel
+     * target, while an input added its padding and border on top and came out at
+     * 50. A field was 36 pixels tall while it was read and 50 while it was
+     * edited, so every row below it moved as soon as somebody clicked "Edit".
+     *
+     * Measured, not reasoned about, and guarded by
+     * \`Tests/Acceptance/Frontend/FieldLayout.spec.ts\`.
+     */
+    button,
+    input,
+    select,
+    textarea {
+        box-sizing: border-box;
+    }
+
     button {
         display: inline-flex;
         align-items: center;

@@ -104,9 +104,26 @@ Spacing, shape and size
     *   -   :css:`--frontend-edit-measure`
         -   :code:`48rem`
         -   The width the surface is capped at. See :ref:`below <configuration-styling-measure>`.
+    *   -   :css:`--frontend-edit-label-width`
+        -   :code:`9rem`
+        -   The label column of a field. Below roughly :code:`27rem` of
+            available width the value wraps under its label instead.
+    *   -   :css:`--frontend-edit-gap-within`
+        -   :code:`0.25rem`
+        -   Between a label and its value, where they are stacked.
+    *   -   :css:`--frontend-edit-gap-field`
+        -   :code:`0.5rem`
+        -   Between two fields of a record.
+    *   -   :css:`--frontend-edit-gap-record`
+        -   :code:`1rem`
+        -   Between two records of a collection.
+    *   -   :css:`--frontend-edit-gap-section`
+        -   :code:`1.5rem`
+        -   Between the profile and a collection, and between collections.
     *   -   :css:`--frontend-edit-space-xs` … :css:`-xl`
         -   :code:`0.25rem` … :code:`1.5rem`
-        -   A five step spacing scale, from inside a control to around a collection.
+        -   The underlying five step scale the four gaps above are set from.
+            Change a gap to move one distance, the scale to move everything.
     *   -   :css:`--frontend-edit-border-width`
         -   :code:`1px`
         -   Every border and every hairline rule.
