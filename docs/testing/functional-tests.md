@@ -132,6 +132,37 @@ final class ExampleTest extends AbstractFunctionalTestCase
 
 See [Dual core setup](../development/dual-core-setup.md#test-grouping).
 
+### A test can be grouped because the core differs
+
+The same groups also apply to a test that lives in the normal tree and asserts
+shared code, when the **core** makes the case unreachable on one version. The
+image upload is the one instance in this repository: TYPO3 v13 refuses a
+constructed `UploadedFile` in `ResourceStorage`, so only a test that expects the
+upload to *succeed* is excluded there, per method rather than per class:
+
+```php
+#[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
+#[Test]
+public function anUploadStoresTheFileAndAnswersWithTheNewImage(): void
+```
+
+Two rules keep that honest, and both matter more than the mechanism:
+
+- **Group the method, never the class.** Everything the class asserts about
+  refusals runs on both core versions — those are the assertions a security
+  review reads.
+- **Say why at the group, with the citations.** The constant above carries the
+  core difference by `path:line` for both versions, the statement that
+  production is unaffected, and where the case is covered instead. A group whose
+  reason is not written down reads as "flaky on v13" within a release.
+
+A PHPUnit group excludes a **method**, not a data set. A provider with one row
+that is v14-only therefore splits: the rows that run everywhere stay in the data
+provider driven test, the single row becomes a test of its own —
+`ProfileAjaxWorkspaceTest` does exactly that for its live workspace control case.
+
+→ [Image handling](../frontend-edit/image-handling.md#a-successful-upload-can-only-be-simulated-on-v14)
+
 ## Strictness
 
 Notices, warnings and deprecations fail the suite, and so do a test without an

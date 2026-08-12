@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -54,9 +55,36 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
      * for why the payloads are complete and why the multipart upload is a row
      * of this provider rather than a test of its own.
      *
+     * The refusal is what this provider is for, and it is asserted for all
+     * eight endpoints on both core versions. Only the **control case** needs
+     * the upload split off, because only there does the request reach the
+     * storage — see {@see jsonWritingEndpoints()}.
+     *
      * @return \Generator<string, array{action: string, payload: array<string, mixed>, multipart?: bool}>
      */
     public static function writingEndpoints(): \Generator
+    {
+        yield from self::jsonWritingEndpoints();
+        yield 'uploadImage' => [
+            'action' => 'uploadImage',
+            'payload' => ['uid' => self::IMAGE_PROFILE_UID],
+            'multipart' => true,
+        ];
+    }
+
+    /**
+     * The seven endpoints of {@see writingEndpoints()} whose transport is a
+     * JSON body.
+     *
+     * They are the rows the control case below can assert on **both** core
+     * versions: a JSON write never touches `ResourceStorage`, so the reason the
+     * upload is a v14-only success — see
+     * {@see AbstractProfileAjaxTestCase::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13}
+     * — does not apply to them.
+     *
+     * @return \Generator<string, array{action: string, payload: array<string, mixed>}>
+     */
+    public static function jsonWritingEndpoints(): \Generator
     {
         yield 'save' => [
             'action' => 'save',
@@ -88,11 +116,6 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
         yield 'setChildVisibility' => [
             'action' => 'setChildVisibility',
             'payload' => ['uid' => self::OWNED_PROFILE_UID, 'child' => 'address', 'childUid' => 1, 'hidden' => true],
-        ];
-        yield 'uploadImage' => [
-            'action' => 'uploadImage',
-            'payload' => ['uid' => self::IMAGE_PROFILE_UID],
-            'multipart' => true,
         ];
         yield 'removeImage' => [
             'action' => 'removeImage',
@@ -133,19 +156,48 @@ final class ProfileAjaxWorkspaceTest extends AbstractProfileAjaxTestCase
      * Without this the test above would also pass for a fixture middleware that
      * broke the endpoint outright, and for a guard that refuses every write.
      *
+     * The upload is the one endpoint this cannot cover on both core versions,
+     * and it is a test of its own below rather than a row here — the refusal
+     * above keeps covering it everywhere, which is the half that matters for a
+     * guard.
+     *
      * @param array<string, mixed> $payload
      */
-    #[DataProvider('writingEndpoints')]
+    #[DataProvider('jsonWritingEndpoints')]
     #[Test]
-    public function theSameWriteSucceedsInTheLiveWorkspace(
-        string $action,
-        array $payload,
-        bool $multipart = false,
-    ): void {
+    public function theSameWriteSucceedsInTheLiveWorkspace(string $action, array $payload): void
+    {
         $response = $this->sendWriteRequest(
             action: $action,
             payload: $payload,
-            multipart: $multipart,
+            frontendUserId: self::OWNER_FRONTEND_USER_ID,
+            workspaceId: 0,
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    /**
+     * The same control case for the upload, which only TYPO3 v14 can answer
+     * from a test.
+     *
+     * It is the `uploadImage` row of {@see writingEndpoints()}, sent with
+     * workspace `0`, and it exists as a test of its own because a PHPUnit group
+     * excludes a **method**, not a data set: keeping it in the provider above
+     * would have taken the seven JSON control cases off the v13 run with it.
+     *
+     * {@see AbstractProfileAjaxTestCase::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13}
+     * states what v13 refuses, why production is unaffected, and where the same
+     * path is covered on v13 instead.
+     */
+    #[Group(self::UPLOAD_CANNOT_BE_SIMULATED_ON_CORE_13)]
+    #[Test]
+    public function theSameUploadSucceedsInTheLiveWorkspace(): void
+    {
+        $response = $this->sendWriteRequest(
+            action: 'uploadImage',
+            payload: ['uid' => self::IMAGE_PROFILE_UID],
+            multipart: true,
             frontendUserId: self::OWNER_FRONTEND_USER_ID,
             workspaceId: 0,
         );

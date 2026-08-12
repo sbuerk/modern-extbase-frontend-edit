@@ -210,6 +210,7 @@ the shadow roots and back up to the field element.
 | [`InlineEdit.spec.ts`](../../Tests/Acceptance/Frontend/InlineEdit.spec.ts)                         | A saved field is served after a reload; cancel reverts to the last **server known** value; a `422` shows at the field and keeps the draft; focus, Enter and Escape. |
 | [`ChildCollections.spec.ts`](../../Tests/Acceptance/Frontend/ChildCollections.spec.ts)             | The stored order including the owner's hidden record; adding stores what was typed; reorder and removal survive a reload; unhiding is persisted.                    |
 | [`ProgressiveEnhancement.spec.ts`](../../Tests/Acceptance/Frontend/ProgressiveEnhancement.spec.ts) | The profile is readable without JavaScript; `lit` resolves from the import map; the upgraded element does not slot its light DOM.                                   |
+| [`ImageUpload.spec.ts`](../../Tests/Acceptance/Frontend/ImageUpload.spec.ts)                       | A picked file is stored and served after a reload, and the file itself is fetchable; a removal takes the record *and* the file with it.                             |
 
 Every spec that asserts a write asserts it twice: the **reloaded page** has to
 serve the new value, which is the only proof that the server persisted it rather
@@ -244,12 +245,17 @@ TYPO3 core reaches this extension as a broken page rather than as a red gate.
   `data-profile`, an `ajaxPageType` of `0`, a missing request token — are not
   covered. Each needs a differently misconfigured instance, i.e. a second seeded
   instance per condition.
-- **The image surface.** Picking a file, the upload round trip, the replacement
-  and the removal have no spec here. Playwright can set a file on an input, so
-  this is a gap of effort rather than of possibility: the server half is covered
-  by the functional suite, the decisions by `imageEdit.test.ts`, and nothing yet
-  drives the two together in a browser.
+- **The rest of the image surface.** `ImageUpload.spec.ts` drives the upload and
+  the removal; the **replacement** of an existing image and the "pick it again"
+  notice a rejected file produces have no spec. Both are covered by the
+  functional suite on v14 and by `imageEdit.test.ts` for the decisions, so what
+  is missing is the browser half of two cases rather than of the surface.
   → [Image handling](../frontend-edit/image-handling.md)
+
+  This suite is also where a successful upload is covered **on v13 at all**: the
+  functional simulation of one is impossible there, and this is a real upload
+  through apache.
+  → [A successful upload can only be simulated on v14](../frontend-edit/image-handling.md#a-successful-upload-can-only-be-simulated-on-v14)
 
 ## See also
 

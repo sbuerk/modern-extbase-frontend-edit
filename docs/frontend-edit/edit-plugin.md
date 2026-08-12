@@ -480,6 +480,7 @@ TYPO3 instance with Playwright.
 | The light DOM stays readable when the element does not upgrade                | `ProgressiveEnhancement.spec.ts` |
 | The shadow root does **not** slot the light DOM children once it upgrades     | `ProgressiveEnhancement.spec.ts` |
 | `lit` resolves from the frontend import map                                   | `ProgressiveEnhancement.spec.ts` |
+| A picked file is uploaded, served after a reload, and removable again         | `ImageUpload.spec.ts`            |
 
 What is still open, and why:
 
@@ -487,12 +488,13 @@ What is still open, and why:
   malformed `data-profile`, an `ajaxPageType` of `0`, an incomplete endpoint map
   and a missing request token each need a differently misconfigured instance,
   i.e. one seeded instance per condition.
-- **The whole image surface.** Picking a file, the upload round trip, the
-  replacement, the removal and the "pick it again" notice have no acceptance
-  spec. Playwright can set a file on an input, so this is a gap of effort rather
-  than of possibility; the server half is covered by the functional tests and the
-  decisions are covered by `imageEdit.test.ts`, but nothing yet drives the three
-  together in a browser.
+- **Two cases of the image surface.** Picking a file, the upload round trip and
+  the removal are covered by `ImageUpload.spec.ts`; the **replacement** of an
+  existing image and the "pick it again" notice a rejected file produces are
+  not. The server half of both is covered by the functional tests — on v14, for
+  [a core reason](image-handling.md#a-successful-upload-can-only-be-simulated-on-v14)
+  — and the decisions by `imageEdit.test.ts`, so what is missing is the browser
+  half of two cases.
 - **Focus onto the first field a `422` named**, as opposed to into a freshly
   opened control.
 - **The `<select>` value synchronisation in `updated()`**, which exists because a
