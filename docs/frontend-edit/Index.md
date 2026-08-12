@@ -91,8 +91,10 @@ supported core versions.
   writable properties, and `_setProperty()` is never called.
   → [DTOs and validation](dto-and-validation.md#pid-and-uid-are-impossible-by-mechanism-not-by-check)
 - Persistence is **Extbase, not DataHandler** — a deliberate trade that costs
-  `sys_history`, DataHandler hooks and reference index maintenance, and puts
-  sorting and orphan removal in our hands.
+  `sys_history` and DataHandler hooks, and puts sorting and orphan removal in
+  our hands. It does **not** cost reference index maintenance: Extbase updates
+  the index for every row it writes, which is what the file cleanup relies on.
+  → [Image handling](image-handling.md)
   → [Persistence and sorting](persistence-and-sorting.md)
 - The schema is language, workspace, soft-delete and hidden aware, but the edit
   plugin **refuses to write while a workspace is active**. That gap is named

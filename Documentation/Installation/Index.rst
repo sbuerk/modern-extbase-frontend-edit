@@ -6,10 +6,23 @@
 Installation
 ============
 
-The extension has to be installed like any other TYPO3 CMS extension.
+Installing the extension is one command. Making it show anything takes four
+more steps, because it edits records that belong to website users and neither
+the records nor the users exist yet.
 
-Composer mode
-=============
+Requirements
+============
+
+*   TYPO3 v13.4 or v14.3
+*   PHP 8.2 up to 8.5
+*   A website user login on the site the editing plugin is placed on. This
+    extension ships none — any frontend login solution will do.
+
+No build step is required. The compiled JavaScript and CSS are part of the
+package.
+
+Install the package
+===================
 
 ..  code-block:: bash
 
@@ -28,31 +41,36 @@ Composer mode
     together with ``prefer-stable`` set to ``true`` in the root
     :file:`composer.json` file.
 
+Set it up
+=========
+
+#.  **Create a storage folder** and configure it as the storage page. Profile
+    records are read from it and written next to it. There is no value meaning
+    "every page" — without one, the plugins query page zero and find nothing.
+
+#.  **Place the plugins.** :guilabel:`Profiles: list` on a listing page,
+    :guilabel:`Profiles: detail` on a detail page,
+    :guilabel:`Profiles: edit` on the page a logged-in user edits their own
+    profile on. Point the settings at the pages holding the detail and edit
+    plugins, otherwise no links to them are rendered.
+
+#.  **Create a profile record** and assign a website user as its owner. A
+    profile with no owner is visible in the list and the detail view, and can
+    never be edited in the frontend.
+
+#.  **Check the upload limits** if profile images are wanted. The extension
+    refuses an image above its own limit with a message; a file above the PHP
+    or web server limit never reaches it, and the visitor sees the server's
+    error instead. Keep :php:`upload_max_filesize` and :php:`post_max_size`
+    above the extension's limit — see :ref:`reference-image-upload`.
+
+:ref:`configuration` describes the settings, both spellings of them, and how to
+override the templates.
+
 Classic mode
 ============
 
-#.  **Get it from the Extension Manager**:
-    Switch to the module :guilabel:`Admin Tools > Extensions`, switch to
-    :guilabel:`Get Extensions` and search for the extension key
-    *modern_extbase_frontend_edit*, then import the extension from the repository.
-
-#.  **Get it from typo3.org**:
-    You can always get the current version from `TER`_ by downloading the zip
-    version. Upload the file afterwards in the Extension Manager.
-
-..  _TER: https://extensions.typo3.org/extension/modern_extbase_frontend_edit
-
-Configuration
-=============
-
-The two profile plugins need a storage page before they render anything, and
-the list plugin needs to know which page holds the detail plugin before it can
-link to it.
-
-Either add the site set :guilabel:`Profiles` to the site configuration and fill
-in its settings, or set the equivalent TypoScript constants below
-:typoscript:`plugin.tx_modernextbasefrontendedit`. Both spellings, and what
-each setting does, are described in the changelog entry for the plugins.
-
-There is no value meaning "every page": a storage page has to be named, or the
-plugins query page zero and find nothing.
+The extension is developed and tested in composer mode. It carries an
+:file:`ext_emconf.php` and has no composer-only dependency, so a classic mode
+installation is expected to work, but it is not part of the test matrix and no
+release has been published to the TYPO3 Extension Repository yet.
