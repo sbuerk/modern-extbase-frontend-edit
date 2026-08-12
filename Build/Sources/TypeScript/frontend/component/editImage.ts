@@ -39,6 +39,7 @@
 import { css, html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
+import { icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js';
 import { controls } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js';
 import { field } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js';
 import type { ProfileImageRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
@@ -150,7 +151,8 @@ export class EditImageElement extends LitElement {
                             ?disabled="${this.busy || this.image === null}"
                             @click="${this.onRemove}"
                         >
-                            ${this.text(actionLabelKey('remove'))}
+                            ${icon('remove')}
+                            <span class="button-label">${this.text(actionLabelKey('remove'))}</span>
                         </button>
                     </span>
                 </div>

@@ -36,6 +36,10 @@ colour was written three times in three files.
 
 *   Buttons and controls share one box: the same height, border, radius and
     focus ring.
+*   Every button carries an icon, drawn inline in the extension's own JavaScript
+    — no icon font, no request, and nothing for the Content Security Policy to
+    permit. In the toolbar of a child record the text is hidden and the icon
+    stands alone; the label is still announced by a screen reader.
 *   Buttons carry emphasis. The one that commits a pending change —
     :guilabel:`Apply`, :guilabel:`Save all fields`, :guilabel:`Add` — is filled
     in the accent colour, and :guilabel:`Remove` is labelled in the danger

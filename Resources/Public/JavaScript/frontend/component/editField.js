@@ -11,6 +11,7 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
+import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
 import { controls } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js";
 import { field } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js";
 import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
@@ -160,7 +161,8 @@ let EditFieldElement = class extends LitElement {
     if (!this.editing) {
       return html`
                 <button type="button" aria-describedby="label" ?disabled="${this.busy}" @click="${this.onEdit}">
-                    ${label(this.labels, actionLabelKey("edit"))}
+                    ${icon("edit")}
+                    <span class="button-label">${label(this.labels, actionLabelKey("edit"))}</span>
                 </button>
             `;
     }
@@ -173,10 +175,12 @@ let EditFieldElement = class extends LitElement {
                     ?disabled="${this.busy}"
                     @click="${this.onApply}"
                 >
-                    ${label(this.labels, actionLabelKey("apply"))}
+                    ${icon("apply")}
+                    <span class="button-label">${label(this.labels, actionLabelKey("apply"))}</span>
                 </button>
                 <button type="button" aria-describedby="label" ?disabled="${this.busy}" @click="${this.onCancel}">
-                    ${label(this.labels, actionLabelKey("cancel"))}
+                    ${icon("cancel")}
+                    <span class="button-label">${label(this.labels, actionLabelKey("cancel"))}</span>
                 </button>
             </span>
         `;

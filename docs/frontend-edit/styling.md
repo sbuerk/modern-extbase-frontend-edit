@@ -157,6 +157,42 @@ surface draws and asserts the complete mapping, so a button added later fails
 until somebody decides what it is. It asserts nothing about colour — the
 stylesheet may change what `primary` looks like without touching the spec.
 
+## The icons are inline SVG, and that was the only option
+
+`Build/Sources/TypeScript/frontend/icon/icons.ts` draws ten glyphs by hand. Two
+alternatives were available and both are closed:
+
+- **An icon font or an SVG sprite from a CDN** is refused by the Content Security
+  Policy this extension declares, which permits the installation's own origin
+  only.
+- **TYPO3's `IconFactory`, through a ViewHelper**, cannot reach these buttons.
+  Every action is rendered *client side*, in a shadow root, from JSON handed over
+  in an attribute — by the time a button exists, Fluid has long finished.
+
+Inline SVG touches no CSP directive at all (markup is not a fetch), costs no
+request, and inherits `currentColor`, so a glyph follows whatever colour its
+button already has — including the danger red and the filled primary.
+
+**Icons are decoration, and the label is never in `aria-label`.** Every glyph is
+`aria-hidden="true"` and `focusable="false"`, and every button carries its
+translated text in a `<span class="button-label">` — visible in most places,
+visually hidden in the record toolbars.
+
+That distinction is load bearing rather than pedantic. The tempting
+implementation of an icon-only button is `aria-label` and no text, which reads
+correctly to a screen reader and leaves the button with **no `textContent` at
+all** — silently breaking `ButtonHierarchy.spec.ts`, which enumerates buttons by
+their text. A visually hidden span satisfies the accessible name *and*
+`textContent`, and degrades into visible text if the stylesheet never loads.
+`Tests/Acceptance/Frontend/ActionIcons.spec.ts` asserts exactly this, and was
+shown to fail against the `aria-label` version.
+
+**Only the record toolbars drop their labels** — move, hide, remove, repeated
+once per child. Four wide text buttons per child were the heaviest thing on the
+surface, row-level actions are the case where an icon alone is understood, and it
+is the treatment the TYPO3 backend gives the equivalent controls in a record
+list. Everything else keeps icon *and* text.
+
 ## Class names are structural, not presentational
 
 `.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by

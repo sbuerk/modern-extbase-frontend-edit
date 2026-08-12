@@ -74,6 +74,46 @@ export const controls: CSSResult = css`
     }
 
     /*
+     * Sized in "em" so a glyph tracks the type around it rather than being
+     * pinned to a pixel size the site cannot influence, and "block" because an
+     * inline SVG otherwise sits on the text baseline and drags the button's line
+     * box down with its descender space.
+     */
+    .icon {
+        display: block;
+        width: 1.15em;
+        height: 1.15em;
+        flex: none;
+    }
+
+    /*
+     * A record toolbar - move, hide, remove, repeated once per child - is the
+     * one place the labels are dropped. Four wide text buttons per child were
+     * the heaviest thing on the surface, and row level actions are the case
+     * where an icon alone is understood; it is the same treatment the TYPO3
+     * backend gives the equivalent controls in a record list.
+     *
+     * The text is hidden, never removed. It stays in the accessibility tree, in
+     * "textContent" and in the accessible name, so every spec that addresses a
+     * button by its label keeps working and a screen reader still hears "Move
+     * up" rather than "button".
+     */
+    button[data-icon-only] {
+        padding-inline: var(--frontend-edit-control-padding-block);
+    }
+
+    button[data-icon-only] .button-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        clip-path: inset(50%);
+    }
+
+    /*
      * The one filled button in a row: it commits the change the reader came to
      * make. Filled rather than merely tinted, because in a row of four or five
      * bordered buttons a tint is not a hierarchy, it is a shade.

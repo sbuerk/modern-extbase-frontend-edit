@@ -101,6 +101,7 @@ import {
 } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js';
 import type { EndpointResult } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/response.js';
 import { ProfileEndpointClient } from '@sbuerk/modern-extbase-frontend-edit/frontend/api/client.js';
+import { icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js';
 import { controls } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js';
 import { tokens } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/tokens.js';
 import '@sbuerk/modern-extbase-frontend-edit/frontend/component/editField.js';
@@ -373,10 +374,12 @@ export class ProfileEditElement extends LitElement {
                     ?disabled="${edit.busy}"
                     @click="${(): void => void this.submitRecord(target)}"
                 >
-                    ${this.text(actionLabelKey('save'))}
+                    ${icon('apply')}
+                    <span class="button-label">${this.text(actionLabelKey('save'))}</span>
                 </button>
                 <button type="button" ?disabled="${edit.busy}" @click="${(): void => this.cancelRecord(target)}">
-                    ${this.text(actionLabelKey('cancel'))}
+                    ${icon('cancel')}
+                    <span class="button-label">${this.text(actionLabelKey('cancel'))}</span>
                 </button>
             `;
         }
@@ -387,7 +390,8 @@ export class ProfileEditElement extends LitElement {
                 ?disabled="${edit?.busy ?? false}"
                 @click="${(): void => this.beginRecord(profile, target)}"
             >
-                ${this.text(actionLabelKey('editRecord'))}
+                ${icon('editRecord')}
+                <span class="button-label">${this.text(actionLabelKey('editRecord'))}</span>
             </button>
         `;
     }
@@ -458,32 +462,40 @@ export class ProfileEditElement extends LitElement {
                 <div class="child-actions">
                     <button
                         type="button"
+                        data-icon-only
                         ?disabled="${busy || index === 0}"
                         @click="${(): void => void this.moveChild(child, record.uid, -1)}"
                     >
-                        ${this.text(actionLabelKey('moveUp'))}
+                        ${icon('moveUp')}
+                        <span class="button-label">${this.text(actionLabelKey('moveUp'))}</span>
                     </button>
                     <button
                         type="button"
+                        data-icon-only
                         ?disabled="${busy || index === total - 1}"
                         @click="${(): void => void this.moveChild(child, record.uid, 1)}"
                     >
-                        ${this.text(actionLabelKey('moveDown'))}
+                        ${icon('moveDown')}
+                        <span class="button-label">${this.text(actionLabelKey('moveDown'))}</span>
                     </button>
                     <button
                         type="button"
+                        data-icon-only
                         ?disabled="${busy}"
                         @click="${(): void => void this.setChildVisibility(child, record.uid, !hidden)}"
                     >
-                        ${this.text(actionLabelKey(hidden ? 'show' : 'hide'))}
+                        ${icon(hidden ? 'show' : 'hide')}
+                        <span class="button-label">${this.text(actionLabelKey(hidden ? 'show' : 'hide'))}</span>
                     </button>
                     <button
                         type="button"
+                        data-icon-only
                         data-variant="danger"
                         ?disabled="${busy}"
                         @click="${(): void => void this.deleteChild(child, record.uid)}"
                     >
-                        ${this.text(actionLabelKey('remove'))}
+                        ${icon('remove')}
+                        <span class="button-label">${this.text(actionLabelKey('remove'))}</span>
                     </button>
                     ${hidden ? html`<span class="state">${this.text(stateLabelKey('hidden'))}</span>` : nothing}
                 </div>
@@ -538,7 +550,8 @@ export class ProfileEditElement extends LitElement {
                         ?disabled="${edit?.busy ?? false}"
                         @click="${(): void => void this.addChild(child)}"
                     >
-                        ${this.text(actionLabelKey('add'))}
+                        ${icon('add')}
+                        <span class="button-label">${this.text(actionLabelKey('add'))}</span>
                     </button>
                 </div>
             </div>
