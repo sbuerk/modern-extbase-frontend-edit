@@ -265,6 +265,7 @@ Build/Scripts/runTests.sh -t 13 -s composerValidate
 Build/Scripts/runTests.sh -t 13 -s checkBom
 Build/Scripts/runTests.sh -t 13 -s checkExceptionCodes
 Build/Scripts/runTests.sh -t 13 -s checkMarkdownTables
+Build/Scripts/runTests.sh -t 13 -s checkRstSectionAdornments
 Build/Scripts/runTests.sh -t 13 -s checkTestMethodsPrefix
 
 # Then the same for TYPO3 v14, starting with composerUpdate again.

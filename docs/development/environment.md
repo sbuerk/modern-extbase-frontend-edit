@@ -64,6 +64,7 @@ hosted runners, not of this repository.
 | `checkBom`                   | UTF-8 files must not contain a BOM.                                           |
 | `checkExceptionCodes`        | Duplicate or missing exception codes.                                         |
 | `checkMarkdownTables`        | Markdown tables must be formatted, `-- --fix` formats them.                   |
+| `checkRstSectionAdornments`  | reST adornments must match their title, `-- --fix` adjusts them.              |
 | `checkTestMethodsPrefix`     | Test methods must not start with `test`.                                      |
 | `lintTypescript`             | eslint over every TypeScript tree, fixes in place, `-n` checks.               |
 | `typecheckJs`                | `tsc --noEmit` over every TypeScript tree, which the asset build does not do. |
