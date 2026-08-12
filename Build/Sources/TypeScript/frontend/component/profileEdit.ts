@@ -81,23 +81,8 @@ import {
     recordValues,
 } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/profileRecord.js';
 import { imageField } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js';
-import type { EditMap, RecordEdit } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js';
-import {
-    applyErrors,
-    beginFieldEdit,
-    beginRecordEdit,
-    clearErrors,
-    draftOf,
-    editOf,
-    emptyEditMap,
-    endFieldEdit,
-    endRecordEdit,
-    errorsOf,
-    generalErrorsOf,
-    isBusy,
-    setBusy,
-    setDraft,
-} from '@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js';
+import type { RecordEdit } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js';
+import { EditSessions } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js';
 import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 import { actionLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 import { readJson } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/json.js';
@@ -201,7 +186,7 @@ export class ProfileEditElement extends LitElement {
     private profile: ProfileRecord | null = null;
 
     @state()
-    private edits: EditMap = emptyEditMap();
+    private edits: EditSessions = EditSessions.empty();
 
     @state()
     private labels: LabelMap = {};
@@ -288,7 +273,7 @@ export class ProfileEditElement extends LitElement {
     }
 
     private renderRecord(profile: ProfileRecord, target: RecordTarget): TemplateResult {
-        const edit = editOf(this.edits, target);
+        const edit = this.edits.of(target);
 
         return html`
             <div class="record">
@@ -330,7 +315,7 @@ export class ProfileEditElement extends LitElement {
                 .labels="${this.labels}"
                 .profileName="${displayName(profile)}"
                 .busy="${edit?.busy ?? false}"
-                .errors="${errorsOf(this.edits, target, imageField)}"
+                .errors="${this.edits.errorsOf(target, imageField)}"
                 .rejected="${this.imageRejected}"
                 @image-select="${(event: CustomEvent<{ file: File }>): void =>
                     void this.uploadImage(event.detail.file)}"
@@ -382,11 +367,11 @@ export class ProfileEditElement extends LitElement {
                 .scope="${targetScope(target)}"
                 .labels="${this.labels}"
                 .serverValue="${stored}"
-                .draftValue="${draftOf(this.edits, target, field, stored)}"
+                .draftValue="${this.edits.draftOf(target, field, stored)}"
                 .editing="${edit?.fields.includes(field) ?? false}"
                 .busy="${edit?.busy ?? false}"
                 .recordMode="${edit?.mode === 'record'}"
-                .errors="${errorsOf(this.edits, target, field)}"
+                .errors="${this.edits.errorsOf(target, field)}"
                 @field-edit="${(): void => this.beginField(profile, target, field)}"
                 @field-input="${(event: CustomEvent<{ value: string }>): void =>
                     this.onInput(target, field, event.detail.value)}"
@@ -423,7 +408,7 @@ export class ProfileEditElement extends LitElement {
         total: number,
     ): TemplateResult {
         const target = childTarget(child, record.uid);
-        const busy = isBusy(this.edits, target);
+        const busy = this.edits.isBusy(target);
         const hidden = isChildHidden(profile, child, record.uid);
 
         return html`
@@ -477,7 +462,7 @@ export class ProfileEditElement extends LitElement {
     private renderNewChild(child: ChildType): TemplateResult {
         const target = newChildTarget(child);
         const defaults = initialValues(fieldsOfChild(child));
-        const edit = editOf(this.edits, target);
+        const edit = this.edits.of(target);
 
         return html`
             <div class="child child-new">
@@ -492,11 +477,11 @@ export class ProfileEditElement extends LitElement {
                             .scope="${child}"
                             .labels="${this.labels}"
                             .serverValue="${''}"
-                            .draftValue="${draftOf(this.edits, target, field, defaults[field] ?? '')}"
+                            .draftValue="${this.edits.draftOf(target, field, defaults[field] ?? '')}"
                             .editing="${true}"
                             .busy="${edit?.busy ?? false}"
                             .recordMode="${true}"
-                            .errors="${errorsOf(this.edits, target, field)}"
+                            .errors="${this.edits.errorsOf(target, field)}"
                             @field-input="${(event: CustomEvent<{ value: string }>): void =>
                                 this.onInput(target, field, event.detail.value)}"
                             @field-apply="${(): void => void this.addChild(child)}"
@@ -514,7 +499,7 @@ export class ProfileEditElement extends LitElement {
     }
 
     private renderGeneralErrors(target: RecordTarget): TemplateResult | typeof nothing {
-        const messages = generalErrorsOf(this.edits, target);
+        const messages = this.edits.generalErrorsOf(target);
         if (messages.length === 0) {
             return nothing;
         }
@@ -527,12 +512,12 @@ export class ProfileEditElement extends LitElement {
     }
 
     private beginField(profile: ProfileRecord, target: RecordTarget, field: string): void {
-        this.edits = beginFieldEdit(this.edits, target, field, fieldValue(profile, target, field));
+        this.edits = this.edits.beginField(target, field, fieldValue(profile, target, field));
         this.pendingFocus = focusKey(target, field);
     }
 
     private onInput(target: RecordTarget, field: string, value: string): void {
-        this.edits = setDraft(this.edits, target, field, value);
+        this.edits = this.edits.setDraft(target, field, value);
     }
 
     /**
@@ -543,12 +528,12 @@ export class ProfileEditElement extends LitElement {
      * for.
      */
     private cancelField(target: RecordTarget, field: string): void {
-        if (editOf(this.edits, target)?.mode === 'record') {
+        if (this.edits.of(target)?.mode === 'record') {
             this.cancelRecord(target);
 
             return;
         }
-        this.edits = endFieldEdit(this.edits, target, field);
+        this.edits = this.edits.endField(target, field);
     }
 
     /**
@@ -560,7 +545,7 @@ export class ProfileEditElement extends LitElement {
 
             return;
         }
-        const edit = editOf(this.edits, target);
+        const edit = this.edits.of(target);
         if (edit === null || edit.busy) {
             return;
         }
@@ -569,30 +554,30 @@ export class ProfileEditElement extends LitElement {
 
             return;
         }
-        const value = draftOf(this.edits, target, field, '');
+        const value = this.edits.draftOf(target, field, '');
         await this.send(
             target,
             'saveField',
             (profile: ProfileRecord): Payload => fieldPayload(profile.uid, target, field, value),
             (): void => {
-                this.edits = endFieldEdit(this.edits, target, field);
+                this.edits = this.edits.endField(target, field);
             },
         );
     }
 
     private beginRecord(profile: ProfileRecord, target: RecordTarget): void {
         const values = recordValues(profile, target);
-        this.edits = beginRecordEdit(this.edits, target, values);
+        this.edits = this.edits.beginRecord(target, values);
         const first = Object.keys(values).at(0);
         this.pendingFocus = first === undefined ? null : focusKey(target, first);
     }
 
     private cancelRecord(target: RecordTarget): void {
-        this.edits = endRecordEdit(this.edits, target);
+        this.edits = this.edits.endRecord(target);
     }
 
     private async submitRecord(target: RecordTarget): Promise<void> {
-        const edit = editOf(this.edits, target);
+        const edit = this.edits.of(target);
         if (edit === null || edit.busy) {
             return;
         }
@@ -602,14 +587,14 @@ export class ProfileEditElement extends LitElement {
             'save',
             (profile: ProfileRecord): Payload => recordPayload(profile.uid, target, data),
             (): void => {
-                this.edits = endRecordEdit(this.edits, target);
+                this.edits = this.edits.endRecord(target);
             },
         );
     }
 
     private async addChild(child: ChildType): Promise<void> {
         const target = newChildTarget(child);
-        if (isBusy(this.edits, target)) {
+        if (this.edits.isBusy(target)) {
             return;
         }
         const data = this.draftValues(target);
@@ -620,7 +605,7 @@ export class ProfileEditElement extends LitElement {
             (): void => {
                 // Drops the drafts, so the form goes back to the values a new
                 // record starts from.
-                this.edits = endRecordEdit(this.edits, target);
+                this.edits = this.edits.endRecord(target);
             },
         );
     }
@@ -639,7 +624,7 @@ export class ProfileEditElement extends LitElement {
             'removeChild',
             (profile: ProfileRecord): Payload => removeChildPayload(profile.uid, child, childUid),
             (): void => {
-                this.edits = endRecordEdit(this.edits, target);
+                this.edits = this.edits.endRecord(target);
             },
         );
     }
@@ -747,12 +732,12 @@ export class ProfileEditElement extends LitElement {
     ): Promise<EndpointResult | null> {
         const client = this.client;
         const profile = this.profile;
-        if (client === null || profile === null || isBusy(this.edits, target)) {
+        if (client === null || profile === null || this.edits.isBusy(target)) {
             return null;
         }
-        this.edits = setBusy(clearErrors(this.edits, target), target, true);
+        this.edits = this.edits.clearErrors(target).setBusy(target, true);
         const result = await client.send(action, body(profile));
-        this.edits = setBusy(this.edits, target, false);
+        this.edits = this.edits.setBusy(target, false);
         this.applyResult(result, target, onSuccess);
 
         return result;
@@ -771,21 +756,21 @@ export class ProfileEditElement extends LitElement {
     private applyResult(result: EndpointResult, target: RecordTarget, onSuccess: () => void): void {
         if (result.kind === 'success') {
             this.profile = result.profile;
-            this.edits = clearErrors(this.edits, target);
+            this.edits = this.edits.clearErrors(target);
             onSuccess();
 
             return;
         }
 
         if (result.kind === 'validation') {
-            this.edits = applyErrors(this.edits, target, result.fieldErrors, result.generalErrors);
+            this.edits = this.edits.applyErrors(target, result.fieldErrors, result.generalErrors);
             const first = Object.keys(result.fieldErrors).at(0);
             this.pendingFocus = first === undefined ? null : focusKey(target, first);
 
             return;
         }
 
-        this.edits = applyErrors(this.edits, target, {}, [this.requestErrorText(result.status)]);
+        this.edits = this.edits.applyErrors(target, {}, [this.requestErrorText(result.status)]);
     }
 
     /**
@@ -803,7 +788,7 @@ export class ProfileEditElement extends LitElement {
             const stored = profile === null || isNewChildTarget(target)
                 ? defaults[definition.name] ?? ''
                 : fieldValue(profile, target, definition.name);
-            values[definition.name] = draftOf(this.edits, target, definition.name, stored);
+            values[definition.name] = this.edits.draftOf(target, definition.name, stored);
         }
 
         return values;

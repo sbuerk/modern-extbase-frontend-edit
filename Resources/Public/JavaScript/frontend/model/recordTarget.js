@@ -18,9 +18,6 @@ function targetKey(target) {
   }
   return `${target.child}:${target.childUid ?? "new"}`;
 }
-function targetsEqual(one, other) {
-  return one.child === other.child && one.childUid === other.childUid;
-}
 function targetScope(target) {
   return target.child ?? "profile";
 }
@@ -31,6 +28,5 @@ export {
   newChildTarget,
   profileTarget,
   targetKey,
-  targetScope,
-  targetsEqual
+  targetScope
 };

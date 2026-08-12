@@ -118,7 +118,7 @@ extension of your own can therefore import from this one:
 ..  code-block:: javascript
     :caption: EXT:my_extension/Resources/Public/JavaScript/custom.js
 
-    import { assetsLoadedClass } from '@sbuerk/modern-extbase-frontend-edit/frontend-edit.js';
+    import { assetsLoadedClass } from '@sbuerk/modern-extbase-frontend-edit/frontend/documentState.js';
 
 Loading a different module in place of the shipped one is a template decision:
 override the Fluid template and change the :html:`identifier` of

@@ -5,7 +5,7 @@
  * nothing else; ending it removes the draft, and what a control then shows is
  * whatever `fieldValue()` answers for the *current* state. The pair is asserted
  * together below, because either half alone can look right while the composition
- * is wrong — a draft that survives `endFieldEdit()` reverts a field to what the
+ * is wrong — a draft that survives `endField()` reverts a field to what the
  * user typed, which is the exact opposite of cancelling.
  *
  * **A failed save keeps what was typed.** A `422` adds errors and leaves the
@@ -17,24 +17,7 @@
  */
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import type { EditMap } from '../../../Sources/TypeScript/frontend/model/editState.js';
-import {
-    applyErrors,
-    beginFieldEdit,
-    beginRecordEdit,
-    clearErrors,
-    draftOf,
-    editOf,
-    emptyEditMap,
-    endFieldEdit,
-    endRecordEdit,
-    errorsOf,
-    generalErrorsOf,
-    isBusy,
-    isEditing,
-    setBusy,
-    setDraft,
-} from '../../../Sources/TypeScript/frontend/model/editState.js';
+import { EditSessions } from '../../../Sources/TypeScript/frontend/model/editState.js';
 import { fieldValue, parseProfileRecord, recordValues } from '../../../Sources/TypeScript/frontend/model/profileRecord.js';
 import { childTarget, newChildTarget, profileTarget } from '../../../Sources/TypeScript/frontend/model/recordTarget.js';
 import type { ProfileRecord } from '../../../Sources/TypeScript/frontend/model/types.js';
@@ -51,59 +34,59 @@ function parsed(document: unknown = profileDocument): ProfileRecord {
  * What a control shows: the draft when there is one, the state otherwise. This
  * is the composition the component renders with, so it is the one asserted.
  */
-function shown(edits: EditMap, profile: ProfileRecord, field: string): string {
-    return draftOf(edits, profileTarget, field, fieldValue(profile, profileTarget, field));
+function shown(edits: EditSessions, profile: ProfileRecord, field: string): string {
+    return edits.draftOf(profileTarget, field, fieldValue(profile, profileTarget, field));
 }
 
 describe('a single field session', (): void => {
     it('starts from the value it was seeded with and records what is typed', (): void => {
         const profile = parsed();
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', fieldValue(profile, profileTarget, 'firstname'));
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', fieldValue(profile, profileTarget, 'firstname'));
 
-        assert.ok(isEditing(edits, profileTarget, 'firstname'));
+        assert.ok(edits.isEditing(profileTarget, 'firstname'));
         assert.equal(shown(edits, profile, 'firstname'), 'Ada');
 
-        edits = setDraft(edits, profileTarget, 'firstname', 'Augusta');
+        edits = edits.setDraft(profileTarget, 'firstname', 'Augusta');
 
         assert.equal(shown(edits, profile, 'firstname'), 'Augusta');
     });
 
     it('leaves an already open field alone, so a second click keeps the draft', (): void => {
         const profile = parsed();
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
-        edits = setDraft(edits, profileTarget, 'firstname', 'Augusta');
-        const again = beginFieldEdit(edits, profileTarget, 'firstname', 'Ada');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
+        edits = edits.setDraft(profileTarget, 'firstname', 'Augusta');
+        const again = edits.beginField(profileTarget, 'firstname', 'Ada');
 
         assert.equal(again, edits, 'the map is answered unchanged');
         assert.equal(shown(again, profile, 'firstname'), 'Augusta');
     });
 
     it('keeps the sessions of two fields of one record apart', (): void => {
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
-        edits = beginFieldEdit(edits, profileTarget, 'lastname', 'Lovelace');
-        edits = setDraft(edits, profileTarget, 'lastname', 'King');
-        edits = endFieldEdit(edits, profileTarget, 'lastname');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
+        edits = edits.beginField(profileTarget, 'lastname', 'Lovelace');
+        edits = edits.setDraft(profileTarget, 'lastname', 'King');
+        edits = edits.endField(profileTarget, 'lastname');
 
-        assert.ok(isEditing(edits, profileTarget, 'firstname'));
-        assert.equal(isEditing(edits, profileTarget, 'lastname'), false);
+        assert.ok(edits.isEditing(profileTarget, 'firstname'));
+        assert.equal(edits.isEditing(profileTarget, 'lastname'), false);
     });
 
     it('keys a session by the record it belongs to', (): void => {
-        const edits = beginFieldEdit(emptyEditMap(), childTarget('address', 8), 'line1', 'Analytical Engine');
+        const edits = EditSessions.empty().beginField(childTarget('address', 8), 'line1', 'Analytical Engine');
 
-        assert.ok(isEditing(edits, childTarget('address', 8), 'line1'));
-        assert.equal(isEditing(edits, childTarget('address', 9), 'line1'), false);
-        assert.equal(isEditing(edits, childTarget('email', 8), 'line1'), false);
-        assert.equal(isEditing(edits, profileTarget, 'line1'), false);
+        assert.ok(edits.isEditing(childTarget('address', 8), 'line1'));
+        assert.equal(edits.isEditing(childTarget('address', 9), 'line1'), false);
+        assert.equal(edits.isEditing(childTarget('email', 8), 'line1'), false);
+        assert.equal(edits.isEditing(profileTarget, 'line1'), false);
     });
 });
 
 describe('cancelling a field', (): void => {
     it('reverts to the value the state currently holds', (): void => {
         const profile = parsed();
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
-        edits = setDraft(edits, profileTarget, 'firstname', 'Augusta');
-        edits = endFieldEdit(edits, profileTarget, 'firstname');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
+        edits = edits.setDraft(profileTarget, 'firstname', 'Augusta');
+        edits = edits.endField(profileTarget, 'firstname');
 
         assert.equal(shown(edits, profile, 'firstname'), 'Ada');
     });
@@ -113,11 +96,11 @@ describe('cancelling a field', (): void => {
         // dropped as empty and the fallback is reached whether or not the draft
         // was discarded — so a single field cancel cannot tell the two apart.
         const profile = parsed();
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
-        edits = beginFieldEdit(edits, profileTarget, 'lastname', 'Lovelace');
-        edits = setDraft(edits, profileTarget, 'firstname', 'Augusta');
-        edits = setDraft(edits, profileTarget, 'lastname', 'King');
-        edits = endFieldEdit(edits, profileTarget, 'firstname');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
+        edits = edits.beginField(profileTarget, 'lastname', 'Lovelace');
+        edits = edits.setDraft(profileTarget, 'firstname', 'Augusta');
+        edits = edits.setDraft(profileTarget, 'lastname', 'King');
+        edits = edits.endField(profileTarget, 'firstname');
 
         assert.equal(shown(edits, profile, 'firstname'), 'Ada', 'the cancelled draft is gone');
         assert.equal(shown(edits, profile, 'lastname'), 'King', 'the other one is not');
@@ -130,9 +113,9 @@ describe('cancelling a field', (): void => {
         const atPageLoad = parsed();
         const afterFirstSave = parsed(profileDocumentWith({ firstname: 'Augusta' }));
 
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', fieldValue(afterFirstSave, profileTarget, 'firstname'));
-        edits = setDraft(edits, profileTarget, 'firstname', 'typed but discarded');
-        edits = endFieldEdit(edits, profileTarget, 'firstname');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', fieldValue(afterFirstSave, profileTarget, 'firstname'));
+        edits = edits.setDraft(profileTarget, 'firstname', 'typed but discarded');
+        edits = edits.endField(profileTarget, 'firstname');
 
         assert.equal(shown(edits, afterFirstSave, 'firstname'), 'Augusta');
         assert.notEqual(
@@ -143,29 +126,29 @@ describe('cancelling a field', (): void => {
     });
 
     it('drops a session that has no open field, no error and no request in flight', (): void => {
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
 
-        assert.notEqual(editOf(edits, profileTarget), null);
+        assert.notEqual(edits.of(profileTarget), null);
 
-        edits = endFieldEdit(edits, profileTarget, 'firstname');
+        edits = edits.endField(profileTarget, 'firstname');
 
-        assert.equal(editOf(edits, profileTarget), null, 'nothing worth keeping is kept');
+        assert.equal(edits.of(profileTarget), null, 'nothing worth keeping is kept');
         assert.equal(edits.size, 0);
     });
 
     it('keeps a session that still has something to report', (): void => {
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
-        edits = applyErrors(edits, profileTarget, {}, ['The record as a whole is wrong.']);
-        edits = endFieldEdit(edits, profileTarget, 'firstname');
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
+        edits = edits.applyErrors(profileTarget, {}, ['The record as a whole is wrong.']);
+        edits = edits.endField(profileTarget, 'firstname');
 
-        assert.notEqual(editOf(edits, profileTarget), null);
-        assert.deepEqual(generalErrorsOf(edits, profileTarget), ['The record as a whole is wrong.']);
+        assert.notEqual(edits.of(profileTarget), null);
+        assert.deepEqual(edits.generalErrorsOf(profileTarget), ['The record as a whole is wrong.']);
     });
 
     it('is a no-op on a record that is not being edited', (): void => {
-        const edits = emptyEditMap();
+        const edits = EditSessions.empty();
 
-        assert.equal(endFieldEdit(edits, profileTarget, 'firstname'), edits);
+        assert.equal(edits.endField(profileTarget, 'firstname'), edits);
     });
 });
 
@@ -173,7 +156,7 @@ describe('cancelling a field', (): void => {
  * The add form, which is the one record that types into a session it never
  * opened.
  *
- * Its controls are always rendered, so nothing ever calls `beginFieldEdit()`
+ * Its controls are always rendered, so nothing ever calls `beginField()`
  * for it and the only thing its session ever holds is a draft. `write()` used
  * to drop a session that had no open field *whatever was in its drafts*, so
  * every keystroke was discarded on the way out: `addChild()` submitted the
@@ -190,152 +173,152 @@ describe('cancelling a field', (): void => {
  *
  * The assertion has to be made on a session whose **only** content is a draft,
  * and against a fallback the draft differs from. A test that opens a field
- * first is a test of `beginFieldEdit()`, and it goes green against the defect.
+ * first is a test of `beginField()`, and it goes green against the defect.
  */
 describe('a record whose controls are always open', (): void => {
     it('keeps a draft that was recorded without an open field', (): void => {
         const target = newChildTarget('email');
-        const edits = setDraft(emptyEditMap(), target, 'email', 'third@example.org');
+        const edits = EditSessions.empty().setDraft(target, 'email', 'third@example.org');
 
-        assert.notEqual(editOf(edits, target), null, 'the session is not dropped as empty');
-        assert.deepEqual(editOf(edits, target)?.fields, [], 'and it never opened a field');
+        assert.notEqual(edits.of(target), null, 'the session is not dropped as empty');
+        assert.deepEqual(edits.of(target)?.fields, [], 'and it never opened a field');
 
         // The fallback is what the add form seeds its controls with, i.e. what
         // the payload would carry if the draft were gone.
-        assert.equal(draftOf(edits, target, 'email', ''), 'third@example.org');
+        assert.equal(edits.draftOf(target, 'email', ''), 'third@example.org');
     });
 
     it('keeps the drafts of a whole form typed field by field', (): void => {
         const target = newChildTarget('email');
-        let edits = setDraft(emptyEditMap(), target, 'type', 'business');
-        edits = setDraft(edits, target, 'email', 'third@example.org');
+        let edits = EditSessions.empty().setDraft(target, 'type', 'business');
+        edits = edits.setDraft(target, 'email', 'third@example.org');
 
-        assert.equal(draftOf(edits, target, 'type', 'others'), 'business');
-        assert.equal(draftOf(edits, target, 'email', ''), 'third@example.org');
+        assert.equal(edits.draftOf(target, 'type', 'others'), 'business');
+        assert.equal(edits.draftOf(target, 'email', ''), 'third@example.org');
     });
 
     it('is still dropped when the form is cancelled', (): void => {
         const target = newChildTarget('email');
-        const edits = endRecordEdit(setDraft(emptyEditMap(), target, 'email', 'third@example.org'), target);
+        const edits = EditSessions.empty().setDraft(target, 'email', 'third@example.org').endRecord(target);
 
-        assert.equal(editOf(edits, target), null, 'keeping a draft is not keeping it forever');
+        assert.equal(edits.of(target), null, 'keeping a draft is not keeping it forever');
     });
 });
 
 describe('a whole record session', (): void => {
     it('opens every writable field seeded from the state', (): void => {
         const profile = parsed();
-        const edits = beginRecordEdit(emptyEditMap(), profileTarget, recordValues(profile, profileTarget));
+        const edits = EditSessions.empty().beginRecord(profileTarget, recordValues(profile, profileTarget));
 
-        assert.equal(editOf(edits, profileTarget)?.mode, 'record');
-        assert.deepEqual(editOf(edits, profileTarget)?.fields, ['shortname', 'firstname', 'lastname', 'birthday', 'bio']);
+        assert.equal(edits.of(profileTarget)?.mode, 'record');
+        assert.deepEqual(edits.of(profileTarget)?.fields, ['shortname', 'firstname', 'lastname', 'birthday', 'bio']);
         assert.equal(shown(edits, profile, 'bio'), 'Mathematician.');
     });
 
     it('replaces a half finished single field session rather than merging with it', (): void => {
         const profile = parsed();
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
-        edits = setDraft(edits, profileTarget, 'firstname', 'never submitted');
-        edits = applyErrors(edits, profileTarget, { firstname: ['too long'] }, []);
-        edits = beginRecordEdit(edits, profileTarget, recordValues(profile, profileTarget));
+        let edits = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
+        edits = edits.setDraft(profileTarget, 'firstname', 'never submitted');
+        edits = edits.applyErrors(profileTarget, { firstname: ['too long'] }, []);
+        edits = edits.beginRecord(profileTarget, recordValues(profile, profileTarget));
 
         assert.equal(shown(edits, profile, 'firstname'), 'Ada');
-        assert.deepEqual(errorsOf(edits, profileTarget, 'firstname'), []);
+        assert.deepEqual(edits.errorsOf(profileTarget, 'firstname'), []);
     });
 
     it('ends by discarding the whole session', (): void => {
         const profile = parsed();
-        let edits = beginRecordEdit(emptyEditMap(), profileTarget, recordValues(profile, profileTarget));
-        edits = applyErrors(edits, profileTarget, { bio: ['too long'] }, ['nope']);
-        edits = endRecordEdit(edits, profileTarget);
+        let edits = EditSessions.empty().beginRecord(profileTarget, recordValues(profile, profileTarget));
+        edits = edits.applyErrors(profileTarget, { bio: ['too long'] }, ['nope']);
+        edits = edits.endRecord(profileTarget);
 
-        assert.equal(editOf(edits, profileTarget), null);
+        assert.equal(edits.of(profileTarget), null);
     });
 });
 
 describe('applying a 422', (): void => {
     it('puts a message at the field it names and keeps the draft', (): void => {
         const profile = parsed();
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'shortname', 'ada');
-        edits = setDraft(edits, profileTarget, 'shortname', '');
-        edits = applyErrors(edits, profileTarget, { shortname: ['Must not be empty.'] }, []);
+        let edits = EditSessions.empty().beginField(profileTarget, 'shortname', 'ada');
+        edits = edits.setDraft(profileTarget, 'shortname', '');
+        edits = edits.applyErrors(profileTarget, { shortname: ['Must not be empty.'] }, []);
 
-        assert.deepEqual(errorsOf(edits, profileTarget, 'shortname'), ['Must not be empty.']);
-        assert.ok(isEditing(edits, profileTarget, 'shortname'), 'the session stays open');
+        assert.deepEqual(edits.errorsOf(profileTarget, 'shortname'), ['Must not be empty.']);
+        assert.ok(edits.isEditing(profileTarget, 'shortname'), 'the session stays open');
         assert.equal(shown(edits, profile, 'shortname'), '', 'what was typed is not discarded');
     });
 
     it('keeps an error that names no field on the record', (): void => {
-        const edits = applyErrors(emptyEditMap(), profileTarget, {}, ['The record as a whole is wrong.']);
+        const edits = EditSessions.empty().applyErrors(profileTarget, {}, ['The record as a whole is wrong.']);
 
-        assert.deepEqual(generalErrorsOf(edits, profileTarget), ['The record as a whole is wrong.']);
-        assert.deepEqual(errorsOf(edits, profileTarget, 'shortname'), []);
+        assert.deepEqual(edits.generalErrorsOf(profileTarget), ['The record as a whole is wrong.']);
+        assert.deepEqual(edits.errorsOf(profileTarget, 'shortname'), []);
     });
 
     it('creates a session for a relation operation that has no open control', (): void => {
-        const edits = applyErrors(emptyEditMap(), childTarget('address', 8), {}, ['Reordering failed.']);
+        const edits = EditSessions.empty().applyErrors(childTarget('address', 8), {}, ['Reordering failed.']);
 
-        assert.notEqual(editOf(edits, childTarget('address', 8)), null);
-        assert.deepEqual(generalErrorsOf(edits, childTarget('address', 8)), ['Reordering failed.']);
-        assert.deepEqual(generalErrorsOf(edits, profileTarget), [], 'and nowhere else');
+        assert.notEqual(edits.of(childTarget('address', 8)), null);
+        assert.deepEqual(edits.generalErrorsOf(childTarget('address', 8)), ['Reordering failed.']);
+        assert.deepEqual(edits.generalErrorsOf(profileTarget), [], 'and nowhere else');
     });
 
     it('clears the errors of fields the new answer does not mention', (): void => {
-        let edits = applyErrors(emptyEditMap(), profileTarget, {
+        let edits = EditSessions.empty().applyErrors(profileTarget, {
             shortname: ['Must not be empty.'],
             bio: ['Too long.'],
         }, ['and generally wrong']);
-        edits = applyErrors(edits, profileTarget, { bio: ['Still too long.'] }, []);
+        edits = edits.applyErrors(profileTarget, { bio: ['Still too long.'] }, []);
 
-        assert.deepEqual(errorsOf(edits, profileTarget, 'shortname'), [], 'the response is the complete answer');
-        assert.deepEqual(errorsOf(edits, profileTarget, 'bio'), ['Still too long.']);
-        assert.deepEqual(generalErrorsOf(edits, profileTarget), []);
+        assert.deepEqual(edits.errorsOf(profileTarget, 'shortname'), [], 'the response is the complete answer');
+        assert.deepEqual(edits.errorsOf(profileTarget, 'bio'), ['Still too long.']);
+        assert.deepEqual(edits.generalErrorsOf(profileTarget), []);
     });
 
     it('is dropped again by clearErrors before the next attempt', (): void => {
-        let edits = beginFieldEdit(emptyEditMap(), profileTarget, 'shortname', 'ada');
-        edits = setDraft(edits, profileTarget, 'shortname', '');
-        edits = applyErrors(edits, profileTarget, { shortname: ['Must not be empty.'] }, ['nope']);
-        edits = clearErrors(edits, profileTarget);
+        let edits = EditSessions.empty().beginField(profileTarget, 'shortname', 'ada');
+        edits = edits.setDraft(profileTarget, 'shortname', '');
+        edits = edits.applyErrors(profileTarget, { shortname: ['Must not be empty.'] }, ['nope']);
+        edits = edits.clearErrors(profileTarget);
 
-        assert.deepEqual(errorsOf(edits, profileTarget, 'shortname'), []);
-        assert.deepEqual(generalErrorsOf(edits, profileTarget), []);
-        assert.ok(isEditing(edits, profileTarget, 'shortname'), 'the open field survives');
-        assert.equal(draftOf(edits, profileTarget, 'shortname', 'ada'), '', 'and so does the draft');
+        assert.deepEqual(edits.errorsOf(profileTarget, 'shortname'), []);
+        assert.deepEqual(edits.generalErrorsOf(profileTarget), []);
+        assert.ok(edits.isEditing(profileTarget, 'shortname'), 'the open field survives');
+        assert.equal(edits.draftOf(profileTarget, 'shortname', 'ada'), '', 'and so does the draft');
     });
 
     it('does not resurrect a session that clearErrors would empty', (): void => {
-        const edits = clearErrors(applyErrors(emptyEditMap(), profileTarget, { shortname: ['x'] }, []), profileTarget);
+        const edits = EditSessions.empty().applyErrors(profileTarget, { shortname: ['x'] }, []).clearErrors(profileTarget);
 
-        assert.equal(editOf(edits, profileTarget), null);
+        assert.equal(edits.of(profileTarget), null);
     });
 });
 
 describe('the busy flag', (): void => {
     it('keeps a session alive on its own while a request is in flight', (): void => {
-        let edits = setBusy(emptyEditMap(), childTarget('address', 8), true);
+        let edits = EditSessions.empty().setBusy(childTarget('address', 8), true);
 
-        assert.ok(isBusy(edits, childTarget('address', 8)));
-        assert.notEqual(editOf(edits, childTarget('address', 8)), null);
+        assert.ok(edits.isBusy(childTarget('address', 8)));
+        assert.notEqual(edits.of(childTarget('address', 8)), null);
 
-        edits = setBusy(edits, childTarget('address', 8), false);
+        edits = edits.setBusy(childTarget('address', 8), false);
 
-        assert.equal(isBusy(edits, childTarget('address', 8)), false);
-        assert.equal(editOf(edits, childTarget('address', 8)), null, 'and is dropped when it ends');
+        assert.equal(edits.isBusy(childTarget('address', 8)), false);
+        assert.equal(edits.of(childTarget('address', 8)), null, 'and is dropped when it ends');
     });
 });
 
 describe('immutability', (): void => {
     it('never writes into the map it was given', (): void => {
-        const before = beginFieldEdit(emptyEditMap(), profileTarget, 'firstname', 'Ada');
+        const before = EditSessions.empty().beginField(profileTarget, 'firstname', 'Ada');
 
-        setDraft(before, profileTarget, 'firstname', 'Augusta');
-        applyErrors(before, profileTarget, { firstname: ['x'] }, []);
-        endFieldEdit(before, profileTarget, 'firstname');
-        endRecordEdit(before, profileTarget);
+        before.setDraft(profileTarget, 'firstname', 'Augusta');
+        before.applyErrors(profileTarget, { firstname: ['x'] }, []);
+        before.endField(profileTarget, 'firstname');
+        before.endRecord(profileTarget);
 
-        assert.equal(draftOf(before, profileTarget, 'firstname', ''), 'Ada');
-        assert.deepEqual(errorsOf(before, profileTarget, 'firstname'), []);
-        assert.ok(isEditing(before, profileTarget, 'firstname'));
+        assert.equal(before.draftOf(profileTarget, 'firstname', ''), 'Ada');
+        assert.deepEqual(before.errorsOf(profileTarget, 'firstname'), []);
+        assert.ok(before.isEditing(profileTarget, 'firstname'));
     });
 });
