@@ -31,16 +31,17 @@ Three tables are added:
             :code:`work` or :code:`others`) and two address lines.
 
     *   -   :sql:`tx_modernextbasefrontendedit_domain_model_email`
-        -   Email addresses of one profile: a type (:code:`home`,
-            :code:`work` or :code:`others`) and the address itself.
+        -   Email addresses of one profile: a type (:code:`private`,
+            :code:`business` or :code:`others`) and the address itself.
 
 Addresses and email addresses belong to exactly one profile and are edited
 inline in it. Both are sorted manually, and the order an editor arranges them
 in is the order they are read back in.
 
-All three tables are language aware, workspace aware and support the usual
-publishing controls — hide, start and stop time, and access group
-restrictions. Deleting a record marks it deleted rather than removing the row.
+All three tables are language aware, workspace aware and support the publishing
+controls hide, start time and stop time. They carry no :sql:`fe_group` column,
+so access group restrictions do not apply to a profile record. Deleting a
+record marks it deleted rather than removing the row.
 
 Record ownership
 ================
@@ -72,8 +73,8 @@ what is visible:
 
 *   The repositories in :php:`\SBUERK\ModernExtbaseFrontendEdit\Domain\Repository\Edit`
     additionally return records an editor has hidden, so that an owner can see
-    a hidden entry of their own and unhide it again. Start and stop times and
-    access group restrictions still apply.
+    a hidden entry of their own and unhide it again. Start and stop times still
+    apply.
 
 The split is two sets of classes rather than one repository with a switch,
 because a switch is shared state: whoever flips it last decides what every

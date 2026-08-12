@@ -30,13 +30,21 @@ Modern Extbase Frontend Edit
 
 ----
 
-TYPO3 CMS extension supporting TYPO3 v13 and v14 within one code base.
+Editing a profile record and its child collections directly on the page: every
+field, every address, every e-mail address and the profile image, saved without
+a page reload, from a web component that enhances markup the website already
+rendered.
 
-..  note::
+..  attention::
 
-    This extension is in an early development stage. The public API is not
-    stable yet and may change without a deprecation phase until the first
-    stable release.
+    **This is a proof of concept, not a product.** It exists to answer one
+    question — can Extbase entities with relations be managed from the frontend
+    with a modern, progressively enhanced interface — and to be read while
+    answering it.
+
+    Several decisions in it are deliberate trade-offs that would be wrong in a
+    production extension, and they are documented as such rather than fixed.
+    Read :ref:`known-limitations` before building on any of it.
 
 ----
 
@@ -49,12 +57,27 @@ TYPO3 CMS extension supporting TYPO3 v13 and v14 within one code base.
 
     ..  card:: :ref:`Introduction <introduction>`
 
-        Learn what the extension provides and which TYPO3 and PHP versions
-        are supported.
+        What the extension does, and which TYPO3 and PHP versions it supports.
 
     ..  card:: :ref:`Installation <installation>`
 
-        Install the extension in your TYPO3 installation.
+        Install it, and the four things it needs before anything is visible.
+
+    ..  card:: :ref:`Configuration <configuration>`
+
+        The site set, every setting, the TypoScript, and overriding templates.
+
+    ..  card:: :ref:`Editors <editors>`
+
+        The three plugins, the profile record, and what editing looks like.
+
+    ..  card:: :ref:`Reference <reference>`
+
+        Tables, validation rules, the image upload bounds and the endpoints.
+
+    ..  card:: :ref:`Known limitations <known-limitations>`
+
+        What it deliberately does not do, and why.
 
     ..  card:: :ref:`Changelog <changelog>`
 
@@ -67,4 +90,8 @@ TYPO3 CMS extension supporting TYPO3 v13 and v14 within one code base.
 
     Introduction/Index
     Installation/Index
+    Configuration/Index
+    Editors/Index
+    Reference/Index
+    KnownLimitations/Index
     Changelog/Index

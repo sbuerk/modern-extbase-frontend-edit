@@ -97,7 +97,7 @@ configured.
     Showing or hiding that link is a **display** decision, not an access
     restriction. A link that is not rendered can still be opened by typing its
     address. Access to editing is enforced by the editing endpoints, which are
-    part of a later release.
+    described in :ref:`reference-endpoints`.
 
 Known limitations
 =================
@@ -115,12 +115,6 @@ The edit link needs a page to point at
     suppresses the link entirely, which is the right state for a site that
     shows profiles but does not let anyone edit them. The plugin the link leads
     to is described in :ref:`feature-profile-edit-plugin`.
-
-Detail links are not scoped to the storage page
-    The detail plugin displays any profile a visitor may see, including one
-    stored outside the configured storage page, if its address is entered by
-    hand. Every visibility restriction still applies — no hidden, expired or
-    access restricted profile becomes visible this way.
 
 No "back to the list" link
     The detail plugin does not link back, because no setting names the page the

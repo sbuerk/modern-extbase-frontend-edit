@@ -40,9 +40,10 @@ rendered.
 These are the reasons it must not be copied without reading. Each is a decision,
 not an oversight, and each is documented where it is made:
 
-- **Writes bypass `DataHandler`.** That means no `sys_history`, no hooks and no
-  reference index update. For a proof of concept about Extbase persistence that
-  is the point; for a production extension it is usually a defect.
+- **Writes bypass `DataHandler`.** That means no `sys_history` entry and no
+  `DataHandler` hook. The reference index is *not* affected — Extbase maintains
+  it for every row it writes. For a proof of concept about Extbase persistence
+  the trade is the point; for a production extension it is usually a defect.
 - **Editing is refused while a workspace is active**, and the surface says so
   before the visitor types rather than after. Versioning a record is
   `DataHandler`'s job, so workspace editing is out of scope.
