@@ -54,8 +54,12 @@ User facing changes need a changelog entry below
 | `Deprecation-*.rst` | Functionality marked for removal, with the migration path. |
 | `Important-*.rst`   | Notable changes that are neither of the above.             |
 
-Each version directory has an `Index.rst` listing its entries; add new files
-there as well.
+Each version directory has an `Index.rst`, but it does **not** list entries
+individually: its four toctrees are `:glob:` patterns over `Breaking-*`,
+`Feature-*`, `Deprecation-*` and `Important-*`. A new entry is picked up by
+dropping the file in the directory with the matching prefix, and editing
+`Index.rst` is neither needed nor wanted — a hand-maintained list would go stale
+the first time someone forgot it, and the glob cannot.
 
 ## The TYPO3 core changelogs
 
