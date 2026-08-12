@@ -186,18 +186,19 @@ paths work without configuration and an integrator's own paths still win.
 
 ## The Fluid layer
 
-| File                                | Role                                                                                |
-|-------------------------------------|-------------------------------------------------------------------------------------|
-| `Layouts/Default.html`              | The single wrapper element of all three plugins, one `Main` section.                |
-| `Templates/Profile/List.html`       | Composes the list: heading, empty state, one card per entry.                        |
-| `Templates/Profile/Show.html`       | Composes the detail view: card, details, addresses, e-mails.                        |
-| `Templates/ProfileEdit/Edit.html`   | The edit plugin: three states, the custom element, and the four `data-` attributes. |
-| `Partials/Profile/Card.html`        | The identifying block: image, name, and the links that apply to a profile.          |
-| `Partials/Profile/Details.html`     | The scalar fields that are not part of the card: birthday and biography.            |
-| `Partials/Profile/AddressList.html` | The postal addresses including their section heading.                               |
-| `Partials/Profile/EmailList.html`   | The e-mail addresses including their section heading.                               |
-| `Partials/Profile/EditLink.html`    | The edit link, and the only place in the Fluid layer that reads the ownership flag. |
-| `Partials/Profile/Image.html`       | The profile image, or nothing.                                                      |
+| File                                | Role                                                                                                                  |
+|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `Layouts/Default.html`              | The single wrapper element of all three plugins, one `Main` section.                                                  |
+| `Templates/Profile/List.html`       | Composes the list: heading, empty state, one card per entry.                                                          |
+| `Templates/Profile/Show.html`       | Composes the detail view: card, details, addresses, e-mails.                                                          |
+| `Templates/ProfileEdit/Edit.html`   | The edit plugin: four states, the custom element, and the four `data-` attributes.                                    |
+| `Partials/Profile/Card.html`        | The identifying block: image, name, and the links that apply to a profile.                                            |
+| `Partials/Profile/Details.html`     | The scalar fields that are not part of the card: birthday and biography.                                              |
+| `Partials/Profile/AddressList.html` | The postal addresses including their section heading.                                                                 |
+| `Partials/Profile/EmailList.html`   | The e-mail addresses including their section heading.                                                                 |
+| `Partials/Profile/EditLink.html`    | The edit link, and the only place in the Fluid layer that reads the ownership flag.                                   |
+| `Partials/Profile/Image.html`       | The profile image, or nothing.                                                                                        |
+| `Partials/Profile/OwnerView.html`   | One profile as its owner sees it, hidden children included. Rendered by the edit plugin in both of its record states. |
 
 Four rules hold across all of them.
 
@@ -221,8 +222,8 @@ passed on, because both `f:uri.page` and `f:uri.action` resolve a page uid of
 > would "pass its own URIs and change nothing here". The edit plugin does not use
 > `Profile/Card` at all: the card bundles the image and the name with the links
 > that apply to a profile, and links are not part of an editing surface. It
-> reuses `Profile/Details`, `AddressList`, `EmailList` and `Image`, and renders
-> its own heading. The rule itself held; the prediction about which partial it
+> reuses `Profile/Details`, `AddressList`, `EmailList` and `Image` through
+> `Profile/OwnerView`, which renders its own heading. The rule itself held; the prediction about which partial it
 > would pay off in did not.
 >
 > The reason given for the split was wrong as well, and it was corrected once
@@ -352,6 +353,26 @@ render, and the edit template, which renders it **inside** the custom element
 because the image is editable there. That last one is the no-JavaScript view of the image; once the
 element upgrades, the component draws its own.
 → [Image handling](image-handling.md#the-image-is-rendered-inside-the-custom-element)
+
+#### `Profile/OwnerView`
+
+| Argument      | Type                               | Required | Meaning                                                                    |
+|---------------|------------------------------------|----------|----------------------------------------------------------------------------|
+| `profile`     | `Domain\Model\Profile`             | yes      | The record. The image is read off it as `profile.profileImage`.            |
+| `profileName` | `string`                           | yes      | Heading and image alternative text, shortname fallback already applied.    |
+| `addresses`   | iterable of `Domain\Model\Address` | yes      | Read through the **edit** repository by the caller, so hidden rows are in. |
+| `emails`      | iterable of `Domain\Model\Email`   | yes      | The same.                                                                  |
+
+The composition the edit plugin renders: heading, image, details, both
+collections. It is the only partial that is itself made of four partials, and it
+exists for one reason — the edit template renders it **twice**, once inside the
+custom element as the no-JavaScript view and once on its own when a workspace is
+active, and two copies of that block would drift.
+
+Does not know: whether it is editable. That is the caller's branch, and nothing
+in here changes between the two call sites — which is the property that makes one
+partial correct for both.
+→ [The edit plugin](edit-plugin.md)
 
 ### Why the contract is a comment block and not `<f:argument>`
 

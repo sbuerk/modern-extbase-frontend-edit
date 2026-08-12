@@ -338,11 +338,18 @@ abstract class AbstractProfilePluginTestCase extends AbstractProfileTestCase
      * the `show` page with an argument set the plugin never links to, which
      * {@see renderShowPlugin()} cannot express.
      */
-    protected function renderUri(string $uri, ?int $frontendUserId = null): ResponseInterface
+    protected function renderUri(string $uri, ?int $frontendUserId = null, ?int $workspaceId = null): ResponseInterface
     {
         $context = new InternalRequestContext();
         if ($frontendUserId !== null) {
             $context = $context->withFrontendUserId($frontendUserId);
+        }
+        // Passing a workspace id only has an effect for a test case that loads
+        // "tests/workspace-fixture" — see the docblock of its middleware for
+        // why the testing framework's own handling of this value cannot work
+        // without EXT:workspaces installed.
+        if ($workspaceId !== null) {
+            $context = $context->withWorkspaceId($workspaceId);
         }
 
         return $this->executeFrontendSubRequest(new InternalRequest($uri), $context);

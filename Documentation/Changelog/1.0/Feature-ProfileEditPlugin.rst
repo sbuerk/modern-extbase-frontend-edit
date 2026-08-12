@@ -181,3 +181,9 @@ Only the default language, and never in a workspace
     Unchanged from the endpoints release. A save attempted while a workspace is
     active is refused, with a message saying so, rather than silently changing
     the published record.
+
+    ..  note::
+        Superseded in detail, not in substance. The plugin no longer waits for a
+        save to refuse: in a workspace it renders the profile read only and says
+        that editing is live only. See
+        :ref:`important-editing-unavailable-in-a-workspace`.
