@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseInterface;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Address;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Email;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Profile;
+use SBUERK\ModernExtbaseFrontendEdit\Domain\Persistence\WorkspaceGuard;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Repository\Edit\AddressEditRepository;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Repository\Edit\EmailEditRepository;
 use SBUERK\ModernExtbaseFrontendEdit\Http\ProfileDocumentFactory;
@@ -206,12 +207,13 @@ final class ProfileEditController extends ActionController
         private readonly EmailEditRepository $emailEditRepository,
         private readonly ProfileDocumentFactory $profileDocumentFactory,
         private readonly Context $context,
+        private readonly WorkspaceGuard $workspaceGuard,
     ) {}
 
     /**
      * Renders the editable view of the caller's own profile.
      *
-     * Three states, and the template branches on two booleans rather than on
+     * Four states, and the template branches on three booleans rather than on
      * anything it derives:
      *
      * - **anonymous** — `authenticated` is `false`, a sentence says so.
@@ -220,6 +222,20 @@ final class ProfileEditController extends ActionController
      *   "log in" and "you have no profile yet" are different instructions.
      * - **logged in with a profile** — the custom element, carrying the four
      *   attributes, wrapped around the server rendered read view.
+     * - **a workspace is active** — `writesAllowed` is `false`, and the same
+     *   read view is rendered *without* the element, the assets or the four
+     *   attributes, under a sentence that says editing is live only.
+     *
+     * The last state is not a nicety. The write endpoints refuse in a workspace
+     * and always have — {@see WorkspaceGuard} explains why they must — but
+     * until this branch existed the refusal arrived as a `409` after the visitor
+     * had typed, which is a gap presented as a bug. What the visitor sees is now
+     * what the server will do.
+     *
+     * It is deliberately decided **here** rather than in the template: the
+     * condition is `WorkspaceGuard`'s, the same object the endpoints and the
+     * persistence service ask, so the surface and the write path cannot come to
+     * different conclusions about the same request.
      *
      * The collections are read through the **edit** repositories and not off
      * `$profile->getAddresses()`. Relations are reconstituted with query
@@ -239,10 +255,12 @@ final class ProfileEditController extends ActionController
     {
         $frontendUserId = $this->resolveFrontendUserId();
         $profile = $frontendUserId === 0 ? null : $this->resolveOwnedProfile($frontendUserId);
+        $writesAllowed = $this->workspaceGuard->areWritesAllowed();
 
         $this->view->assignMultiple([
             'authenticated' => $frontendUserId > 0,
             'profile' => $profile,
+            'writesAllowed' => $writesAllowed,
         ]);
 
         if ($profile === null) {
@@ -259,6 +277,19 @@ final class ProfileEditController extends ActionController
             'profileName' => $this->displayName($profile),
             'addresses' => $addresses,
             'emails' => $emails,
+        ]);
+
+        // Everything below exists for the component and for nothing else. In a
+        // workspace there is no component, so none of it is produced: no
+        // document, no endpoint map, no label map, and above all no request
+        // token — issuing one commits a nonce to the session, and a token
+        // handed out for a surface that cannot write is a credential nobody
+        // asked for.
+        if (!$writesAllowed) {
+            return $this->htmlResponse();
+        }
+
+        $this->view->assignMultiple([
             'profileJson' => $this->encode($this->profileDocumentFactory->create($profile, $addresses, $emails)),
             'endpointsJson' => $this->encode($this->endpointUris()),
             'labelsJson' => $this->encode($this->labels()),

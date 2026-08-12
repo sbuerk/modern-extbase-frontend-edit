@@ -55,6 +55,9 @@
             <trans-unit id="edit.noProfile">
                 <source>There is no profile assigned to your account yet.</source>
             </trans-unit>
+            <trans-unit id="edit.workspaceActive">
+                <source>Your profile is shown as it appears in this workspace. Editing is only available in the live workspace.</source>
+            </trans-unit>
 
             <!--
                 Link labels. Both are rendered by partials that are shared

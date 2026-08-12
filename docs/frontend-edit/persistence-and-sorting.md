@@ -424,6 +424,22 @@ live record**, while the editor believes they are working in a draft. Refusing
 the write is the only correct behaviour, and the guard is therefore functional,
 not defensive: without it the feature silently corrupts published content.
 
+### The refusal is now visible before anything is typed
+
+The guard has always answered `409`. What changed is *when* the visitor learns
+of it: `ProfileEditController` asks the same `WorkspaceGuard` and renders the
+record **read only** in a workspace — no custom element, neither asset, and no
+request token — under a sentence saying editing is live only.
+
+That is the whole of the change, and it is worth being clear about what it is
+not. It does not make workspace editing work, and nothing here is a step towards
+it: versioning a record is `DataHandler`'s job, and
+[this extension deliberately does not use `DataHandler`](#the-decision-persistencemanager-not-datahandler).
+A limitation the user runs into after typing reads as a bug; the same limitation
+stated up front is a limitation. The `409` stays as the backstop — the surface is
+not a security boundary, and a client that posts anyway still gets refused.
+→ [The edit plugin's four states](edit-plugin.md)
+
 Detection is one aspect read from the injected `Context` — never `$GLOBALS`:
 
 ```php

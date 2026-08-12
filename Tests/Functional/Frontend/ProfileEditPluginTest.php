@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SBUERK\ModernExtbaseFrontendEdit\Tests\Functional\Frontend;
 
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * The edit plugin, rendered through a real frontend request.
@@ -64,6 +65,30 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
      * A frontend user with a session and without a profile.
      */
     private const PROFILELESS_FRONTEND_USER_ID = 3;
+
+    /**
+     * Any non-zero workspace, which is all `WorkspaceAspect::isLive()` asks.
+     *
+     * No `sys_workspace` row is created for it and none is needed: the fixture
+     * extension sets the aspect directly, and nothing in this plugin resolves a
+     * workspace *record*. A test that asserted anything about overlays would
+     * need EXT:workspaces and would be a different test.
+     */
+    private const DRAFT_WORKSPACE_ID = 1;
+
+    /**
+     * The extension itself is repeated from the parent class, because
+     * redeclaring the property replaces it.
+     *
+     * `tests/workspace-fixture` is inert unless a request asks for a workspace,
+     * so loading it here changes nothing for the tests that do not — which
+     * {@see theSamePageInTheLiveWorkspaceIsTheEditingSurface()} is what proves.
+     */
+    protected array $testExtensionsToLoad = [
+        'sbuerk/modern-extbase-frontend-edit',
+        'fgtclb/environment-state-manager',
+        'tests/workspace-fixture',
+    ];
 
     /**
      * The custom element the component upgrades, as an opening tag prefix.
@@ -296,6 +321,96 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
     }
 
     /**
+     * The fourth state: a workspace is active, so the owner is shown the record
+     * and told that editing is live only — **before** typing anything.
+     *
+     * The write endpoints have always refused here and must
+     * ({@see \SBUERK\ModernExtbaseFrontendEdit\Domain\Persistence\WorkspaceGuard}
+     * explains what an Extbase write in a workspace actually does to the
+     * published row). What this asserts is that the refusal is now visible in
+     * the surface instead of arriving as a `409` after the visitor believed
+     * they were editing a draft.
+     *
+     * Every half of that is asserted, because the failure modes are opposite: a
+     * branch that rendered the sentence *and* the element would be a surface
+     * that still cannot save, and a branch that dropped the record with the
+     * element would be a workspace visitor who cannot even read their profile.
+     */
+    #[Test]
+    public function aWorkspaceGetsTheRecordAndTheLiveOnlySentenceButNoEditingSurface(): void
+    {
+        $body = (string)$this->renderUri(self::EDIT_URI, self::OWNER_FRONTEND_USER_ID, self::DRAFT_WORKSPACE_ID)->getBody();
+
+        $this->assertStringContainsString('Editing is only available in the live workspace.', $body);
+
+        // No element, and therefore none of the four attributes that make one.
+        $this->assertStringNotContainsString(self::ELEMENT, $body);
+        foreach (self::ELEMENT_ATTRIBUTES as $name) {
+            $this->assertStringNotContainsString($name, $body);
+        }
+
+        // Neither asset: the module has nothing to enhance, and every rule of
+        // the stylesheet is scoped to the element it would have styled.
+        $this->assertStringNotContainsString('frontend-edit.js', $body);
+        $this->assertStringNotContainsString('frontend-edit.css', $body);
+
+        // The record itself is still there, hidden child included — this is the
+        // owner's view, minus the editing.
+        $this->assertStringContainsString('Ada Lovelace', $body);
+        $this->assertStringContainsString('Difference Engine Road 1', $body);
+        $this->assertStringContainsString('Hidden Alley 4', $body);
+        $this->assertStringContainsString('first@example.org', $body);
+
+        // Not one of the other three states.
+        $this->assertStringNotContainsString('You are not logged in.', $body);
+        $this->assertStringNotContainsString('There is no profile assigned to your account yet.', $body);
+    }
+
+    /**
+     * The same page in the live workspace is the editing surface, which is what
+     * keeps the test above from passing for a plugin that renders the sentence
+     * unconditionally.
+     *
+     * It is a test of its own rather than a second half of that one because the
+     * fixture extension that activates a workspace is loaded for this whole
+     * class: if it leaked into requests that ask for no workspace, every other
+     * test here would fail — but only this one says so.
+     */
+    #[Test]
+    public function theSamePageInTheLiveWorkspaceIsTheEditingSurface(): void
+    {
+        $body = (string)$this->renderUri(self::EDIT_URI, self::OWNER_FRONTEND_USER_ID, 0)->getBody();
+
+        $this->assertStringContainsString(self::ELEMENT, $body);
+        $this->assertStringContainsString('frontend-edit.js', $body);
+        $this->assertStringNotContainsString('Editing is only available in the live workspace.', $body);
+    }
+
+    /**
+     * No request token is issued for a surface that cannot write.
+     *
+     * `issueRequestToken()` does not merely format a value: resolving the nonce
+     * signing secret **creates and persists a nonce**, which reaches the client
+     * as a cookie. Skipping the whole block in a workspace is therefore
+     * observable on the response, and this is what observes it — an
+     * implementation that assigned the token and let the template drop it would
+     * pass every assertion above and still hand out the credential.
+     */
+    #[Test]
+    public function aWorkspaceIsIssuedNoRequestTokenNonce(): void
+    {
+        $live = $this->renderUri(self::EDIT_URI, self::OWNER_FRONTEND_USER_ID, 0);
+        $workspace = $this->renderUri(self::EDIT_URI, self::OWNER_FRONTEND_USER_ID, self::DRAFT_WORKSPACE_ID);
+
+        $this->assertNotSame(
+            [],
+            $this->nonceCookies($live),
+            'The live surface is issued a nonce, so its absence below means something.',
+        );
+        $this->assertSame([], $this->nonceCookies($workspace));
+    }
+
+    /**
      * The plugin is registered non-cacheable, so Extbase converts it to a
      * `USER_INT` object and its output is never written to the page cache.
      *
@@ -457,6 +572,26 @@ final class ProfileEditPluginTest extends AbstractProfileAjaxTestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame($this->successData($response), $embedded);
+    }
+
+    /**
+     * The `Set-Cookie` headers of a response that carry a request token nonce.
+     *
+     * The name is core's: `RequestTokenMiddleware` emits one cookie per
+     * emittable nonce, named `typo3nonce_<hash>` and prefixed with `__Secure-`
+     * when the request is HTTPS — which the test site is
+     * (`RequestTokenMiddleware.php:44-45`, `:130-149`). Matched anywhere in the
+     * header rather than at its start for exactly that reason, and on the
+     * unprefixed part so the assertion does not depend on the scheme.
+     *
+     * @return list<string>
+     */
+    private function nonceCookies(ResponseInterface $response): array
+    {
+        return array_values(array_filter(
+            $response->getHeader('Set-Cookie'),
+            static fn(string $header): bool => str_contains($header, 'typo3nonce_'),
+        ));
     }
 
     /**

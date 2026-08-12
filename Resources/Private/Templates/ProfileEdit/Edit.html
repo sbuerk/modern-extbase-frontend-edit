@@ -11,6 +11,11 @@
         profile         Domain\Model\Profile or NULL
                         The profile of the calling session, NULL when there is
                         none. Always assigned.
+        writesAllowed   bool
+                        FALSE while a workspace is active. Always assigned. The
+                        controller reads it from WorkspaceGuard, the same object
+                        the write endpoints ask, so the surface and the write
+                        path cannot disagree about one request.
 
     Assigned only when profile is not NULL:
         profileName     string   The name for the heading and the image
@@ -20,15 +25,19 @@
         emails          list of Domain\Model\Email
                         Both read through the edit repositories, so they
                         include the records the owner has hidden.
+
+    Assigned only when profile is not NULL AND writesAllowed is TRUE - they
+    exist for the component, and in a workspace there is no component:
         profileJson     string   The profile document, as JSON.
         endpointsJson   string   One endpoint URL per action, as JSON.
         requestToken    string   The hash signed JWT of the request token.
         labelsJson      string   Every string the component renders, as JSON.
 
-    Three states, and the template decides none of them. It branches on the two
-    booleans the controller assigned, in the order "has a profile" then "is
-    logged in", so that "log in first" and "you have no profile yet" are
-    different sentences rather than one vague one.
+    Four states, and the template decides none of them. It branches on the three
+    booleans the controller assigned, in the order "has a profile", then "may
+    write", then "is logged in", so that "log in first" and "you have no profile
+    yet" are different sentences rather than one vague one, and so that a
+    visitor in a workspace is told before they type rather than after.
 
     The four data attributes are the whole contract with the component, and all
     four are required: profileEdit.ts enhances only when it can read a profile,
@@ -46,26 +55,29 @@
     own surface into its shadow root and does not slot these children, so they
     disappear rather than duplicating what the component draws.
 
-    Everything the component edits belongs inside, and everything it edits is
-    inside: the name heading, the details, both collections and the image. A
-    value left outside would still show what the page was loaded with after the
-    first save, while the surface next to it showed the new one - the page would
-    disagree with itself about the same record.
+    Everything the component edits belongs inside, and everything it edits is:
+    the whole of Profile/OwnerView, which is the name heading, the image, the
+    details and both collections. A value left outside would still show what the
+    page was loaded with after the first save, while the surface next to it
+    showed the new one - the page would disagree with itself about the same
+    record.
 
     The image was outside while it was read only. It moved in when the upload
     and remove endpoints landed, and the detail view still renders it outside
     its own markup, which is why the two templates place the same partial
     differently.
 
-    Profile/Card is deliberately not used here although it renders the image and
-    the name together. That pairing is what the detail view wants; this template
-    composes the two partials itself.
+    That body is a partial rather than markup here because the workspace branch
+    below renders the same thing without the element around it, and two copies
+    would drift. Profile/Card is deliberately not used for it although it pairs
+    the image with the name: that pairing is what the detail view wants, and it
+    carries neither collection.
 
-    The assets are loaded in this branch only. A visitor who is not logged in
-    gets no editing module, and there is nothing on the page for it to enhance.
-    Both tags are the documented replacement for the HeaderAssets and
-    FooterAssets sections, whose automatic rendering is deprecated since TYPO3
-    v14.0 (changelog 107057). No inline script is emitted anywhere.
+    The assets are loaded in this branch only - a logged in owner of a profile,
+    in the live workspace. Nobody else has anything on the page for the module
+    to enhance. Both tags are the documented replacement for the HeaderAssets
+    and FooterAssets sections, whose automatic rendering is deprecated since
+    TYPO3 v14.0 (changelog 107057). No inline script is emitted anywhere.
 
     There is no link to a login page. No setting names one, and guessing it -
     the referrer, the current page - would be wrong on some installations. It
@@ -80,45 +92,60 @@
 
         <f:if condition="{profile}">
             <f:then>
-                <f:asset.css
-                    identifier="modernExtbaseFrontendEdit"
-                    href="EXT:modern_extbase_frontend_edit/Resources/Public/Css/frontend-edit.css"
-                />
-                <f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend-edit.js" />
+                <f:if condition="{writesAllowed}">
+                    <f:then>
+                        <f:asset.css
+                            identifier="modernExtbaseFrontendEdit"
+                            href="EXT:modern_extbase_frontend_edit/Resources/Public/Css/frontend-edit.css"
+                        />
+                        <f:asset.module identifier="@sbuerk/modern-extbase-frontend-edit/frontend-edit.js" />
 
-                <f:variable name="imageAlternativeText" value="{f:translate(key: 'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.image.alt', arguments: {0: profileName})}" />
+                        <modern-extbase-frontend-edit-profile
+                            data-profile="{profileJson}"
+                            data-endpoints="{endpointsJson}"
+                            data-token="{requestToken}"
+                            data-labels="{labelsJson}"
+                        >
+                            <f:render
+                                partial="Profile/OwnerView"
+                                arguments="{
+                                    profile: profile,
+                                    profileName: profileName,
+                                    addresses: addresses,
+                                    emails: emails
+                                }"
+                            />
+                        </modern-extbase-frontend-edit-profile>
+                    </f:then>
+                    <f:else>
+                        <f:comment>
+                            A workspace is active, so there is no editing
+                            surface: the write endpoints refuse in a workspace
+                            because Extbase persistence would modify the
+                            published record, and a form that cannot save is
+                            worse than no form.
 
-                <modern-extbase-frontend-edit-profile
-                    data-profile="{profileJson}"
-                    data-endpoints="{endpointsJson}"
-                    data-token="{requestToken}"
-                    data-labels="{labelsJson}"
-                >
-                    <h3 class="modern-extbase-frontend-edit-profile-name">{profileName}</h3>
+                            The same record body is rendered, without the
+                            element around it. Neither asset is loaded either -
+                            the module has nothing to enhance, and every rule of
+                            the stylesheet is scoped to the custom element, so
+                            both would be dead weight rather than a precaution.
+                        </f:comment>
+                        <p class="modern-extbase-frontend-edit-profile-edit-workspace">
+                            <f:translate key="LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:edit.workspaceActive" />
+                        </p>
 
-                    <f:comment>
-                        The image sits inside the element, unlike in the detail
-                        view, because here it is editable.
-
-                        Everything in this element is the no-JavaScript view and
-                        is replaced once the element upgrades. Rendering the
-                        image outside would leave the served file on screen
-                        after a replacement, next to a surface that already
-                        shows the new one — the page would disagree with itself
-                        about which image the profile has.
-                    </f:comment>
-                    <f:render
-                        partial="Profile/Image"
-                        arguments="{
-                            image: profile.profileImage,
-                            alternativeText: imageAlternativeText
-                        }"
-                    />
-
-                    <f:render partial="Profile/Details" arguments="{profile: profile}" />
-                    <f:render partial="Profile/AddressList" arguments="{addresses: addresses}" />
-                    <f:render partial="Profile/EmailList" arguments="{emails: emails}" />
-                </modern-extbase-frontend-edit-profile>
+                        <f:render
+                            partial="Profile/OwnerView"
+                            arguments="{
+                                profile: profile,
+                                profileName: profileName,
+                                addresses: addresses,
+                                emails: emails
+                            }"
+                        />
+                    </f:else>
+                </f:if>
             </f:then>
             <f:else>
                 <f:if condition="{authenticated}">

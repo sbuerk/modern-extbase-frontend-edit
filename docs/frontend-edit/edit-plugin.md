@@ -49,14 +49,38 @@ import map included. `ProfileEditPluginTest::theAssetsOfTheEditingSurfaceAreEmit
 asserts both tags and the absence of a leftover `<!-- ###JS_LIBS` marker,
 because a missing tag and an unsubstituted placeholder are different defects.
 
-The template branches on two booleans the controller assigns and derives
+The template branches on three booleans the controller assigns and derives
 nothing:
 
-| `authenticated` | `profile` | What is rendered                                                                    |
-|-----------------|-----------|-------------------------------------------------------------------------------------|
-| `false`         | `null`    | One sentence: log in first. No element, no assets.                                  |
-| `true`          | `null`    | A different sentence: you have no profile yet. No element, no assets.               |
-| `true`          | a profile | The custom element with its four attributes and the assets. The image is inside it. |
+| `authenticated` | `profile` | `writesAllowed` | What is rendered                                                                                              |
+|-----------------|-----------|-----------------|---------------------------------------------------------------------------------------------------------------|
+| `false`         | `null`    | either          | One sentence: log in first. No element, no assets.                                                            |
+| `true`          | `null`    | either          | A different sentence: you have no profile yet. No element, no assets.                                         |
+| `true`          | a profile | `false`         | The record, read only, under a sentence saying editing is live only. No element, no assets, no request token. |
+| `true`          | a profile | `true`          | The custom element with its four attributes and the assets. The image is inside it.                           |
+
+`writesAllowed` is `false` while a workspace is active, and the controller reads
+it from `WorkspaceGuard` — the same object the write endpoints and the
+persistence service ask, so the surface and the write path cannot come to
+different conclusions about one request.
+
+That state is not cosmetic. The endpoints have always refused in a workspace and
+must: Extbase persistence would modify the **published** row rather than create a
+draft. Until this branch existed the refusal arrived as a `409` after the visitor
+had typed, which is a limitation presented as a bug.
+→ [Workspaces: the guard is load-bearing](persistence-and-sorting.md#workspaces-the-guard-is-load-bearing)
+
+The read-only branch loads **neither** asset, and that is a decision rather than
+an omission: the module has no element to enhance, and every rule of the
+stylesheet is scoped to `.frontend-edit-loaded modern-extbase-frontend-edit-profile`,
+so both would be dead weight. It also issues no request token — resolving the
+nonce signing secret *creates* a nonce, and a credential handed to a surface that
+cannot write is one nobody asked for. `ProfileEditPluginTest::aWorkspaceIsIssuedNoRequestTokenNonce()`
+asserts the `Set-Cookie` that proves it, against the live render that does emit one.
+
+The record body of the last two rows is one partial, `Profile/OwnerView`, for the
+obvious reason: two copies of it would drift, and the difference between those
+rows is what wraps the body, not what is in it.
 
 The two empty states are separate sentences on purpose. "Log in" and "you have
 no profile yet" are different instructions, and one vague sentence covering both

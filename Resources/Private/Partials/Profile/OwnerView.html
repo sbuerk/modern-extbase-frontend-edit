@@ -1,0 +1,53 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:comment>
+    Partial: Profile/OwnerView
+
+    One profile as its owner sees it: the name, the image, the details and both
+    collections, including the records the owner has hidden.
+
+    Arguments
+        profile      Domain\Model\Profile               required
+        profileName  string                             required
+                     The heading and the image alternative text, with the
+                     shortname fallback already applied by the controller.
+        addresses    iterable of Domain\Model\Address   required
+        emails       iterable of Domain\Model\Email     required
+                     Both read through the edit repositories by the caller, so
+                     they include hidden records - which the two list partials
+                     mark as such.
+
+    This exists because the edit plugin renders it twice and must not render it
+    twice differently: once inside the custom element as the no-JavaScript view
+    the component replaces, and once on its own when a workspace is active and
+    there is no component. A copied block would drift, and the difference
+    between the two branches is what wraps this, not what is in it.
+
+    It is deliberately not Profile/Card, which pairs the image with the name for
+    the detail view. The composition here is the owner's, and it carries the two
+    collections Card does not.
+
+    The image is passed rather than read from the profile inside, so that a
+    caller which resolves it differently - a workspace overlay, a placeholder -
+    changes one argument instead of this file.
+</f:comment>
+<h3 class="modern-extbase-frontend-edit-profile-name">{profileName}</h3>
+
+<f:variable
+    name="imageAlternativeText"
+    value="{f:translate(key: 'LLL:EXT:modern_extbase_frontend_edit/Resources/Private/Language/locallang.xlf:profile.image.alt', arguments: {0: profileName})}"
+/>
+<f:render
+    partial="Profile/Image"
+    arguments="{
+        image: profile.profileImage,
+        alternativeText: imageAlternativeText
+    }"
+/>
+
+<f:render partial="Profile/Details" arguments="{profile: profile}" />
+<f:render partial="Profile/AddressList" arguments="{addresses: addresses}" />
+<f:render partial="Profile/EmailList" arguments="{emails: emails}" />
+</html>
