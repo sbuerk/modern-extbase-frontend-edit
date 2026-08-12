@@ -624,10 +624,15 @@ ProfileEditElement.styles = [
                 max-width: var(--frontend-edit-measure);
             }
 
+            /*
+             * One record is a stack of fields, and the gap between them is the
+             * only thing separating them — the field itself carries no vertical
+             * padding, so there is a single place that decides how far apart two
+             * fields sit.
+             */
             .record {
                 display: grid;
-                gap: var(--frontend-edit-space-sm);
-                padding: var(--frontend-edit-space-sm) 0;
+                gap: var(--frontend-edit-gap-field);
             }
 
             .record-actions,
@@ -643,10 +648,21 @@ ProfileEditElement.styles = [
              * which drew a rule as dark as the body text and made the separator
              * louder than the records it separates.
              */
+            /*
+             * A section is the heading, the list, and the form that adds to it.
+             * The gap between those three is the record step rather than the
+             * field step: they are separate things, not lines of one thing.
+             */
             .children {
+                display: grid;
+                gap: var(--frontend-edit-gap-record);
                 border-top: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
-                margin-top: var(--frontend-edit-space-lg);
-                padding-top: var(--frontend-edit-space-md);
+                margin-top: var(--frontend-edit-gap-section);
+                padding-top: var(--frontend-edit-gap-record);
+            }
+
+            .children h3 {
+                margin: 0;
             }
 
             .children-list {
@@ -654,7 +670,7 @@ ProfileEditElement.styles = [
                 margin: 0;
                 padding: 0;
                 display: grid;
-                gap: var(--frontend-edit-space-md);
+                gap: var(--frontend-edit-gap-record);
             }
 
             /*
@@ -662,7 +678,15 @@ ProfileEditElement.styles = [
              * leading edge is what says so. It is the accent rather than the
              * text colour because it is a structural cue and not content.
              */
+            /*
+             * A grid rather than a plain block, because a child holds a record
+             * and its toolbar as siblings and nothing else would space them.
+             * The record's own fields dropped their padding, so this is where
+             * that separation now comes from.
+             */
             .child {
+                display: grid;
+                gap: var(--frontend-edit-gap-field);
                 border-inline-start: 3px solid var(--frontend-edit-color-border);
                 border-radius: 0 var(--frontend-edit-radius) var(--frontend-edit-radius) 0;
                 padding-inline-start: var(--frontend-edit-space-md);

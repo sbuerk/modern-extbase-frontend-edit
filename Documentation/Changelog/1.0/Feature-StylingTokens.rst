@@ -36,6 +36,10 @@ colour was written three times in three files.
 
 *   Buttons and controls share one box: the same height, border, radius and
     focus ring.
+*   A field is laid out as a row — label, value, and the action belonging to it
+    — rather than as a stack, which makes a profile roughly a third shorter and
+    puts the :guilabel:`Edit` button beside the value it edits. On a narrow
+    column the value wraps back under its label.
 *   Every button carries an icon, drawn inline in the extension's own JavaScript
     — no icon font, no request, and nothing for the Content Security Policy to
     permit. In the toolbar of a child record the text is hidden and the icon

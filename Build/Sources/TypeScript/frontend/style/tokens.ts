@@ -83,6 +83,38 @@ export const tokens: CSSResult = css`
         --frontend-edit-space-lg: 1rem;
         --frontend-edit-space-xl: 1.5rem;
 
+        /*
+         * The rhythm, named by what it separates rather than by size.
+         *
+         * These four are the only spacing the layout uses; the scale above
+         * exists to give them values. That is deliberate — the first version of
+         * this layer reached into the raw scale at every call site, and the
+         * result was a surface where the distance between a label and its value
+         * was almost the distance between two records. Nothing grouped, and it
+         * read as one long list.
+         *
+         * Each step is at least double the one before it, which is what makes a
+         * group legible: the eye reads the smaller gap as "together" only when
+         * the larger one is unmistakably larger.
+         */
+        --frontend-edit-gap-within: var(--frontend-edit-space-xs);
+        --frontend-edit-gap-field: var(--frontend-edit-space-sm);
+        --frontend-edit-gap-record: var(--frontend-edit-space-lg);
+        --frontend-edit-gap-section: var(--frontend-edit-space-xl);
+
+        /*
+         * The label column of a field. Fields lay out as a row — label, value,
+         * the action belonging to it — and this is what aligns the values of a
+         * record into a column instead of leaving them ragged.
+         *
+         * It is a flex basis rather than a grid track, so a narrow container
+         * wraps the value under its label without a media query. Container
+         * queries would say it better and are unavailable: the browser floor of
+         * the import map mechanism includes Firefox 108, and "@container" needs
+         * 110.
+         */
+        --frontend-edit-label-width: 9rem;
+
         /* Shape. */
         --frontend-edit-border-width: 1px;
         --frontend-edit-radius: 0.25rem;

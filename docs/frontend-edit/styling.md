@@ -98,6 +98,77 @@ extension ships. That is the intended outcome, not an obstacle — the manual
 documents it in
 [Content Security Policy](../../Documentation/Configuration/ContentSecurityPolicy.rst).
 
+## The rhythm, and the row that made it possible
+
+A field is a **row** — label, value, and the action belonging to it — and it used
+to be a stack. That was the single largest thing wrong with the surface, and it
+was found by measuring rather than by looking:
+
+|                             | before  | after   |
+|-----------------------------|---------|---------|
+| The whole surface           | 3087 px | 2084 px |
+| One field element           | 76 px   | 36 px   |
+| 26 fields, as a share of it | 64%     | 45%     |
+
+Each of those 76 pixels showed about twenty pixels of text. A row cannot be
+shorter than its tallest control, and the control is a 36 pixel touch target that
+is not negotiable, so putting the label *beside* it rather than above it is the
+only way to recover the height. Sitting the action next to the value it acts on
+came free with it.
+
+**`flex-wrap`, not a query.** When the container is too narrow for the label
+column and the body side by side, the body drops to its own line and the old
+stack comes back. That responds to the width of the **container**, which is what
+a plugin dropped into an unknown column needs — a viewport media query would be
+answering a different question. Container queries would say it more directly and
+are unavailable: the import map browser floor includes Firefox 108, and
+`@container` needs 110.
+
+### The box model was a defect, and the comment above it was wrong
+
+The style layer claimed from the start that a value and the control replacing it
+occupy the same box, so that entering edit mode does not reflow the row. It did
+reflow, on every field, and nobody noticed because nothing measured it. There
+were **two** causes, and the second only became visible after the first was
+fixed:
+
+| Element        | `box-sizing` | `min-height` | Resolved height |
+|----------------|--------------|--------------|-----------------|
+| `.field-value` | content-box  | 2.25rem      | 48 px           |
+| `button`       | border-box   | 2.25rem      | 36 px           |
+| `input`        | content-box  | 2.25rem      | 50 px           |
+
+`min-height` applies to the *content* box, so the 6 px vertical padding and the
+1 px border were adding to the 36 px target rather than fitting inside it —
+except on `button`, which the **user agent stylesheet** already gives
+`box-sizing: border-box` while giving `input`, `select` and `textarea`
+`content-box`. One declaration of `min-height` therefore produced two different
+heights depending on which element it landed on, and a field was 36 px while read
+and 50 px while edited.
+
+Setting `box-sizing: border-box` on the value and on all four controls makes
+every one of them exactly `--frontend-edit-control-min-height`, and makes the
+comment true. `Tests/Acceptance/Frontend/FieldLayout.spec.ts` now measures it —
+it was written against the broken layout and failed, which is how the second
+cause was found at all.
+
+### Four steps, named by what they separate
+
+| Token                         | Separates            | Value |
+|-------------------------------|----------------------|-------|
+| `--frontend-edit-gap-within`  | a label from a value | 4 px  |
+| `--frontend-edit-gap-field`   | two fields           | 8 px  |
+| `--frontend-edit-gap-record`  | two records          | 16 px |
+| `--frontend-edit-gap-section` | two collections      | 24 px |
+
+The layout uses only these four; the raw `--frontend-edit-space-*` scale exists to
+give them values. The first version of this layer reached into that scale at every
+call site, and the result was a surface where the distance between a label and its
+value was almost the distance between two records — nothing grouped, and it read
+as one long list. Each step is at least double the one before it, which is what
+makes a group legible: the eye reads the smaller gap as "together" only when the
+larger one is unmistakably larger.
+
 ## The measure
 
 `--frontend-edit-measure` caps the surface at `48rem`, and it is the token most
