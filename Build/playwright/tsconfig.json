@@ -34,6 +34,9 @@
         "paths": {
             "@playwright/test": [
                 "./node_modules/@playwright/test"
+            ],
+            "sharp": [
+                "./node_modules/sharp"
             ]
         }
     },

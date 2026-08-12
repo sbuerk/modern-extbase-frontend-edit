@@ -257,6 +257,57 @@ suite asserts that an import map was emitted; only a browser can assert that a
 bare specifier resolves out of it. Without it, a `lit` major version bump in
 TYPO3 core reaches this extension as a broken page rather than as a red gate.
 
+## The documentation screenshots ride on this harness
+
+`runTests.sh -s screenshotDocumentation` regenerates the images the rendered
+documentation embeds, by driving the same seeded instance with the same page
+object and the same database reset. A screenshot is therefore taken of the
+interface the specs drive, not of a mock-up that drifts away from it.
+
+```bash
+# Every shot.
+Build/Scripts/runTests.sh -s screenshotDocumentation
+
+# One of them, by name, while writing a chapter.
+Build/Scripts/runTests.sh -s screenshotDocumentation -- --grep edit-field-rejected
+```
+
+Which shots exist is data, in
+[`Build/playwright/screenshots.config.ts`](../../Build/playwright/screenshots.config.ts):
+a name, an output path, who is logged in, what to do before the shutter, and
+what to clip to. The runner in
+[`Tests/Acceptance/Screenshots/documentation.shots.ts`](../../Tests/Acceptance/Screenshots/documentation.shots.ts)
+turns each entry into one Playwright test and encodes the PNG to AVIF with
+`sharp`. Output goes to `Documentation/files/images/`.
+
+**It is a generator, not a gate**, and the difference is why it is not in the CI
+workflow. It writes into the tracked tree, which no gate does, and nothing
+verifies its output: a screenshot that no longer matches the interface is a
+documentation defect a person notices, not a red build. No job in `ci.yml`
+enumerates suites generically, so adding a `-s` target without adding a job is
+all it takes to keep it out.
+
+Three things it does that are easy to get wrong:
+
+- **Viewport, device scale factor and `javaScriptEnabled` are set with
+  `test.use()`**, in a `describe` block per shot, because all three are *context*
+  options. Setting the viewport on a live page applies the first and silently
+  ignores the other two — which produced a "server rendered fallback" shot taken
+  with JavaScript enabled that looked entirely plausible and showed the wrong
+  interface.
+- **A clipped shot asserts the element exists** before photographing it.
+  Otherwise a selector that stopped matching is written as an empty image and
+  reaches the manual unnoticed.
+- **AVIF is encoded with `chromaSubsampling: '4:4:4'`.** The default `4:2:0`
+  smears coloured text and the one pixel focus outline, which is exactly what
+  several of the shots exist to show.
+
+Generation is containerised with no host escape hatch, deliberately: the fonts
+come from the Playwright image, so a shot taken on a host would not match the
+rest of the manual. The image tag is version pinned rather than digest pinned,
+so a rebuild of that tag can shift every pixel at once — regenerate
+deliberately, not incidentally.
+
 ## Known gaps
 
 - **SQLite only.** The reset is a file copy, which is what makes a per spec reset
