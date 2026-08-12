@@ -44,21 +44,36 @@ if (PHP_SAPI !== 'cli') {
 //  - Remove unused use statements in the PHP source code
 //  - Ensure Concatenation to have at least one whitespace around
 //  - Remove trailing whitespace at the end of blank lines.
+$root = dirname(__DIR__, 2);
+
 return (new Config())
     ->setParallelConfig(ParallelConfigFactory::detect())
     ->setFinder(
         (new Finder())
+            // The paths below are resolved with dirname() rather than written as
+            // "__DIR__ . '/../../…'", and that is not cosmetic. Symfony's
+            // VcsIgnoredFilterIterator walks up from the search directory to find
+            // the ".git" directory and then keeps that string as its base, while
+            // the files it filters arrive as real paths. A base still containing
+            // "/../.." matches none of them, its str_starts_with() filter yields
+            // no directory, no ".gitignore" is ever read, and "ignoreVCSIgnored"
+            // silently does nothing at all.
             ->ignoreVCSIgnored(true)
             ->in([
-                __DIR__ . '/../../Classes',
-                __DIR__ . '/../../Configuration',
-                __DIR__ . '/../../Core13',
-                __DIR__ . '/../../Core14',
-                __DIR__ . '/../../Tests',
-                __DIR__ . '/../../Build',
+                $root . '/Classes',
+                $root . '/Configuration',
+                $root . '/Core13',
+                $root . '/Core14',
+                $root . '/Tests',
+                $root . '/Build',
             ])
             ->exclude([
                 '.Build/',
+                // The node dependencies of the frontend asset build. Git ignores
+                // them as well, so the line above would already be enough in a
+                // checkout — this one also holds where "ignoreVCSIgnored" cannot
+                // help, for instance in an exported tree with no ".git".
+                'node_modules/',
                 'var/',
             ])
     )
