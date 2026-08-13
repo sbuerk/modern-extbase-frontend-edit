@@ -24,7 +24,8 @@
 import { html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import { icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js';
+import type { ComponentConfiguration, ElementType } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js';
+import { classesFor, emptyConfiguration, icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js';
 import type { FieldDefinition } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/fieldDefinitions.js';
 import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
@@ -92,6 +93,16 @@ export class EditFieldElement extends LitElement {
     public labels: LabelMap = {};
 
     /**
+     * The icon markup and the additional CSS classes, resolved by the server.
+     *
+     * A property rather than an attribute read here: the record element owns it
+     * and hands the same object to every child, which is what stops two
+     * elements of one surface from disagreeing about it.
+     */
+    @property({ attribute: false })
+    public configuration: ComponentConfiguration = emptyConfiguration;
+
+    /**
      * The last server known value, shown when the field is not being edited.
      */
     @property({ type: String })
@@ -126,8 +137,8 @@ export class EditFieldElement extends LitElement {
         const hasErrors = this.errors.length > 0;
 
         return html`
-            <div class="frontend-edit-field">
-                <span class="frontend-edit-field-label" id="${this.uid}-label">${label(this.labels, fieldLabelKey(this.scope, this.definition.name))}</span>
+            <div class="${classesFor(this.configuration, 'field', 'frontend-edit-field')}">
+                <span class="${classesFor(this.configuration, 'label', 'frontend-edit-field-label')}" id="${this.uid}-label">${label(this.labels, fieldLabelKey(this.scope, this.definition.name))}</span>
                 <div class="frontend-edit-field-body">
                     ${this.editing ? this.renderControl(hasErrors) : this.renderValue()}
                     ${this.renderActions()}
@@ -202,7 +213,7 @@ export class EditFieldElement extends LitElement {
         if (this.definition.control === 'choice') {
             return html`
                 <select
-                    class="frontend-edit-field-control"
+                    class="${classesFor(this.configuration, 'control', 'frontend-edit-field-control')}"
                     aria-labelledby="${this.uid}-label"
                     aria-invalid="${shared.invalid}"
                     aria-describedby="${shared.describedBy ?? nothing}"
@@ -222,7 +233,7 @@ export class EditFieldElement extends LitElement {
         if (this.definition.control === 'text') {
             return html`
                 <textarea
-                    class="frontend-edit-field-control"
+                    class="${classesFor(this.configuration, 'control', 'frontend-edit-field-control')}"
                     aria-labelledby="${this.uid}-label"
                     aria-invalid="${shared.invalid}"
                     aria-describedby="${shared.describedBy ?? nothing}"
@@ -237,7 +248,7 @@ export class EditFieldElement extends LitElement {
 
         return html`
             <input
-                class="frontend-edit-field-control"
+                class="${classesFor(this.configuration, 'control', 'frontend-edit-field-control')}"
                 type="${this.definition.control === 'date' ? 'date' : 'text'}"
                 aria-labelledby="${this.uid}-label"
                 aria-invalid="${shared.invalid}"
@@ -269,8 +280,8 @@ export class EditFieldElement extends LitElement {
         // once per field.
         if (!this.editing) {
             return html`
-                <button type="button" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onEdit}">
-                    ${icon('edit')}
+                <button type="button" class="${this.buttonClass()}" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onEdit}">
+                    ${icon(this.configuration, 'edit')}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey('edit'))}</span>
                 </button>
             `;
@@ -279,17 +290,18 @@ export class EditFieldElement extends LitElement {
         return html`
             <span class="frontend-edit-field-actions">
                 <button
+                    class="${this.buttonClass('primary')}"
                     type="button"
                     data-variant="primary"
                     aria-describedby="${this.uid}-label"
                     ?disabled="${this.busy}"
                     @click="${this.onApply}"
                 >
-                    ${icon('apply')}
+                    ${icon(this.configuration, 'apply')}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey('apply'))}</span>
                 </button>
-                <button type="button" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onCancel}">
-                    ${icon('cancel')}
+                <button type="button" class="${this.buttonClass()}" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onCancel}">
+                    ${icon(this.configuration, 'cancel')}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey('cancel'))}</span>
                 </button>
             </span>
@@ -298,7 +310,7 @@ export class EditFieldElement extends LitElement {
 
     private renderErrors(): TemplateResult {
         return html`
-            <ul class="frontend-edit-field-errors" id="${this.uid}-errors" role="alert">
+            <ul class="${classesFor(this.configuration, 'errors', 'frontend-edit-field-errors')}" id="${this.uid}-errors" role="alert">
                 ${this.errors.map((message: string): TemplateResult => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -349,6 +361,32 @@ export class EditFieldElement extends LitElement {
                 composed: true,
             }),
         );
+    }
+    /**
+     * The class attribute of a button, including whatever the installation
+     * configured for its kind.
+     *
+     * `data-variant` still decides the *emphasis* and stays an attribute: it is
+     * this extension's own presentational state and the acceptance suite reads
+     * it. The classes here are the seam a project styles through, and they are
+     * additive - the configured value cannot remove anything the surface needs.
+     */
+    private buttonClass(variant: 'primary' | 'danger' | null = null, iconOnly = false): string {
+        const kinds: ElementType[] = ['button'];
+        if (variant === 'primary') {
+            kinds.push('buttonPrimary');
+        }
+        if (variant === 'danger') {
+            kinds.push('buttonDanger');
+        }
+        if (iconOnly) {
+            kinds.push('buttonIconOnly');
+        }
+
+        return kinds
+            .map((kind: ElementType): string => classesFor(this.configuration, kind))
+            .filter((entry: string): boolean => entry !== '')
+            .join(' ');
     }
 }
 

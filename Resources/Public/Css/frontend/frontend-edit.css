@@ -103,6 +103,11 @@ modern-extbase-frontend-edit-profile .frontend-edit-icon {
   width: 1.15em;
   height: 1.15em;
 }
+modern-extbase-frontend-edit-profile .frontend-edit-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 modern-extbase-frontend-edit-profile button[data-icon-only] {
   padding-inline: var(--frontend-edit-control-padding-block);
 }

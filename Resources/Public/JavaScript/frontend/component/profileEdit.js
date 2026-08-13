@@ -49,7 +49,7 @@ import {
   visibilityPayload
 } from "@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js";
 import { ProfileEndpointClient } from "@sbuerk/modern-extbase-frontend-edit/frontend/api/client.js";
-import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
+import { classesFor, emptyConfiguration, icon, parseComponentConfiguration } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js";
 import "@sbuerk/modern-extbase-frontend-edit/frontend/component/editField.js";
 import "@sbuerk/modern-extbase-frontend-edit/frontend/component/editImage.js";
 let ProfileEditElement = class extends LitElement {
@@ -58,6 +58,7 @@ let ProfileEditElement = class extends LitElement {
     this.profile = null;
     this.edits = EditSessions.empty();
     this.labels = {};
+    this.configuration = emptyConfiguration;
     this.imageRejected = false;
     this.client = null;
     /**
@@ -147,6 +148,7 @@ let ProfileEditElement = class extends LitElement {
       return;
     }
     this.labels = parseLabels(readJson(this.getAttribute("data-labels")));
+    this.configuration = parseComponentConfiguration(readJson(this.getAttribute("data-config")));
     this.client = new ProfileEndpointClient(endpoints, token);
     this.takeOverFromServerRendering();
     this.profile = profile;
@@ -179,10 +181,10 @@ let ProfileEditElement = class extends LitElement {
   renderRecord(profile, target) {
     const edit = this.edits.of(target);
     return html`
-            <div class="frontend-edit-record">
+            <div class="${classesFor(this.configuration, "record", "frontend-edit-record")}">
                 <div class="frontend-edit-record-actions">
                     ${this.renderRecordActions(profile, target, edit)}
-                    ${target.child === null && profile.hidden ? html`<span class="frontend-edit-state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
+                    ${target.child === null && profile.hidden ? html`<span class="${classesFor(this.configuration, "state", "frontend-edit-state")}">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
                 </div>
                 ${this.renderGeneralErrors(target)}
                 ${target.child === null ? this.renderImage(profile, target, edit) : nothing}
@@ -212,6 +214,7 @@ let ProfileEditElement = class extends LitElement {
                 data-focus="${focusKey(target, imageField)}"
                 .image="${profile.image}"
                 .labels="${this.labels}"
+                .configuration="${this.configuration}"
                 .profileName="${displayName(profile)}"
                 .busy="${(edit == null ? void 0 : edit.busy) ?? false}"
                 .errors="${this.edits.errorsOf(target, imageField)}"
@@ -225,27 +228,29 @@ let ProfileEditElement = class extends LitElement {
     if ((edit == null ? void 0 : edit.mode) === "record") {
       return html`
                 <button
+                    class="${this.buttonClass("primary")}"
                     type="button"
                     data-variant="primary"
                     ?disabled="${edit.busy}"
                     @click="${() => void this.submitRecord(target)}"
                 >
-                    ${icon("apply")}
+                    ${icon(this.configuration, "apply")}
                     <span class="frontend-edit-button-label">${this.text(actionLabelKey("save"))}</span>
                 </button>
-                <button type="button" ?disabled="${edit.busy}" @click="${() => this.cancelRecord(target)}">
-                    ${icon("cancel")}
+                <button type="button" class="${this.buttonClass()}" ?disabled="${edit.busy}" @click="${() => this.cancelRecord(target)}">
+                    ${icon(this.configuration, "cancel")}
                     <span class="frontend-edit-button-label">${this.text(actionLabelKey("cancel"))}</span>
                 </button>
             `;
     }
     return html`
             <button
+                class="${this.buttonClass()}"
                 type="button"
                 ?disabled="${(edit == null ? void 0 : edit.busy) ?? false}"
                 @click="${() => this.beginRecord(profile, target)}"
             >
-                ${icon("editRecord")}
+                ${icon(this.configuration, "editRecord")}
                 <span class="frontend-edit-button-label">${this.text(actionLabelKey("editRecord"))}</span>
             </button>
         `;
@@ -259,6 +264,7 @@ let ProfileEditElement = class extends LitElement {
                 .definition="${definition}"
                 .scope="${targetScope(target)}"
                 .labels="${this.labels}"
+                .configuration="${this.configuration}"
                 .serverValue="${stored}"
                 .draftValue="${this.edits.draftOf(target, field, stored)}"
                 .editing="${(edit == null ? void 0 : edit.fields.includes(field)) ?? false}"
@@ -293,46 +299,50 @@ let ProfileEditElement = class extends LitElement {
     const busy = this.edits.isBusy(target);
     const hidden = isChildHidden(profile, child, record.uid);
     return html`
-            <li class="frontend-edit-child">
+            <li class="${classesFor(this.configuration, "child", "frontend-edit-child")}">
                 <header class="frontend-edit-child-header">
                     ${this.renderChildTitle(child, record)}
-                    ${hidden ? html`<span class="frontend-edit-state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
+                    ${hidden ? html`<span class="${classesFor(this.configuration, "state", "frontend-edit-state")}">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
                 <div class="frontend-edit-child-actions">
                     <button
+                        class="${this.buttonClass(null, true)}"
                         type="button"
                         data-icon-only
                         ?disabled="${busy || index === 0}"
                         @click="${() => void this.moveChild(child, record.uid, -1)}"
                     >
-                        ${icon("moveUp")}
+                        ${icon(this.configuration, "moveUp")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveUp"))}</span>
                     </button>
                     <button
+                        class="${this.buttonClass(null, true)}"
                         type="button"
                         data-icon-only
                         ?disabled="${busy || index === total - 1}"
                         @click="${() => void this.moveChild(child, record.uid, 1)}"
                     >
-                        ${icon("moveDown")}
+                        ${icon(this.configuration, "moveDown")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveDown"))}</span>
                     </button>
                     <button
+                        class="${this.buttonClass(null, true)}"
                         type="button"
                         data-icon-only
                         ?disabled="${busy}"
                         @click="${() => void this.setChildVisibility(child, record.uid, !hidden)}"
                     >
-                        ${icon(hidden ? "show" : "hide")}
+                        ${icon(this.configuration, hidden ? "show" : "hide")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey(hidden ? "show" : "hide"))}</span>
                     </button>
                     <button
+                        class="${this.buttonClass("danger", true)}"
                         type="button"
                         data-icon-only
                         data-variant="danger"
                         ?disabled="${busy}"
                         @click="${() => void this.deleteChild(child, record.uid)}"
                     >
-                        ${icon("remove")}
+                        ${icon(this.configuration, "remove")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey("remove"))}</span>
                     </button>
                 </div>
@@ -379,7 +389,7 @@ let ProfileEditElement = class extends LitElement {
     const defaults = initialValues(fieldsOfChild(child));
     const edit = this.edits.of(target);
     return html`
-            <div class="frontend-edit-child frontend-edit-child-new">
+            <div class="${classesFor(this.configuration, "child", "frontend-edit-child", "frontend-edit-child-new")}">
                 ${this.renderGeneralErrors(target)}
                 ${fieldsOfChild(child).map((definition) => {
       const field = definition.name;
@@ -389,6 +399,7 @@ let ProfileEditElement = class extends LitElement {
                             .definition="${definition}"
                             .scope="${child}"
                             .labels="${this.labels}"
+                            .configuration="${this.configuration}"
                             .serverValue="${""}"
                             .draftValue="${this.edits.draftOf(target, field, defaults[field] ?? "")}"
                             .editing="${true}"
@@ -403,12 +414,13 @@ let ProfileEditElement = class extends LitElement {
     })}
                 <div class="frontend-edit-child-actions">
                     <button
+                        class="${this.buttonClass("primary")}"
                         type="button"
                         data-variant="primary"
                         ?disabled="${(edit == null ? void 0 : edit.busy) ?? false}"
                         @click="${() => void this.addChild(child)}"
                     >
-                        ${icon("add")}
+                        ${icon(this.configuration, "add")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey("add"))}</span>
                     </button>
                 </div>
@@ -421,7 +433,7 @@ let ProfileEditElement = class extends LitElement {
       return nothing;
     }
     return html`
-            <ul class="frontend-edit-errors" role="alert">
+            <ul class="${classesFor(this.configuration, "errors", "frontend-edit-errors")}" role="alert">
                 ${messages.map((message) => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -689,6 +701,28 @@ let ProfileEditElement = class extends LitElement {
   text(key) {
     return label(this.labels, key);
   }
+  /**
+   * The class attribute of a button, including whatever the installation
+   * configured for its kind.
+   *
+   * `data-variant` still decides the *emphasis* and stays an attribute: it is
+   * this extension's own presentational state and the acceptance suite reads
+   * it. The classes here are the seam a project styles through, and they are
+   * additive - the configured value cannot remove anything the surface needs.
+   */
+  buttonClass(variant = null, iconOnly = false) {
+    const kinds = ["button"];
+    if (variant === "primary") {
+      kinds.push("buttonPrimary");
+    }
+    if (variant === "danger") {
+      kinds.push("buttonDanger");
+    }
+    if (iconOnly) {
+      kinds.push("buttonIconOnly");
+    }
+    return kinds.map((kind) => classesFor(this.configuration, kind)).filter((entry) => entry !== "").join(" ");
+  }
 };
 __decorateClass([
   state()
@@ -699,6 +733,9 @@ __decorateClass([
 __decorateClass([
   state()
 ], ProfileEditElement.prototype, "labels", 2);
+__decorateClass([
+  state()
+], ProfileEditElement.prototype, "configuration", 2);
 __decorateClass([
   state()
 ], ProfileEditElement.prototype, "imageRejected", 2);

@@ -76,4 +76,5 @@ In this chapter
     TypoScript
     Templates
     Styling
+    ComponentConfiguration
     ContentSecurityPolicy

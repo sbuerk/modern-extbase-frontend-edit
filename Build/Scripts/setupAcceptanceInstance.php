@@ -226,6 +226,31 @@ $testbase->setUpLocalConfiguration(
         'GFX' => [
             'processor' => 'GraphicsMagick',
         ],
+        /*
+         * The class names the surface hands to its own elements, on top of the
+         * "frontend-edit-*" ones it always carries.
+         *
+         * This is the seam a project configures, and configuring it here is what
+         * makes the acceptance instance prove that the seam works: the values
+         * below are the site package's own class names, so a themed button in a
+         * screenshot is evidence that an integrator can do the same thing.
+         *
+         * It is also the only place the two packages know about each other.
+         * Neither the extension nor `test_dev_site` names the other; this
+         * settings block is the wiring, exactly as it would be in a project.
+         */
+        'modern_extbase_frontend_edit' => [
+            'classes' => [
+                'button' => 'button',
+                'buttonPrimary' => 'button--primary',
+                'buttonDanger' => 'button--danger',
+                'buttonIconOnly' => 'button--icon',
+                'control' => 'form-control',
+                'label' => 'form-label',
+                'errors' => 'form-errors',
+                'filePicker' => 'file-picker',
+            ],
+        ],
         'MAIL' => [
             // Nothing sends mail here, and a transport that tries to would turn
             // a failure into an exception page.

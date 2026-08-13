@@ -6,14 +6,25 @@
 Styling and theming
 ===================
 
-The editing surface is drawn inside a shadow root, which is what keeps a site's
-stylesheet from breaking it — and equally what keeps a site's stylesheet from
-reaching it. A selector written in a site package cannot address anything the
-component renders, however specific it is made.
+The editing surface renders into the **light DOM**, so a site's own stylesheet
+reaches it the same way it reaches any other markup on the page. There are two
+ways to style it, and they compose:
 
-What does cross that boundary is a **CSS custom property**. Every colour,
-distance, radius, duration and width the surface uses is one, so the properties
-are the whole styling interface: set a property, and the surface follows.
+*   **CSS custom properties.** Every colour, distance, radius, duration and
+    width the surface uses is a property declared on the custom element. Setting
+    one is the smallest possible change and needs no knowledge of the markup.
+*   **Class names.** Every element carries a ``frontend-edit-*`` class that a
+    site may write rules against, and an installation can have the surface carry
+    *additional* classes of its own — a design system's ``button``,
+    ``form-control`` and so on — so the surface inherits a theme rather than
+    imitating it. See :ref:`configuration-component`.
+
+..  note::
+    Earlier versions drew the surface inside a shadow root, where a custom
+    property was the *only* thing that crossed the boundary and no selector
+    reached anything. That is no longer the case. The trade is deliberate and
+    goes both ways: a site can now style the surface, and a site can now break
+    it.
 
 Everything below is optional. The extension ships defaults that are deliberately
 quiet — no typeface of its own, no brand colour, no decoration — so a site that

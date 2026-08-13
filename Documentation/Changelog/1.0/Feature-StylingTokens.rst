@@ -14,9 +14,15 @@ values written into the components. Every colour, distance, radius, duration and
 width it uses is now a property declared on the custom element, and a site
 overrides one by setting it on that element from its own stylesheet.
 
-This is the only way the surface can be restyled at all: it is drawn inside a
-shadow root, which no selector reaches, and a custom property is the one thing
-that crosses that boundary.
+At the time this landed it was the only way the surface could be restyled at
+all: it was drawn inside a shadow root, which no selector reaches, and a custom
+property is the one thing that crosses that boundary.
+
+..  note::
+    The surface renders into the light DOM now, so custom properties are no
+    longer the only interface — a site can also write ordinary rules against the
+    surface's class names, and can have it carry its own. The properties below
+    are unchanged and still work. See :ref:`configuration-component`.
 
 ..  code-block:: css
 

@@ -138,6 +138,7 @@ Nothing below `.agent/` is ever committed.
 | `final readonly`, injected abstracts, DTOs          | [Class design](docs/architecture/class-design.md)                             |
 | **Extbase attributes that differ per core version** | [Version neutral attributes](docs/architecture/version-neutral-attributes.md) |
 | The frontend editing design and its reasoning       | [Modern frontend editing](docs/frontend-edit/Index.md)                        |
+| Icons and CSS classes an installation configures    | [Configuring the surface](docs/frontend-edit/component-configuration.md)      |
 | Both test suites and their strictness               | [Testing](docs/testing/Index.md)                                              |
 | Commit message conventions                          | [Commit messages](docs/workflow/commit-messages.md)                           |
 

@@ -11,7 +11,7 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
-import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
+import { classesFor, emptyConfiguration, icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js";
 import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
 let instances = 0;
 let EditFieldElement = class extends LitElement {
@@ -22,6 +22,7 @@ let EditFieldElement = class extends LitElement {
     this.definition = { name: "", control: "line" };
     this.scope = "profile";
     this.labels = {};
+    this.configuration = emptyConfiguration;
     this.serverValue = "";
     this.draftValue = "";
     this.editing = false;
@@ -49,8 +50,8 @@ let EditFieldElement = class extends LitElement {
   render() {
     const hasErrors = this.errors.length > 0;
     return html`
-            <div class="frontend-edit-field">
-                <span class="frontend-edit-field-label" id="${this.uid}-label">${label(this.labels, fieldLabelKey(this.scope, this.definition.name))}</span>
+            <div class="${classesFor(this.configuration, "field", "frontend-edit-field")}">
+                <span class="${classesFor(this.configuration, "label", "frontend-edit-field-label")}" id="${this.uid}-label">${label(this.labels, fieldLabelKey(this.scope, this.definition.name))}</span>
                 <div class="frontend-edit-field-body">
                     ${this.editing ? this.renderControl(hasErrors) : this.renderValue()}
                     ${this.renderActions()}
@@ -118,7 +119,7 @@ let EditFieldElement = class extends LitElement {
     if (this.definition.control === "choice") {
       return html`
                 <select
-                    class="frontend-edit-field-control"
+                    class="${classesFor(this.configuration, "control", "frontend-edit-field-control")}"
                     aria-labelledby="${this.uid}-label"
                     aria-invalid="${shared.invalid}"
                     aria-describedby="${shared.describedBy ?? nothing}"
@@ -137,7 +138,7 @@ let EditFieldElement = class extends LitElement {
     if (this.definition.control === "text") {
       return html`
                 <textarea
-                    class="frontend-edit-field-control"
+                    class="${classesFor(this.configuration, "control", "frontend-edit-field-control")}"
                     aria-labelledby="${this.uid}-label"
                     aria-invalid="${shared.invalid}"
                     aria-describedby="${shared.describedBy ?? nothing}"
@@ -151,7 +152,7 @@ let EditFieldElement = class extends LitElement {
     }
     return html`
             <input
-                class="frontend-edit-field-control"
+                class="${classesFor(this.configuration, "control", "frontend-edit-field-control")}"
                 type="${this.definition.control === "date" ? "date" : "text"}"
                 aria-labelledby="${this.uid}-label"
                 aria-invalid="${shared.invalid}"
@@ -178,8 +179,8 @@ let EditFieldElement = class extends LitElement {
     }
     if (!this.editing) {
       return html`
-                <button type="button" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onEdit}">
-                    ${icon("edit")}
+                <button type="button" class="${this.buttonClass()}" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onEdit}">
+                    ${icon(this.configuration, "edit")}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("edit"))}</span>
                 </button>
             `;
@@ -187,17 +188,18 @@ let EditFieldElement = class extends LitElement {
     return html`
             <span class="frontend-edit-field-actions">
                 <button
+                    class="${this.buttonClass("primary")}"
                     type="button"
                     data-variant="primary"
                     aria-describedby="${this.uid}-label"
                     ?disabled="${this.busy}"
                     @click="${this.onApply}"
                 >
-                    ${icon("apply")}
+                    ${icon(this.configuration, "apply")}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("apply"))}</span>
                 </button>
-                <button type="button" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onCancel}">
-                    ${icon("cancel")}
+                <button type="button" class="${this.buttonClass()}" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onCancel}">
+                    ${icon(this.configuration, "cancel")}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("cancel"))}</span>
                 </button>
             </span>
@@ -205,7 +207,7 @@ let EditFieldElement = class extends LitElement {
   }
   renderErrors() {
     return html`
-            <ul class="frontend-edit-field-errors" id="${this.uid}-errors" role="alert">
+            <ul class="${classesFor(this.configuration, "errors", "frontend-edit-field-errors")}" id="${this.uid}-errors" role="alert">
                 ${this.errors.map((message) => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -250,6 +252,28 @@ let EditFieldElement = class extends LitElement {
       })
     );
   }
+  /**
+   * The class attribute of a button, including whatever the installation
+   * configured for its kind.
+   *
+   * `data-variant` still decides the *emphasis* and stays an attribute: it is
+   * this extension's own presentational state and the acceptance suite reads
+   * it. The classes here are the seam a project styles through, and they are
+   * additive - the configured value cannot remove anything the surface needs.
+   */
+  buttonClass(variant = null, iconOnly = false) {
+    const kinds = ["button"];
+    if (variant === "primary") {
+      kinds.push("buttonPrimary");
+    }
+    if (variant === "danger") {
+      kinds.push("buttonDanger");
+    }
+    if (iconOnly) {
+      kinds.push("buttonIconOnly");
+    }
+    return kinds.map((kind) => classesFor(this.configuration, kind)).filter((entry) => entry !== "").join(" ");
+  }
 };
 __decorateClass([
   property({ attribute: false })
@@ -260,6 +284,9 @@ __decorateClass([
 __decorateClass([
   property({ attribute: false })
 ], EditFieldElement.prototype, "labels", 2);
+__decorateClass([
+  property({ attribute: false })
+], EditFieldElement.prototype, "configuration", 2);
 __decorateClass([
   property({ type: String })
 ], EditFieldElement.prototype, "serverValue", 2);

@@ -227,12 +227,23 @@ modern-extbase-frontend-edit-profile .frontend-edit-file-picker:not([data-disabl
  * Sized in `em` so a glyph tracks the type around it, and `block` because an
  * inline SVG otherwise sits on the text baseline and drags the button's line box
  * down with its descender space.
+ *
+ * The class is on a wrapping `<span>` rather than on the `<svg>` itself: the
+ * markup comes from an SVG file resolved through `IconRegistry`, and a project
+ * that replaces one should not have to know this extension's class names to do
+ * it. Whatever the file contains is sized by the rule below.
  */
 modern-extbase-frontend-edit-profile .frontend-edit-icon {
     display: block;
     flex: none;
     width: 1.15em;
     height: 1.15em;
+}
+
+modern-extbase-frontend-edit-profile .frontend-edit-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /*

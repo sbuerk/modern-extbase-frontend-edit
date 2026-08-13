@@ -11,7 +11,7 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
-import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
+import { classesFor, emptyConfiguration, icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js";
 import { actionLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
 import { imageAccept, imageAlternative, imageField, isDisplayable, uploadFailureMessages } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js";
 let instances = 0;
@@ -22,6 +22,7 @@ let EditImageElement = class extends LitElement {
     this.uid = `frontend-edit-image-${++instances}`;
     this.image = null;
     this.labels = {};
+    this.configuration = emptyConfiguration;
     this.profileName = "";
     this.busy = false;
     this.errors = [];
@@ -44,13 +45,13 @@ let EditImageElement = class extends LitElement {
     const messages = uploadFailureMessages(this.errors, this.rejected ? this.text("error.imageNotStored") : "");
     return html`
             <div class="frontend-edit-field">
-                <span class="frontend-edit-field-label" id="${this.uid}-label">${this.text(fieldLabelKey("profile", imageField))}</span>
+                <span class="${classesFor(this.configuration, "label", "frontend-edit-field-label")}" id="${this.uid}-label">${this.text(fieldLabelKey("profile", imageField))}</span>
                 <div class="frontend-edit-field-body">
                     ${this.renderImage()}
                     <span class="frontend-edit-field-actions">
-                        <label class="frontend-edit-file-picker" ?data-disabled="${this.busy}">
+                        <label class="${classesFor(this.configuration, "filePicker", "frontend-edit-file-picker")}" ?data-disabled="${this.busy}">
                             <input
-                                class="frontend-edit-field-control frontend-edit-visually-hidden"
+                                class="${classesFor(this.configuration, "control", "frontend-edit-field-control", "frontend-edit-visually-hidden")}"
                                 type="file"
                                 accept="${imageAccept}"
                                 aria-labelledby="${this.uid}-label"
@@ -59,19 +60,20 @@ let EditImageElement = class extends LitElement {
                                 ?disabled="${this.busy}"
                                 @change="${this.onSelect}"
                             />
-                            ${icon("chooseImage")}
+                            ${icon(this.configuration, "chooseImage")}
                             <span class="frontend-edit-button-label">
                                 ${this.text(actionLabelKey(this.image === null ? "chooseImage" : "replaceImage"))}
                             </span>
                         </label>
                         <button
+                            class="${this.buttonClass("danger")}"
                             type="button"
                             data-variant="danger"
                             aria-describedby="${this.uid}-label"
                             ?disabled="${this.busy || this.image === null}"
                             @click="${this.onRemove}"
                         >
-                            ${icon("remove")}
+                            ${icon(this.configuration, "remove")}
                             <span class="frontend-edit-button-label">${this.text(actionLabelKey("remove"))}</span>
                         </button>
                     </span>
@@ -119,7 +121,7 @@ let EditImageElement = class extends LitElement {
   }
   renderErrors(messages) {
     return html`
-            <ul class="frontend-edit-field-errors" id="${this.uid}-errors" role="alert">
+            <ul class="${classesFor(this.configuration, "errors", "frontend-edit-field-errors")}" id="${this.uid}-errors" role="alert">
                 ${messages.map((message) => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -144,6 +146,28 @@ let EditImageElement = class extends LitElement {
   text(key) {
     return label(this.labels, key);
   }
+  /**
+   * The class attribute of a button, including whatever the installation
+   * configured for its kind.
+   *
+   * `data-variant` still decides the *emphasis* and stays an attribute: it is
+   * this extension's own presentational state and the acceptance suite reads
+   * it. The classes here are the seam a project styles through, and they are
+   * additive - the configured value cannot remove anything the surface needs.
+   */
+  buttonClass(variant = null, iconOnly = false) {
+    const kinds = ["button"];
+    if (variant === "primary") {
+      kinds.push("buttonPrimary");
+    }
+    if (variant === "danger") {
+      kinds.push("buttonDanger");
+    }
+    if (iconOnly) {
+      kinds.push("buttonIconOnly");
+    }
+    return kinds.map((kind) => classesFor(this.configuration, kind)).filter((entry) => entry !== "").join(" ");
+  }
 };
 __decorateClass([
   property({ attribute: false })
@@ -151,6 +175,9 @@ __decorateClass([
 __decorateClass([
   property({ attribute: false })
 ], EditImageElement.prototype, "labels", 2);
+__decorateClass([
+  property({ attribute: false })
+], EditImageElement.prototype, "configuration", 2);
 __decorateClass([
   property({ type: String })
 ], EditImageElement.prototype, "profileName", 2);
