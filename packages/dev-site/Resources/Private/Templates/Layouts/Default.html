@@ -1,0 +1,23 @@
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
+<f:comment>
+    The page frame: the stylesheet, a header, the content, a footer.
+
+    "<f:asset.css>" behaves differently on the two core versions and that is
+    accepted rather than worked around. TYPO3 v14.2 renamed "useNonce" to "csp"
+    (#100887) and the new argument defaults to *true* for external files, so on
+    v14 this link carries a nonce and on v13 it does not. There is no version
+    neutral way to suppress that — "csp" does not exist on v13 — and the emitted
+    stylesheet is identical either way.
+</f:comment>
+<f:asset.css identifier="test-dev-site" href="EXT:test_dev_site/Resources/Public/Css/main.css" media="all"/>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<f:render partial="Header" arguments="{_all}"/>
+
+<main class="site-main" id="content">
+    <f:render section="Main"/>
+</main>
+
+<f:render partial="Footer" arguments="{_all}"/>
+</html>

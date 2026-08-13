@@ -1,0 +1,18 @@
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
+<f:comment>
+    A masthead, not a navigation. The development instance has a three page tree
+    and the plugin under test is the point of every page, so a menu would be
+    scaffolding nobody looks at — and one more thing whose rendering would have
+    to be kept identical across two core versions for the screenshots to be
+    comparable.
+</f:comment>
+<header class="site-header">
+    <div class="site-container site-header__inner">
+        <a class="site-header__brand" href="/">
+            <span class="site-header__mark" aria-hidden="true"></span>
+            <span class="site-header__title"><f:if condition="{site.configuration.websiteTitle}"><f:then>{site.configuration.websiteTitle}</f:then><f:else>Development site</f:else></f:if></span>
+        </a>
+        <p class="site-header__note">Development site package &mdash; not a shipped theme</p>
+    </div>
+</header>
+</html>

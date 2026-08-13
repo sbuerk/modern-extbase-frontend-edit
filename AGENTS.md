@@ -130,6 +130,7 @@ Nothing below `.agent/` is ever committed.
 | Topic                                               | Page                                                                          |
 |-----------------------------------------------------|-------------------------------------------------------------------------------|
 | Development environment, container based tooling    | [Environment](docs/development/environment.md)                                |
+| The themed page the surface is photographed inside  | [Development site package](docs/development/dev-site-package.md)              |
 | **Dual core setup — read this first**               | [Dual core setup](docs/development/dual-core-setup.md)                        |
 | The gates and what they check                       | [Quality gates](docs/development/quality-gates.md)                            |
 | Version differences split classes, not conditionals | [Core version aware code](docs/architecture/core-version-aware-code.md)       |

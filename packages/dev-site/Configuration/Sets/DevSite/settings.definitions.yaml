@@ -1,0 +1,22 @@
+# Settings of the development site package.
+#
+# One setting, and it exists because the alternative cannot be tested. The
+# stylesheet follows "prefers-color-scheme" on its own, which is the right
+# default for a real site and useless for a screenshot: a headless browser
+# reports "light" and there is no way to photograph the dark scheme without
+# emulating a media feature per shot.
+#
+# "colorScheme" pins the scheme instead. "auto" follows the visitor, "light" and
+# "dark" force one, and the page renders it as a "data-color-scheme" attribute
+# that the stylesheet reads in preference to the media query.
+settings:
+  devSite.colorScheme:
+    label: 'Colour scheme'
+    description: 'Follow the visitor''s system setting, or force one scheme.'
+    type: string
+    default: auto
+    enum:
+      auto: 'Follow the system setting'
+      light: 'Always light'
+      dark: 'Always dark'
+    category: devSite

@@ -1,0 +1,61 @@
+/*
+ * Content elements, and the surface a plugin sits on.
+ *
+ * `fluid_styled_content` emits `.ce-*` class names and a wrapping
+ * `<div id="c123" class="frame frame-default …">`. Only the frame is styled
+ * here; the rest of what FSC can render is left to its own devices, because a
+ * fixture that restyled every content element would be a theme rather than a
+ * backdrop.
+ */
+
+.frame {
+    margin-block-end: var(--space-8);
+}
+
+.frame:last-child {
+    margin-block-end: 0;
+}
+
+/*
+ * The card a plugin renders onto.
+ *
+ * The editing surface gets a surface of its own so that it reads as a distinct
+ * region of the page rather than as loose text in the content column — which is
+ * how it looked before this package existed, and the reason every screenshot in
+ * the manual felt unfinished.
+ */
+.card {
+    padding: var(--space-6);
+    border: var(--border-width) solid var(--c-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--c-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.card__title {
+    margin-block-end: var(--space-4);
+}
+
+/* A notice, for the states the plugin renders instead of a form: not logged in,
+ * a workspace is active, nothing to edit. */
+.notice {
+    padding: var(--space-4);
+    border: var(--border-width) solid var(--c-border);
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    background-color: var(--c-surface-sunken);
+}
+
+.notice--info {
+    border-left-color: var(--c-accent);
+}
+
+.notice--warning {
+    border-left-color: var(--c-danger);
+    background-color: var(--c-danger-soft);
+}
+
+.notice__title {
+    margin-block-end: var(--space-1);
+    font-weight: 600;
+}

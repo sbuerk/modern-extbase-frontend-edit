@@ -1,0 +1,94 @@
+/*
+ * The page frame: a container, a header, a footer, and the skip link.
+ *
+ * Flexbox rather than grid throughout, and `flex-wrap` rather than a container
+ * query, for the reason the extension gives for the same choice: the import map
+ * browser floor includes Firefox 108 and `@container` needs 110. A theme that
+ * reflowed at a breakpoint the plugin cannot use would make every narrow column
+ * screenshot disagree with itself.
+ */
+
+.site-container {
+    width: 100%;
+    max-width: var(--container);
+    margin-inline: auto;
+    padding-inline: var(--space-4);
+}
+
+.skip-link {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 10;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-sm);
+    background-color: var(--c-surface);
+    box-shadow: var(--shadow);
+    color: var(--c-text);
+
+    /* Off screen until focused, without `display: none`, which would take it
+     * out of the tab order and defeat the purpose. */
+    transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+    transform: translateY(0);
+}
+
+.site-header {
+    border-bottom: var(--border-width) solid var(--c-border);
+    background-color: var(--c-surface);
+}
+
+.site-header__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    padding-block: var(--space-4);
+}
+
+.site-header__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--c-text);
+    text-decoration: none;
+}
+
+/* A mark rather than a logo file: one less binary in a fixture, and it recolours
+ * with the scheme for free. */
+.site-header__mark {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--c-accent);
+}
+
+.site-header__title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.site-header__note {
+    color: var(--c-text-muted);
+    font-size: var(--text-sm);
+}
+
+.site-main {
+    padding-block: var(--space-12);
+}
+
+.site-footer {
+    margin-top: var(--space-12);
+    border-top: var(--border-width) solid var(--c-border);
+    padding-block: var(--space-6);
+    background-color: var(--c-surface);
+}
+
+.site-footer__text {
+    color: var(--c-text-muted);
+    font-size: var(--text-sm);
+}
