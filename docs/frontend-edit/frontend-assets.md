@@ -359,7 +359,7 @@ Build/                                      (already export-ignored)
   Tests/
     TypeScript/                             the "unitJs" suite and its two helpers
 Resources/Public/
-  JavaScript/frontend/**                    22 artifacts, one per source module
+  JavaScript/frontend/**                    19 artifacts, one per source module
   Css/frontend/frontend-edit.css            committed build artifact
 Configuration/JavaScriptModules.php
 ```
@@ -436,7 +436,7 @@ sysexts' `Resources/Public/JavaScript/`, excluding the vendored `Contrib/`
 trees, finds **no relative import at all** — not one `from './…'` in the whole
 of core.
 
-**The cost is that the addressable surface is now 22 specifiers, not one.**
+**The cost is that the addressable surface is now 19 specifiers, not one.**
 Every module below `frontend/` — `model/json.js`, `api/client.js`, all of them —
 is a public entry in the import map that any template on the site may load,
 where a bundled build published exactly the one thing `Edit.html` asks for. That
