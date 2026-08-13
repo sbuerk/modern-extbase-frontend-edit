@@ -130,6 +130,21 @@ function movedChildOrder(profile, child, childUid, offset) {
   moved.splice(to, 0, childUid);
   return moved;
 }
+function childOrderMovedToEnd(profile, child, childUid, end) {
+  const order = childUids(profile, child);
+  const from = order.indexOf(childUid);
+  if (from === -1) {
+    return order;
+  }
+  const moved = [...order];
+  moved.splice(from, 1);
+  if (end === "top") {
+    moved.unshift(childUid);
+  } else {
+    moved.push(childUid);
+  }
+  return moved;
+}
 function readChildren(value, parse) {
   if (!Array.isArray(value)) {
     return [];
@@ -156,6 +171,7 @@ function isObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 export {
+  childOrderMovedToEnd,
   childRecord,
   childUids,
   childrenOf,

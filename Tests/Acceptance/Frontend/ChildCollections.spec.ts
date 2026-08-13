@@ -71,6 +71,96 @@ test.describe('Child collections', (): void => {
         expect(await surface.renderedChildUids('address')).toEqual([3, 2, 1, 4]);
     });
 
+    test('a child sent to the top is persisted and survives a reload', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        // Stored order is [2, 3, 1, 4]. Sending 1 to the top has to produce
+        // [1, 2, 3, 4] - two positions, which is what separates this from
+        // "move up" and is the whole reason the action exists.
+        const response = await surface.moveChild('address:1', 'Move to top');
+
+        expect(response.status()).toBe(200);
+        await expect
+            .poll(async (): Promise<number[]> => surface.renderedChildUids('address'))
+            .toEqual([1, 2, 3, 4]);
+        expect(childUidsInStoredOrder(ADDRESS_TABLE, OWNED_PROFILE_UID)).toEqual([1, 2, 3, 4]);
+
+        await page.reload();
+        await surface.waitForEnhancement();
+
+        expect(await surface.renderedChildUids('address')).toEqual([1, 2, 3, 4]);
+    });
+
+    test('a child sent to the bottom is persisted and survives a reload', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        // Stored order is [2, 3, 1, 4]; sending 2 to the bottom gives [3, 1, 4, 2].
+        const response = await surface.moveChild('address:2', 'Move to bottom');
+
+        expect(response.status()).toBe(200);
+        await expect
+            .poll(async (): Promise<number[]> => surface.renderedChildUids('address'))
+            .toEqual([3, 1, 4, 2]);
+        expect(childUidsInStoredOrder(ADDRESS_TABLE, OWNED_PROFILE_UID)).toEqual([3, 1, 4, 2]);
+
+        await page.reload();
+        await surface.waitForEnhancement();
+
+        expect(await surface.renderedChildUids('address')).toEqual([3, 1, 4, 2]);
+    });
+
+    /**
+     * The end actions are not drawn where they would do nothing.
+     *
+     * "Move up" and "Move down" are *disabled* on the first and last record
+     * rather than hidden, which is the older convention here. These two are
+     * absent instead, which is what was asked for - so the toolbars are not
+     * uniform, and this test pins both halves so the inconsistency is a decision
+     * on record rather than something that drifts.
+     */
+    test('the end actions are absent where they would change nothing', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        // Stored order is [2, 3, 1, 4], so uid 2 is first and uid 4 is last.
+        const first = surface.childRow('address:2');
+        const last = surface.childRow('address:4');
+        const middle = surface.childRow('address:3');
+
+        await expect(first.getByRole('button', { name: 'Move to top', exact: true })).toHaveCount(0);
+        await expect(first.getByRole('button', { name: 'Move to bottom', exact: true })).toHaveCount(1);
+
+        await expect(last.getByRole('button', { name: 'Move to bottom', exact: true })).toHaveCount(0);
+        await expect(last.getByRole('button', { name: 'Move to top', exact: true })).toHaveCount(1);
+
+        // A record in the middle offers both.
+        await expect(middle.getByRole('button', { name: 'Move to top', exact: true })).toHaveCount(1);
+        await expect(middle.getByRole('button', { name: 'Move to bottom', exact: true })).toHaveCount(1);
+
+        // The relative moves are still drawn on the first and last row, and
+        // disabled. Absent and disabled are two different statements, and both
+        // are deliberate.
+        await expect(first.getByRole('button', { name: 'Move up', exact: true })).toBeDisabled();
+        await expect(last.getByRole('button', { name: 'Move down', exact: true })).toBeDisabled();
+    });
+
     test('a removed child is gone after a reload', async ({ page, loginAs }): Promise<void> => {
         await loginAs('owner');
         const surface = new ProfileEditPage(page);

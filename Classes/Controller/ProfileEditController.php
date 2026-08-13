@@ -150,6 +150,8 @@ final class ProfileEditController extends ActionController
         'action.remove',
         'action.moveUp',
         'action.moveDown',
+        'action.moveToTop',
+        'action.moveToBottom',
         'action.hide',
         'action.show',
         'action.chooseImage',

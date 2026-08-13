@@ -41,6 +41,11 @@ const expectedVariants: ReadonlyMap<string, string | null> = new Map([
     ['Cancel', null],
     ['Move up', null],
     ['Move down', null],
+    // Reordering is never emphasised and never destructive, however far it
+    // moves a record: it changes presentation and nothing else, and it is
+    // reversible by doing it again.
+    ['Move to top', null],
+    ['Move to bottom', null],
     ['Hide', null],
     ['Show', null],
     ['Remove', 'danger'],

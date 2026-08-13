@@ -90,8 +90,9 @@ show a stale value next to a fresh one.
 
     The surface at rest. Every field shows its stored value with an
     :guilabel:`Edit` button next to it; each record carries an :guilabel:`Edit
-    all fields` button of its own; each child record adds :guilabel:`Move up`,
-    :guilabel:`Move down`, :guilabel:`Hide` and :guilabel:`Remove`; and each
+    all fields` button of its own; each child record adds :guilabel:`Move to
+    top`, :guilabel:`Move up`, :guilabel:`Move down`, :guilabel:`Move to
+    bottom`, :guilabel:`Hide` and :guilabel:`Remove`; and each
     collection ends in an empty form for a new entry. The hidden address is
     marked :guilabel:`Hidden` and offers :guilabel:`Show` instead of
     :guilabel:`Hide`.
@@ -193,9 +194,14 @@ The buttons of a record are:
             the website.
 
     *   -   :guilabel:`Move up`, :guilabel:`Move down`
-        -   Change the order of the collection, which is the order the detail
-            page renders it in. The button that would move the record out of
-            the list is disabled.
+        -   Change the order of the collection by one position, which is the
+            order the detail page renders it in. The button that would move the
+            record out of the list is shown but disabled.
+
+    *   -   :guilabel:`Move to top`, :guilabel:`Move to bottom`
+        -   Send the record to one end of the collection in a single step,
+            rather than repeating :guilabel:`Move up` for a long list. These
+            are not shown at all on a record that is already at that end.
 
     *   -   :guilabel:`Hide`, :guilabel:`Show`
         -   Take the record off the list and the detail page, or put it back. A

@@ -258,6 +258,47 @@ export function movedChildOrder(
     return moved;
 }
 
+/**
+ * Where a record can be sent, for the two moves that are not relative.
+ */
+export type CollectionEnd = 'top' | 'bottom';
+
+/**
+ * The full intended order after sending one record to an end of its collection.
+ *
+ * Deliberately **not** expressed as {@see movedChildOrder} with a large offset.
+ * That would look equivalent and would be wrong in the one case that matters: an
+ * offset past either end is clamped to "unchanged" there, precisely so a caller
+ * can skip a pointless request, so `movedChildOrder(profile, child, uid, -99)`
+ * answers with the order it was given rather than putting the record first.
+ *
+ * Answers the unchanged order for a record that is already at that end, and for
+ * a uid that is not a member, so the caller can compare and skip a request that
+ * would change nothing — the same contract {@see movedChildOrder} has.
+ */
+export function childOrderMovedToEnd(
+    profile: ProfileRecord,
+    child: ChildType,
+    childUid: number,
+    end: CollectionEnd,
+): number[] {
+    const order = childUids(profile, child);
+    const from = order.indexOf(childUid);
+    if (from === -1) {
+        return order;
+    }
+
+    const moved = [...order];
+    moved.splice(from, 1);
+    if (end === 'top') {
+        moved.unshift(childUid);
+    } else {
+        moved.push(childUid);
+    }
+
+    return moved;
+}
+
 function readChildren<T>(value: unknown, parse: (entry: unknown) => T | null): T[] {
     if (!Array.isArray(value)) {
         return [];
