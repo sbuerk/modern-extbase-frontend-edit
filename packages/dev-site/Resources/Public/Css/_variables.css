@@ -1,0 +1,180 @@
+/*
+ * Every value the theme decides, and the light and dark schemes.
+ *
+ * ## Why the scheme is resolved three times
+ *
+ * A site setting pins the scheme on `<body data-color-scheme>`, and the default
+ * of that setting is `auto`. So there are three states, not two, and each needs
+ * its own block:
+ *
+ * 1. `:root` carries the **light** palette unconditionally. Something has to be
+ *    defined before any media query is evaluated, or a browser that matches
+ *    neither branch renders unstyled text.
+ * 2. `[data-color-scheme="auto"]` inside `prefers-color-scheme: dark` applies
+ *    the dark palette when the visitor asked for it and the site did not object.
+ * 3. `[data-color-scheme="dark"]` applies it unconditionally, which is what
+ *    makes the dark scheme photographable at all — a headless browser reports
+ *    `light` and the media query alone could never be captured.
+ *
+ * The same three-state reasoning is why the attribute is `auto` rather than
+ * absent: an absent attribute cannot distinguish "follow the visitor" from
+ * "somebody forgot to render the body tag".
+ *
+ * ## Why there is no webfont
+ *
+ * The system stack, on purpose and not to save a request. The extension under
+ * test declares a Content Security Policy, and a font from another origin is
+ * refused by it — a theme that needed one would make the plugin's own security
+ * posture look like a bug. Self hosting one would work and would add a binary
+ * to a fixture that exists to be read.
+ *
+ * ## Why no `color-mix()`
+ *
+ * Every shade is written out. `color-mix()` would express this layer far better
+ * and needs Firefox 113; the editing surface is pinned to a Firefox 108 floor by
+ * the import map mechanism, and a theme that rendered correctly only on newer
+ * browsers than the plugin would make every visual difference ambiguous.
+ */
+
+:root {
+    color-scheme: light;
+
+    /* Neutrals. A ten step ramp, warm enough not to read as a wireframe. */
+    --c-neutral-0: #ffffff;
+    --c-neutral-5: #f7f8f9;
+    --c-neutral-10: #eef0f2;
+    --c-neutral-20: #dde1e5;
+    --c-neutral-30: #cbd1d6;
+    --c-neutral-40: #a8b1b8;
+    --c-neutral-50: #7d868d;
+    --c-neutral-60: #5c656c;
+    --c-neutral-70: #414951;
+    --c-neutral-80: #2a3138;
+    --c-neutral-90: #171c21;
+
+    /* The one accent. A theme with two accents has none. */
+    --c-accent: #2563a8;
+    --c-accent-strong: #1c4c82;
+    --c-accent-soft: #e8f0fa;
+    --c-accent-contrast: #ffffff;
+
+    /* States. */
+    --c-danger: #a4141a;
+    --c-danger-soft: #fdf2f2;
+    --c-success: #2f6f3e;
+    --c-success-soft: #eef7f0;
+
+    /* Semantic roles, which is what the rest of the stylesheet uses. */
+    --c-page: var(--c-neutral-5);
+    --c-surface: var(--c-neutral-0);
+    --c-surface-sunken: var(--c-neutral-10);
+    --c-border: var(--c-neutral-30);
+    --c-border-strong: var(--c-neutral-40);
+    --c-text: var(--c-neutral-90);
+    --c-text-muted: var(--c-neutral-60);
+    --c-text-inverted: var(--c-neutral-0);
+
+    /* Type. */
+    --font-body: system-ui, -apple-system, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', menlo, consolas, monospace;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.5rem;
+    --text-2xl: 2rem;
+    --leading-tight: 1.2;
+    --leading-normal: 1.6;
+
+    /* Space, on a doubling scale so that grouping is legible. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+
+    /* Shape. */
+    --radius-sm: 0.25rem;
+    --radius: 0.5rem;
+    --radius-lg: 0.75rem;
+    --border-width: 1px;
+
+    /* Elevation, kept to two levels. */
+    --shadow-sm: 0 1px 2px rgb(23 28 33 / 8%);
+    --shadow: 0 2px 8px rgb(23 28 33 / 10%);
+
+    /* Focus. Its own colour so it can be raised for contrast alone. */
+    --focus-color: var(--c-accent);
+    --focus-width: 2px;
+    --focus-offset: 2px;
+
+    /* The measure of a column of text. */
+    --measure: 46rem;
+    --container: 72rem;
+}
+
+/*
+ * The visitor asked for dark and the site did not force a scheme.
+ *
+ * Declared on `body` rather than on `:root`, and the reason is the floor stated
+ * above: reaching `:root` from the attribute would need `:root:has(body[…])`,
+ * and `:has()` needs Firefox 121 against a Firefox 108 floor. Nothing outside
+ * `body` reads a token, so inheriting from `body` costs nothing — the only
+ * casualty is the page canvas, which `_reset.css` therefore paints on `body`
+ * rather than on `html`.
+ */
+@media (prefers-color-scheme: dark) {
+    body[data-color-scheme='auto'] {
+        color-scheme: dark;
+
+        --c-page: var(--c-neutral-90);
+        --c-surface: var(--c-neutral-80);
+        --c-surface-sunken: #20262c;
+        --c-border: #3c444c;
+        --c-border-strong: var(--c-neutral-50);
+        --c-text: var(--c-neutral-10);
+        --c-text-muted: var(--c-neutral-40);
+        --c-text-inverted: var(--c-neutral-90);
+
+        --c-accent: #6ba4e0;
+        --c-accent-strong: #8fbcea;
+        --c-accent-soft: #23313f;
+        --c-accent-contrast: var(--c-neutral-90);
+
+        --c-danger: #f08a8e;
+        --c-danger-soft: #3a2224;
+        --c-success: #86c795;
+        --c-success-soft: #1f2f24;
+
+        --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+        --shadow: 0 2px 8px rgb(0 0 0 / 45%);
+    }
+}
+
+/* The site forced dark, whatever the visitor prefers. */
+body[data-color-scheme='dark'] {
+    color-scheme: dark;
+
+    --c-page: var(--c-neutral-90);
+    --c-surface: var(--c-neutral-80);
+    --c-surface-sunken: #20262c;
+    --c-border: #3c444c;
+    --c-border-strong: var(--c-neutral-50);
+    --c-text: var(--c-neutral-10);
+    --c-text-muted: var(--c-neutral-40);
+    --c-text-inverted: var(--c-neutral-90);
+
+    --c-accent: #6ba4e0;
+    --c-accent-strong: #8fbcea;
+    --c-accent-soft: #23313f;
+    --c-accent-contrast: var(--c-neutral-90);
+
+    --c-danger: #f08a8e;
+    --c-danger-soft: #3a2224;
+    --c-success: #86c795;
+    --c-success-soft: #1f2f24;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow: 0 2px 8px rgb(0 0 0 / 45%);
+}

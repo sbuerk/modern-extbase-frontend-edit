@@ -1,0 +1,21 @@
+/*
+ * The stylesheet of the development site package.
+ *
+ * Composed by @import from files that each own one concern, which is the shape
+ * `typo3/theme-camino` uses and the reason it needs no build step: the browser
+ * does the composing, there is no sass, no bundler and nothing to keep in step
+ * with a compiled artifact. That matters more here than it would in a product,
+ * because this package exists to be read.
+ *
+ * Load order is significant and is the usual one: variables before anything
+ * that reads them, the reset before anything that overrides it, elements before
+ * components.
+ */
+
+@import '_variables.css';
+@import '_reset.css';
+@import '_typography.css';
+@import '_layout.css';
+@import '_form.css';
+@import '_button.css';
+@import '_content.css';

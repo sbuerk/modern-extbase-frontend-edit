@@ -1,0 +1,20 @@
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
+<f:layout name="Default"/>
+
+<f:comment>
+    The only page template. PAGEVIEW resolves "Pages/<Backendlayout>.html" and
+    falls back to this one, and the development instance defines no backend
+    layouts — a second template would be a second thing to keep in step for a
+    fixture that has one kind of page.
+
+    Content comes from the TypoScript CONTENT object rather than from a content
+    area, because content areas are v14.2 and this has to render on v13 as well.
+</f:comment>
+<f:section name="Main">
+    <div class="site-container">
+        <!--TYPO3SEARCH_begin-->
+        <f:cObject typoscriptObjectPath="lib.mainContent"/>
+        <!--TYPO3SEARCH_end-->
+    </div>
+</f:section>
+</html>

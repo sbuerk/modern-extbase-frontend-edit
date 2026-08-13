@@ -4,6 +4,7 @@
 /.php-cs-fixer.cache export-ignore
 /Build export-ignore
 /Tests export-ignore
+/packages export-ignore
 /.github export-ignore
 /CONTRIBUTING.md export-ignore
 /docs export-ignore

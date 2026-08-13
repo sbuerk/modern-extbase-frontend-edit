@@ -1,0 +1,46 @@
+# The page rendering of the development site package.
+#
+# PAGEVIEW rather than FLUIDTEMPLATE: it resolves the page template from the
+# backend layout, wires "Layouts/" and "Partials/" automatically, and hands the
+# template "settings", "site", "language" and "page" without any of it being
+# declared here. It exists since TYPO3 v13.1 (Feature #103504), so it is
+# available on both versions this repository supports.
+#
+# What is *not* used is the content area API and "<f:render.contentArea>", which
+# is how a v14 theme would render the content column. It arrived in v14.2 and
+# has no v13 equivalent, so content goes through a CONTENT object below and
+# "<f:cObject>" in the template — one code path, both versions, no conditionals.
+
+page = PAGE
+page {
+    typeNum = 0
+
+    # The colour scheme is an attribute on <body> rather than a class, because
+    # the stylesheet has to distinguish "forced light" from "not forced" and an
+    # absent class cannot express the difference between the two.
+    bodyTagCObject = TEXT
+    bodyTagCObject {
+        data = sitesettings:devSite.colorScheme
+        ifEmpty = auto
+        wrap = <body data-color-scheme="|">
+    }
+
+    10 = PAGEVIEW
+    10 {
+        paths.10 = EXT:test_dev_site/Resources/Private/Templates/
+    }
+}
+
+# The content of the default column.
+#
+# Rendered from the template with "<f:cObject typoscriptObjectPath='lib.mainContent'/>".
+# Keeping it in TypoScript rather than in a data processor is what makes the
+# template identical on both core versions.
+lib.mainContent = CONTENT
+lib.mainContent {
+    table = tt_content
+    select {
+        orderBy = sorting
+        where = {#colPos} = 0
+    }
+}

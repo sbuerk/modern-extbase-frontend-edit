@@ -1,0 +1,148 @@
+/*
+ * Buttons.
+ *
+ * This file is the reason the site package exists at all. Once the editing
+ * surface renders into the light DOM, its buttons carry `.button` plus a
+ * modifier — configured per element type in
+ * `$GLOBALS['TYPO3_CONF_VARS']['modern_extbase_frontend_edit']`, not hardcoded
+ * in the component — and are styled from here. Nothing about the rules below
+ * knows the plugin exists, which is the point: a project drops in its own
+ * design system's class names and the surface follows.
+ *
+ * ## The box model trap, restated because it is easy to reintroduce
+ *
+ * `button` gets `border-box` from the user agent stylesheet while `input`,
+ * `select` and `textarea` get `content-box`. One `min-height` therefore renders
+ * a button and an input at different heights, and a row containing both changes
+ * height the moment it is edited. `_reset.css` states `border-box` for all of
+ * them; anything new that sizes a control has to keep it.
+ */
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 2.25rem;
+    padding: 0.375rem var(--space-3);
+    border: var(--border-width) solid var(--c-border-strong);
+    border-radius: var(--radius-sm);
+    background-color: var(--c-surface);
+    color: var(--c-text);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+
+    /* One duration for every transition, so `prefers-reduced-motion` needs one
+     * declaration rather than a sweep. */
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease;
+}
+
+.button:hover:not(:disabled) {
+    border-color: var(--c-text-muted);
+    background-color: var(--c-surface-sunken);
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Commits a pending change. Exactly one per group, or the group has no primary. */
+.button--primary {
+    border-color: var(--c-accent);
+    background-color: var(--c-accent);
+    color: var(--c-accent-contrast);
+}
+
+.button--primary:hover:not(:disabled) {
+    border-color: var(--c-accent-strong);
+    background-color: var(--c-accent-strong);
+    color: var(--c-accent-contrast);
+}
+
+/* Destroys something. Outlined rather than filled: a filled red button beside a
+ * filled blue one reads as two primaries competing. */
+.button--danger {
+    border-color: var(--c-danger);
+    color: var(--c-danger);
+}
+
+.button--danger:hover:not(:disabled) {
+    border-color: var(--c-danger);
+    background-color: var(--c-danger-soft);
+    color: var(--c-danger);
+}
+
+/* Steps back out of something. Quiet until it is reachable for. */
+.button--quiet {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--c-text-muted);
+}
+
+.button--quiet:hover:not(:disabled) {
+    border-color: var(--c-border);
+    background-color: var(--c-surface-sunken);
+    color: var(--c-text);
+}
+
+/*
+ * Icon only.
+ *
+ * Square, and the label inside it is *not* removed — it is hidden with
+ * `.visually-hidden` so the accessible name survives. An `aria-label` would
+ * read correctly to a screen reader and leave the button with no text content,
+ * which silently breaks every test that enumerates buttons by their text.
+ */
+.button--icon {
+    width: 2.25rem;
+    padding-inline: 0;
+}
+
+.button__icon {
+    display: inline-flex;
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Inherits the button's colour, so no icon carries a colour of its own. */
+.button__icon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentcolor;
+}
+
+/* A row of related actions. */
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/*
+ * Available to anything that needs a label read but not seen.
+ *
+ * `clip-path` rather than the older `clip`, and a 1px box rather than
+ * `width: 0`: a zero sized element is dropped from the accessibility tree by
+ * some combinations, which is exactly the failure this class exists to avoid.
+ */
+.visually-hidden {
+    position: absolute !important;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}

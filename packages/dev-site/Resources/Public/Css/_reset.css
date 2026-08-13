@@ -1,0 +1,82 @@
+/*
+ * The smallest reset that makes the rest predictable.
+ *
+ * Not a normalize: this theme styles a handful of elements and has no interest
+ * in equalising every browser difference in elements it never renders.
+ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/*
+ * The canvas is painted on `body`, not on `html`.
+ *
+ * `_variables.css` declares the dark palette on `body[data-color-scheme]`, so
+ * `html` is outside the scope that carries the tokens and painting it would
+ * resolve `var(--c-page)` against nothing. `color-scheme` on body keeps the
+ * browser's own form control rendering and scrollbars in step regardless.
+ */
+body {
+    margin: 0;
+    background-color: var(--c-page);
+    color: var(--c-text);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+    margin: 0;
+}
+
+ul,
+ol {
+    margin: 0;
+    padding: 0;
+}
+
+img,
+picture,
+svg,
+video {
+    display: block;
+    max-width: 100%;
+}
+
+/* Inherit rather than reset: a control that does not inherit the page's type is
+ * the single most common reason a form looks bolted on. */
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
+}
+
+:focus-visible {
+    outline: var(--focus-width) solid var(--focus-color);
+    outline-offset: var(--focus-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

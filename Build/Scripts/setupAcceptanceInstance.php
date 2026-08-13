@@ -137,7 +137,23 @@ echo 'done' . PHP_EOL;
  */
 $defaultCoreExtensionsToLoad = ['core', 'backend', 'frontend', 'extbase', 'fluid'];
 $coreExtensionsToLoad = ['fluid_styled_content'];
-$testExtensionsToLoad = ['sbuerk/modern-extbase-frontend-edit'];
+
+/**
+ * This extension, and the development site package it is photographed inside.
+ *
+ * `tests/dev-site` (extension key `test_dev_site`) provides the `page` object,
+ * the page templates and the theme. It is `require-dev` through a composer path
+ * repository and is never published; `packages/` is `export-ignore`d.
+ *
+ * Both entries are composer package names rather than extension keys, because
+ * that is what `linkTestExtensionsToInstance()` resolves - and for this package
+ * the two differ in a way nothing derives: `tests/dev-site` installs as
+ * `test_dev_site`, stated by `extra.typo3/cms.extension-key` in its manifest.
+ */
+$testExtensionsToLoad = [
+    'sbuerk/modern-extbase-frontend-edit',
+    'tests/dev-site',
+];
 
 echo 'Linking core extensions and this extension into the instance ... ';
 $testbase->setUpInstanceCoreLinks($instancePath, $defaultCoreExtensionsToLoad, $coreExtensionsToLoad);
@@ -401,14 +417,23 @@ function writeHtaccess(string $instancePath): void
  *
  * The set flavour is chosen over a `sys_template` record for one reason: it
  * needs no record at all, so the whole TypoScript configuration of the instance
- * is two files a human can read next to each other. Both flavours are covered
- * by the functional suite - `ProfilePluginSiteSetTest` against this one - so
- * choosing here costs no coverage.
+ * is one file a human can read. Both flavours are covered by the functional
+ * suite - `ProfilePluginSiteSetTest` against this one - so choosing here costs
+ * no coverage.
  *
- * The `page` object is the part a site package would provide and this extension
- * deliberately does not. It is written as the site's own `setup.typoscript`,
- * which is included after the sets (Feature #103439, TYPO3 v13.1), and is
- * character for character the one `AbstractProfilePluginTestCase` uses.
+ * ## The `page` object comes from a site package now
+ *
+ * It used to be written here as an inline `setup.typoscript`, under a comment
+ * saying it was "the part a site package would provide and this extension
+ * deliberately does not". That was true and it was also why every screenshot in
+ * the manual showed the editing surface on a bare white page: there was no
+ * theme, so there was nothing for the surface to look like it belonged to.
+ *
+ * `tests/dev-site` is that site package. It is a `require-dev` path repository,
+ * it is never published, and it brings the `page` object, a header, a footer and
+ * a stylesheet with a light and a dark scheme. Adding its set here is the whole
+ * wiring - `test_dev_site` depends on `typo3/fluid-styled-content` itself, so
+ * that entry moves into the package and out of this list.
  */
 function writeSiteConfiguration(string $instancePath): void
 {
@@ -417,7 +442,7 @@ function writeSiteConfiguration(string $instancePath): void
         'base' => ACCEPTANCE_BASE_URL,
         'websiteTitle' => 'ACME',
         'dependencies' => [
-            'typo3/fluid-styled-content',
+            'tests/dev-site',
             'sbuerk/modern-extbase-frontend-edit',
         ],
         'languages' => [
@@ -449,30 +474,6 @@ function writeSiteConfiguration(string $instancePath): void
     file_put_contents(
         $instancePath . '/typo3conf/sites/acme/config.yaml',
         Yaml::dump($configuration, 99, 2),
-    );
-
-    $pageTypoScript = <<<'TYPOSCRIPT'
-        # The part a site package would provide, and this extension deliberately
-        # does not: it renders the content elements of the default column and
-        # defines no plugin TypoScript whatsoever.
-        page = PAGE
-        page {
-            typeNum = 0
-
-            10 = CONTENT
-            10 {
-                table = tt_content
-                select {
-                    orderBy = sorting
-                    where = {#colPos} = 0
-                }
-            }
-        }
-        TYPOSCRIPT;
-
-    file_put_contents(
-        $instancePath . '/typo3conf/sites/acme/setup.typoscript',
-        $pageTypoScript . "\n",
     );
 }
 

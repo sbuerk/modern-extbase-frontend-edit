@@ -1,0 +1,13 @@
+# Site set of the development site package.
+#
+# The directory name below "Configuration/Sets/" carries no identifier; what
+# identifies the set is "name" below, which follows the composer package name by
+# convention — and here that is "tests/dev-site", not the extension key.
+#
+# "fluid-styled-content" is a hard dependency rather than an optional one: this
+# package renders a content area and provides no content element templates of
+# its own, so without it the page would be a header and a footer around nothing.
+name: tests/dev-site
+label: 'Development site'
+dependencies:
+  - typo3/fluid-styled-content
