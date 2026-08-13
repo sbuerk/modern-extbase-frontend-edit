@@ -88,6 +88,27 @@ const ACCEPTANCE_BASE_URL = 'http://web/';
 const ACCEPTANCE_EDIT_PAGE_PATH = '/edit-profile';
 
 /**
+ * The two sites that *pin* a colour scheme, and the edit page of each.
+ *
+ * `devSite.colorScheme` is a **site** setting, so exercising it needs a second
+ * site rather than a second page: one site cannot answer the setting two ways.
+ * Each of these carries the same edit plugin over the same profile, and differs
+ * from `acme` in exactly one value.
+ *
+ * They are separated by base **path** rather than by host. A second host would
+ * work — the session JWT is deliberately scopeless and `trustedHostsPattern` is
+ * `.*` — but it would need a second `--network-alias` on the apache container in
+ * both the docker and the podman branch of `runTests.sh`, which is infrastructure
+ * to maintain for a difference no test observes.
+ *
+ * @var array<string, array{rootPageId: int, editPageUid: int, path: string}>
+ */
+const ACCEPTANCE_PINNED_SCHEME_SITES = [
+    'dark' => ['rootPageId' => 100, 'editPageUid' => 101, 'path' => '/dark'],
+    'light' => ['rootPageId' => 110, 'editPageUid' => 111, 'path' => '/light'],
+];
+
+/**
  * The frontend users a spec can act as, and what each of them is good for.
  *
  * The uids are the ones of `ProfilePlugins.csv` and `ProfileEditPlugin.csv`.
@@ -127,6 +148,9 @@ $testbase->createDirectory($instancePath . '/typo3temp/var/transient');
 $testbase->createDirectory($instancePath . '/typo3temp/assets');
 $testbase->createDirectory($instancePath . '/typo3conf/ext');
 $testbase->createDirectory($instancePath . '/typo3conf/sites/acme');
+foreach (array_keys(ACCEPTANCE_PINNED_SCHEME_SITES) as $scheme) {
+    $testbase->createDirectory($instancePath . '/typo3conf/sites/acme-' . $scheme);
+}
 $testbase->createDirectory($databasePath);
 echo 'done' . PHP_EOL;
 
@@ -293,6 +317,12 @@ foreach ([
 ] as $fixture) {
     DataSet::import($rootPath . '/Tests/Functional/Fixtures/Database/' . $fixture);
 }
+// The two page trees the colour scheme sites are rooted on. This one is *not*
+// shared with the functional suite: a second and a third site root exist only so
+// that a browser can ask for a pinned scheme, and adding them to the fixtures
+// every functional test imports would change the page tree of tests that have
+// nothing to do with colour.
+DataSet::import($rootPath . '/Tests/Acceptance/Fixtures/Database/PinnedColorSchemeSites.csv');
 provideFixtureFiles($rootPath, $instancePath);
 echo 'done' . PHP_EOL;
 
@@ -311,6 +341,11 @@ echo 'done' . PHP_EOL;
 writeManifest($manifestFile, [
     'baseUrl' => ACCEPTANCE_BASE_URL,
     'editPagePath' => ACCEPTANCE_EDIT_PAGE_PATH,
+    // Keyed by the scheme each site pins, which is what a spec selects by.
+    'pinnedSchemeEditPagePaths' => array_map(
+        static fn(array $site): string => $site['path'] . ACCEPTANCE_EDIT_PAGE_PATH,
+        ACCEPTANCE_PINNED_SCHEME_SITES,
+    ),
     'instancePath' => $instancePath,
     'databaseFile' => $databaseFile,
     'pristineDatabaseFile' => $pristineFile,
@@ -462,10 +497,38 @@ function writeHtaccess(string $instancePath): void
  */
 function writeSiteConfiguration(string $instancePath): void
 {
-    $configuration = [
-        'rootPageId' => 1,
-        'base' => ACCEPTANCE_BASE_URL,
-        'websiteTitle' => 'ACME',
+    writeSite($instancePath, 'acme', buildSiteConfiguration(1, ACCEPTANCE_BASE_URL, 'ACME', 4));
+
+    // One site per pinned scheme. Everything about them is the site above except
+    // the root page, the base path and the one setting under test - which is the
+    // point: a difference the specs observe has to be the only difference there
+    // is, or the observation proves nothing about the setting.
+    foreach (ACCEPTANCE_PINNED_SCHEME_SITES as $scheme => $site) {
+        $configuration = buildSiteConfiguration(
+            $site['rootPageId'],
+            rtrim(ACCEPTANCE_BASE_URL, '/') . $site['path'] . '/',
+            'ACME (' . $scheme . ')',
+            $site['editPageUid'],
+        );
+        // Nested rather than flat: `SiteSettings` flattens the tree it is given
+        // with `ArrayUtility::flattenPlain()`, so this resolves as the
+        // `devSite.colorScheme` the site set defines and the page reads through
+        // `data = sitesettings:devSite.colorScheme`.
+        $configuration['settings']['devSite']['colorScheme'] = $scheme;
+
+        writeSite($instancePath, 'acme-' . $scheme, $configuration);
+    }
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function buildSiteConfiguration(int $rootPageId, string $base, string $websiteTitle, int $editPageUid): array
+{
+    return [
+        'rootPageId' => $rootPageId,
+        'base' => $base,
+        'websiteTitle' => $websiteTitle,
         'dependencies' => [
             'tests/dev-site',
             'sbuerk/modern-extbase-frontend-edit',
@@ -487,17 +550,30 @@ function writeSiteConfiguration(string $instancePath): void
         'settings' => [
             'modernextbasefrontendedit' => [
                 'persistence' => [
-                    // A comma separated page uid list, hence a string.
+                    // A comma separated page uid list, hence a string. The same
+                    // storage for every site: the profile under test is one
+                    // record, and a second copy of it per site would let two
+                    // sites disagree about the fixture.
                     'storagePid' => '1',
                 ],
+                // Page 3 carries the show plugin and lives in `acme`. The colour
+                // scheme sites render the edit plugin and nothing else, so this
+                // is never resolved into a link there; it is set rather than
+                // omitted so the three sites differ only where they are meant to.
                 'showPageUid' => 3,
-                'editPageUid' => 4,
+                'editPageUid' => $editPageUid,
             ],
         ],
     ];
+}
 
+/**
+ * @param array<string, mixed> $configuration
+ */
+function writeSite(string $instancePath, string $identifier, array $configuration): void
+{
     file_put_contents(
-        $instancePath . '/typo3conf/sites/acme/config.yaml',
+        $instancePath . '/typo3conf/sites/' . $identifier . '/config.yaml',
         Yaml::dump($configuration, 99, 2),
     );
 }

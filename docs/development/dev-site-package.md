@@ -142,6 +142,15 @@ The extension's `@media` block is still its fallback for a site that declares
 nothing; in this instance it is inert, which is the correct outcome rather than a
 dead rule.
 
+That paragraph was **reasoned rather than observed** for one pull request, and it
+is now asserted. Because the setting is per site, exercising it needed two more
+sites in the acceptance instance rather than two more pages — `acme-dark` and
+`acme-light`, seeded by `Build/Scripts/setupAcceptanceInstance.php` and driven by
+`Tests/Acceptance/Frontend/PinnedColorScheme.spec.ts`. The pinned-`light` case is
+the one that proves the setting **beats** the media query rather than agreeing
+with it, and it is the reason a second site was not enough.
+→ [A pinned scheme is a second site](../frontend-edit/styling.md#a-pinned-scheme-is-a-second-site)
+
 ## See also
 
 - [Quality gates](quality-gates.md)

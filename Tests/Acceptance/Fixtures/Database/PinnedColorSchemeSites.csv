@@ -1,0 +1,10 @@
+"pages",,,,,,,,,
+,"uid","pid","sys_language_uid","l10n_parent","l10n_source","doktype","is_siteroot","title","slug"
+,100,0,0,0,0,1,1,"EN: Pinned dark","/"
+,101,100,0,0,0,1,0,"EN: Edit profile","/edit-profile"
+,110,0,0,0,0,1,1,"EN: Pinned light","/"
+,111,110,0,0,0,1,0,"EN: Edit profile","/edit-profile"
+"tt_content",,,,,
+,"uid","pid","CType","header","colPos"
+,100,101,"modernextbasefrontendedit_edit","",0
+,110,111,"modernextbasefrontendedit_edit","",0
