@@ -33,6 +33,16 @@ export const EMAIL_TABLE = 'tx_modernextbasefrontendedit_domain_model_email';
 export const OWNED_PROFILE_UID = 1;
 
 /**
+ * The accessible names of the four reordering actions.
+ *
+ * A union rather than a plain string so that a name no button carries is a type
+ * error rather than a ten second timeout - which is what a mistyped label costs
+ * in a browser suite. It was a two-name union until the end actions existed, and
+ * widening it is the whole reason this type is written out.
+ */
+export type MoveAction = 'Move up' | 'Move down' | 'Move to top' | 'Move to bottom';
+
+/**
  * The addresses of {@see OWNED_PROFILE_UID} in stored sorting order, the hidden
  * uid 4 included - which is the order the surface renders, because the edit
  * repositories deliberately do not hide the owner's hidden records.
@@ -256,7 +266,7 @@ export class ProfileEditPage {
         });
     }
 
-    public async moveChild(target: Target, direction: 'Move up' | 'Move down'): Promise<Response> {
+    public async moveChild(target: Target, direction: MoveAction): Promise<Response> {
         return this.withEndpoint('reorderChildren', async (): Promise<void> => {
             await this.childRow(target).getByRole('button', { name: direction, exact: true }).click();
         });
