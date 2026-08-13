@@ -285,7 +285,7 @@ run once, on the version that is installed, and CI runs them on v13 only.
 → [Acceptance tests](docs/testing/acceptance-tests.md)
 
 **Two gates guard appearance, and they guard different things.**
-`-s visualRegression` compares seven components of the surface against committed
+`-s visualRegression` compares ten components of the surface against committed
 baselines. `-s checkDocumentationScreenshots` compares the six screenshots the
 **manual** embeds against the surface they claim to show, and also checks that
 every one of them is produced by a configured shot, embedded by a chapter, and

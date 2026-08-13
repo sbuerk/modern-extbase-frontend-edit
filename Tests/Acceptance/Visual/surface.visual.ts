@@ -31,10 +31,9 @@
  * No full page baseline. A 2000 pixel image is a large binary that fails on any
  * change anywhere and names none of them; every shot below is one component.
  *
- * No dark scheme baseline. `prefers-color-scheme` can be emulated, and the eight
- * dark tokens would then be pinned — but a second set of baselines doubles what
- * a restyle has to re-record, and the dark values are a courtesy rather than a
- * supported theme. Named rather than hidden.
+ * No *full* dark scheme set. Three of the seven shots are taken again in dark and
+ * the other four are not, which is a deliberate middle rather than an oversight —
+ * see the dark block at the end of this file for which three and why.
  */
 import { expect, test } from '../fixtures';
 import { ProfileEditPage } from '../Support/profileEditPage';
@@ -123,5 +122,82 @@ test.describe('The editing surface', (): void => {
         // The wrapped layout, which is what a plugin in a narrow column gets and
         // what no screenshot in the manual shows.
         await expect(surface.field('profile', 'firstname')).toHaveScreenshot('field-narrow.png');
+    });
+
+});
+
+/**
+ * The dark scheme, which until now was drawn by two stylesheets and looked at by
+ * nobody.
+ *
+ * ## How it is reached
+ *
+ * `colorScheme: 'dark'` emulates `prefers-color-scheme`, and both stylesheets
+ * key off that: the site package applies its dark palette to
+ * `body[data-color-scheme="auto"]` inside the media query, and the instance
+ * renders `auto` because that is the default of its `devSite.colorScheme`
+ * setting. So one context option flips the page **and** the surface, and no
+ * instance configuration is touched.
+ *
+ * A site that *pins* `light` or `dark` is therefore not covered here. That is
+ * the setting's other purpose and it has no baseline.
+ *
+ * ## Why three and not seven
+ *
+ * A second full set doubles what a restyle has to re-record, and that cost is
+ * what kept the dark scheme unpinned until now. Three shots buy most of the
+ * signal for less than half the price, chosen by where a dark palette actually
+ * goes wrong:
+ *
+ * - **A field at rest** is the base contrast: text against surface against page.
+ *   If the eight dark tokens drift apart, this is where it shows first.
+ * - **A rejected field** is the riskiest single state. The danger colour has to
+ *   stay legible against a dark surface *and* stay distinguishable from the
+ *   focus ring, and the light scheme already shipped that defect once.
+ * - **A child header** carries the icon-only buttons, the state badge and a
+ *   border — everything that is drawn in `currentColor` or in a border token,
+ *   which is what a scheme swap is most likely to lose.
+ *
+ * The four that are not taken again — the field being edited, the narrow column,
+ * the empty image row — differ from their light counterparts only in colours the
+ * three above already cover.
+ *
+ * ## What this still does not assert
+ *
+ * That the dark scheme is *legible*. It pins that it has not **changed**.
+ * Contrast ratios remain a person's judgement, exactly as in light.
+ */
+test.describe('The editing surface in the dark scheme', (): void => {
+    test.use({ colorScheme: 'dark' });
+
+    test('a field at rest', async ({ page, loginAs }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        await expect(surface.field('profile', 'firstname')).toHaveScreenshot('field-at-rest-dark.png');
+    });
+
+    test('a field the server rejected', async ({ page, loginAs }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+        await surface.startFieldEdit('profile', 'shortname');
+        await surface.type('profile', 'shortname', '');
+        await surface.applyField('profile', 'shortname');
+
+        await expect(surface.field('profile', 'shortname')).toHaveScreenshot('field-rejected-dark.png');
+    });
+
+    test('the header of a child record', async ({ page, loginAs }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        await expect(surface.childRow('address:3').locator('.frontend-edit-child-header'))
+            .toHaveScreenshot('child-header-dark.png');
     });
 });
