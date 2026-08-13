@@ -225,6 +225,12 @@
             <trans-unit id="action.moveDown">
                 <source>Move down</source>
             </trans-unit>
+            <trans-unit id="action.moveToTop">
+                <source>Move to top</source>
+            </trans-unit>
+            <trans-unit id="action.moveToBottom">
+                <source>Move to bottom</source>
+            </trans-unit>
             <trans-unit id="action.hide">
                 <source>Hide</source>
             </trans-unit>

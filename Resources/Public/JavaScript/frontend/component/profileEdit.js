@@ -28,6 +28,7 @@ import {
   displayName,
   fieldValue,
   isChildHidden,
+  childOrderMovedToEnd,
   movedChildOrder,
   parseProfileRecord,
   recordValues
@@ -304,6 +305,19 @@ let ProfileEditElement = class extends LitElement {
                     ${this.renderChildTitle(child, record)}
                     ${hidden ? html`<span class="${classesFor(this.configuration, "state", "frontend-edit-state")}">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
                 <div class="frontend-edit-child-actions">
+                    ${index === 0 ? nothing : html`
+                        <button
+                            class="${this.buttonClass(null, true)}"
+                            type="button"
+                            data-icon-only
+                            title="${this.text(actionLabelKey("moveToTop"))}"
+                            ?disabled="${busy}"
+                            @click="${() => void this.moveChildToEnd(child, record.uid, "top")}"
+                        >
+                            ${icon(this.configuration, "moveToTop")}
+                            <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveToTop"))}</span>
+                        </button>
+                    `}
                     <button
                         class="${this.buttonClass(null, true)}"
                         type="button"
@@ -326,6 +340,19 @@ let ProfileEditElement = class extends LitElement {
                         ${icon(this.configuration, "moveDown")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveDown"))}</span>
                     </button>
+                    ${index === total - 1 ? nothing : html`
+                        <button
+                            class="${this.buttonClass(null, true)}"
+                            type="button"
+                            data-icon-only
+                            title="${this.text(actionLabelKey("moveToBottom"))}"
+                            ?disabled="${busy}"
+                            @click="${() => void this.moveChildToEnd(child, record.uid, "bottom")}"
+                        >
+                            ${icon(this.configuration, "moveToBottom")}
+                            <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveToBottom"))}</span>
+                        </button>
+                    `}
                     <button
                         class="${this.buttonClass(null, true)}"
                         type="button"
@@ -560,6 +587,35 @@ let ProfileEditElement = class extends LitElement {
       return;
     }
     const order = movedChildOrder(profile, child, childUid, offset);
+    if (sameOrder(order, childUids(profile, child))) {
+      return;
+    }
+    const target = childTarget(child, childUid);
+    await this.send(
+      target,
+      "reorderChildren",
+      (current) => reorderPayload(current.uid, child, order),
+      () => {
+        this.pendingFocus = null;
+      }
+    );
+  }
+  /**
+   * Sends a child to the top or the bottom of its collection.
+   *
+   * Goes through the same `reorderChildren` endpoint as a single step move,
+   * and that is worth stating because it looks like it should need a new one:
+   * the endpoint takes a **complete permutation** of the collection rather
+   * than a delta, so "one position up" and "all the way to the top" are the
+   * same request with a different list. Nothing was added on the server for
+   * this feature.
+   */
+  async moveChildToEnd(child, childUid, end) {
+    const profile = this.profile;
+    if (profile === null) {
+      return;
+    }
+    const order = childOrderMovedToEnd(profile, child, childUid, end);
     if (sameOrder(order, childUids(profile, child))) {
       return;
     }

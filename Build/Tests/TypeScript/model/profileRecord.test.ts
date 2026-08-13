@@ -19,6 +19,7 @@ import {
     childUids,
     displayName,
     fieldValue,
+    childOrderMovedToEnd,
     movedChildOrder,
     parseProfileImage,
     parseProfileRecord,
@@ -207,6 +208,65 @@ describe('recordOf and recordValues', (): void => {
             type: 'private',
             email: 'ada@example.org',
         });
+    });
+});
+
+describe('childOrderMovedToEnd', (): void => {
+    it('puts a record first, keeping the others in order', (): void => {
+        assert.deepEqual(childOrderMovedToEnd(parsed(), 'address', 9, 'top'), [9, 7, 8]);
+    });
+
+    it('puts a record last, keeping the others in order', (): void => {
+        assert.deepEqual(childOrderMovedToEnd(parsed(), 'address', 7, 'bottom'), [8, 9, 7]);
+    });
+
+    it('answers the unchanged order for a record already at that end', (): void => {
+        const profile = parsed();
+
+        assert.deepEqual(childOrderMovedToEnd(profile, 'address', 7, 'top'), [7, 8, 9]);
+        assert.deepEqual(childOrderMovedToEnd(profile, 'address', 9, 'bottom'), [7, 8, 9]);
+    });
+
+    it('answers the unchanged order for a uid that is not a member', (): void => {
+        assert.deepEqual(childOrderMovedToEnd(parsed(), 'address', 4711, 'top'), [7, 8, 9]);
+        assert.deepEqual(
+            childOrderMovedToEnd(parsed(), 'address', 21, 'top'),
+            [7, 8, 9],
+            'a uid of the other collection',
+        );
+    });
+
+    /**
+     * The reason this function exists rather than a large offset.
+     *
+     * `movedChildOrder` clamps an offset past either end to "unchanged", which
+     * is deliberate and lets a caller skip a pointless request - and it makes
+     * the obvious shorthand for "send to the top" answer with the order it was
+     * given. The two are not interchangeable, and this is the assertion that
+     * says so.
+     */
+    it('is not the same thing as moving by a large offset', (): void => {
+        const profile = parsed();
+
+        assert.deepEqual(movedChildOrder(profile, 'address', 9, -99), [7, 8, 9], 'clamped to unchanged');
+        assert.deepEqual(childOrderMovedToEnd(profile, 'address', 9, 'top'), [9, 7, 8], 'actually moved');
+    });
+
+    it('always answers a permutation of the collection, never a partial list', (): void => {
+        const profile = parsed();
+        const members = [7, 8, 9];
+
+        for (const uid of [...members, 4711]) {
+            for (const end of ['top', 'bottom'] as const) {
+                const order = childOrderMovedToEnd(profile, 'address', uid, end);
+
+                assert.deepEqual(
+                    [...order].sort((a: number, b: number): number => a - b),
+                    members,
+                    `sending ${uid} to the ${end} must keep every member exactly once`,
+                );
+            }
+        }
     });
 });
 
