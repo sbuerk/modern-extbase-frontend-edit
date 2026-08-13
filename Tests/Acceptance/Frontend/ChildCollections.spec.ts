@@ -191,6 +191,114 @@ test.describe('Child collections', (): void => {
      * starts from while the controls still show what was typed, so the page
      * looks right and the row is wrong.
      */
+    /**
+     * The dialog is modal, and modal means more than "on top".
+     *
+     * `showModal()` is used rather than the `open` attribute precisely for the
+     * three properties asserted here: the dialog is in the top layer, the
+     * background is inert, and the focus is inside it. Rendering `open` gives a
+     * box that looks similar and has none of them.
+     */
+    test('the add form opens as a modal dialog', async ({ page, loginAs }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        // Closed to begin with: a <dialog> is in the document either way, so
+        // this is the assertion that says something.
+        await expect(surface.addDialog('email')).toBeHidden();
+
+        await surface.openAddDialog('email');
+
+        expect(await surface.addDialog('email').evaluate(
+            (dialog: HTMLDialogElement): boolean => dialog.matches(':modal'),
+        )).toBe(true);
+
+        // The focus is inside the dialog, which is what makes it usable from a
+        // keyboard at all.
+        expect(await surface.addDialog('email').evaluate(
+            (dialog: HTMLDialogElement): boolean => dialog.contains(document.activeElement),
+        )).toBe(true);
+    });
+
+    /**
+     * Escape closes it, and this test exists because the answer was not
+     * knowable by reading.
+     *
+     * A field calls `preventDefault()` on Escape before emitting
+     * `field-cancel`, and whether that suppresses a dialog's close request is
+     * not specified in a way worth relying on. The surface therefore closes the
+     * dialog from its own handler, so the outcome is the same whichever path
+     * the browser takes - and this asserts the outcome rather than the path.
+     */
+    test('Escape closes the add dialog and throws the draft away', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        await surface.openAddDialog('email');
+        await surface.type('email:new', 'email', 'never@example.org');
+        await page.keyboard.press('Escape');
+
+        await expect(surface.addDialog('email')).toBeHidden();
+
+        // Reopening starts from a blank form: the discarded draft is gone, not
+        // merely hidden behind a closed dialog.
+        await surface.openAddDialog('email');
+        await expect(surface.control('email:new', 'email')).toHaveValue('');
+    });
+
+    test('cancelling the dialog adds nothing and returns the focus to the button', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        const before = await surface.renderedChildUids('email');
+
+        await surface.openAddDialog('email');
+        await surface.type('email:new', 'email', 'nothing@example.org');
+        await surface.cancelAddDialog('email');
+
+        expect(await surface.renderedChildUids('email')).toEqual(before);
+        expect(childUidsInStoredOrder(EMAIL_TABLE, OWNED_PROFILE_UID)).toEqual(before);
+
+        // Back where the reader was, rather than at the top of the document.
+        expect(await page.evaluate((): string | null =>
+            document.activeElement?.getAttribute('data-add-for') ?? null)).toBe('email');
+    });
+
+    /**
+     * A rejected record keeps the dialog open, which is the whole reason the
+     * dialog is not closed optimistically on submit.
+     */
+    test('a rejected new record keeps the dialog open and shows why', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        await surface.openAddDialog('email');
+        // Empty address: the rule set refuses it.
+        await surface.type('email:new', 'email', '');
+        const response = await surface.addChild('email');
+
+        expect(response.status()).toBe(422);
+        await expect(surface.addDialog('email')).toBeVisible();
+        await expect(surface.fieldErrors('email:new', 'email')).not.toHaveCount(0);
+    });
+
     test('a child added through the form is stored with what was typed', async ({
         page,
         loginAs,
@@ -203,6 +311,7 @@ test.describe('Child collections', (): void => {
 
         expect(await surface.renderedChildUids('email')).toEqual(OWNED_EMAIL_UIDS);
 
+        await surface.openAddDialog('email');
         await surface.choose('email:new', 'type', 'business');
         await surface.type('email:new', 'email', 'third@example.org');
         const response = await surface.addChild('email');

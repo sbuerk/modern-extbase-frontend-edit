@@ -194,6 +194,10 @@ export class ProfileEditPage {
      * does not reach it - and both collections render one, which is why it is
      * filtered by the `new` target of the collection it belongs to instead of
      * taken by position.
+     *
+     * The form lives inside {@see addDialog} now. It is still addressed by its
+     * own class rather than through the dialog, so every spec that types into a
+     * new record kept working when it moved.
      */
     public newChildForm(child: ChildType): Locator {
         return this.element.locator('.frontend-edit-child-new').filter({
@@ -256,8 +260,37 @@ export class ProfileEditPage {
      */
     public async addChild(child: ChildType): Promise<Response> {
         return this.withEndpoint('addChild', async (): Promise<void> => {
-            await this.newChildForm(child).getByRole('button', { name: 'Add', exact: true }).click();
+            await this.addDialog(child).getByRole('button', { name: 'Add', exact: true }).click();
         });
+    }
+
+    /**
+     * The modal that collects a new child, whether it is open or not.
+     *
+     * A `<dialog>` is in the document at all times and is `display: none` while
+     * closed, so `toBeVisible()` is the assertion that distinguishes the two -
+     * `toHaveCount()` would answer 1 either way.
+     */
+    public addDialog(child: ChildType): Locator {
+        return this.element.locator(`dialog[data-dialog-for="${child}"]`);
+    }
+
+    /**
+     * Opens the add dialog and waits until it is actually modal.
+     *
+     * The wait is not ceremony. `showModal()` is called from the component's
+     * `updated()` hook, so it happens one render after the click, and a spec
+     * that starts typing immediately would address fields in a dialog the
+     * browser has not put in the top layer yet.
+     */
+    public async openAddDialog(child: ChildType): Promise<void> {
+        await this.element.locator(`button[data-add-for="${child}"]`).click();
+        await expect(this.addDialog(child)).toBeVisible();
+    }
+
+    public async cancelAddDialog(child: ChildType): Promise<void> {
+        await this.addDialog(child).getByRole('button', { name: 'Cancel', exact: true }).click();
+        await expect(this.addDialog(child)).toBeHidden();
     }
 
     public async removeChild(target: Target): Promise<Response> {

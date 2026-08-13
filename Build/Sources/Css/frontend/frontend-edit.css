@@ -626,6 +626,72 @@ modern-extbase-frontend-edit-profile .frontend-edit-errors {
 
 /*
  * ---------------------------------------------------------------------------
+ * The add dialog
+ * ---------------------------------------------------------------------------
+ *
+ * A native `<dialog>` opened with `showModal()`, so the focus trap, the inert
+ * background, the backdrop and the Escape handling are the platform's rather
+ * than this extension's. `<dialog>` needs Chrome 37, Firefox 98 and Safari
+ * 15.4, comfortably below the Chrome 89 / Firefox 108 / Safari 16.4 floor the
+ * import map mechanism sets — one of the few times that floor has not decided
+ * against something.
+ *
+ * The element sits inside the surface in the DOM and is promoted into the top
+ * layer while it is open, so these scoped selectors keep matching it.
+ */
+modern-extbase-frontend-edit-profile .frontend-edit-dialog {
+    /*
+     * `margin: auto` is what centres a top layer dialog; the UA stylesheet
+     * already says so, and it is restated because the block below sets other
+     * margins and a partial override would silently pin it to the top left.
+     */
+    margin: auto;
+    max-width: min(36rem, calc(100vw - 2 * var(--frontend-edit-space-lg)));
+    max-height: calc(100vh - 2 * var(--frontend-edit-space-lg));
+    border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+    border-radius: var(--frontend-edit-radius-lg);
+    padding: var(--frontend-edit-gap-record);
+    background-color: var(--frontend-edit-color-surface);
+    color: inherit;
+}
+
+/*
+ * The dialog is in the top layer, outside the element that declares the tokens,
+ * so it does **not** inherit them — a top layer element is still a descendant
+ * for inheritance, but only because it stays in the DOM where it was written.
+ * That holds here and is the reason the dialog is rendered inside the component
+ * rather than moved to `<body>`, which is the usual advice for modals.
+ */
+modern-extbase-frontend-edit-profile .frontend-edit-dialog::backdrop {
+    background-color: rgb(23 28 33 / 45%);
+}
+
+modern-extbase-frontend-edit-profile .frontend-edit-dialog-title {
+    margin: 0 0 var(--frontend-edit-gap-record);
+    font-size: 1.125em;
+}
+
+/*
+ * The form inside the dialog keeps the child styling, minus the leading edge
+ * marker: inside a box of its own it marked nothing.
+ */
+modern-extbase-frontend-edit-profile .frontend-edit-dialog .frontend-edit-child {
+    border-inline-start: none;
+    padding-inline-start: 0;
+}
+
+modern-extbase-frontend-edit-profile .frontend-edit-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--frontend-edit-space-sm);
+    margin-top: var(--frontend-edit-gap-record);
+    border-top: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+    padding-top: var(--frontend-edit-gap-record);
+}
+
+/*
+ * ---------------------------------------------------------------------------
  * The element before it upgrades
  * ---------------------------------------------------------------------------
  *

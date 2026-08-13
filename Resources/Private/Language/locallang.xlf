@@ -252,6 +252,12 @@
             </trans-unit>
 
             <!-- Section headings of the two child collections. -->
+            <trans-unit id="dialog.address">
+                <source>Add an address</source>
+            </trans-unit>
+            <trans-unit id="dialog.email">
+                <source>Add an e-mail address</source>
+            </trans-unit>
             <trans-unit id="section.address">
                 <source>Addresses</source>
             </trans-unit>

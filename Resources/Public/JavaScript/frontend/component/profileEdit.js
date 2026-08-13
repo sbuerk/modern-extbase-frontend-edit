@@ -36,7 +36,7 @@ import {
 import { childIdentity } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/childIdentity.js";
 import { imageField } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js";
 import { EditSessions } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/editState.js";
-import { actionLabelKey, choiceLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
+import { actionLabelKey, choiceLabelKey, dialogTitleLabelKey, label, parseLabels, sectionLabelKey, stateLabelKey } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
 import { readJson } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/json.js";
 import { parseEndpoints } from "@sbuerk/modern-extbase-frontend-edit/frontend/api/endpoints.js";
 import {
@@ -53,6 +53,7 @@ import { ProfileEndpointClient } from "@sbuerk/modern-extbase-frontend-edit/fron
 import { classesFor, emptyConfiguration, icon, parseComponentConfiguration } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js";
 import "@sbuerk/modern-extbase-frontend-edit/frontend/component/editField.js";
 import "@sbuerk/modern-extbase-frontend-edit/frontend/component/editImage.js";
+let instances = 0;
 let ProfileEditElement = class extends LitElement {
   constructor() {
     super(...arguments);
@@ -70,6 +71,13 @@ let ProfileEditElement = class extends LitElement {
      * update the handler triggers and does not exist yet when the handler runs.
      */
     this.pendingFocus = null;
+    /**
+     * Unique per document, so two plugins on one page do not both claim the
+     * same `aria-labelledby` target. The field and image elements each carry
+     * their own counter for the same reason.
+     */
+    this.uid = `frontend-edit-profile-${++instances}`;
+    this.addDialogFor = null;
   }
   /**
    * Renders into the light DOM.
@@ -115,7 +123,57 @@ let ProfileEditElement = class extends LitElement {
             ${childTypes.map((child) => this.renderChildren(profile, child))}
         `;
   }
+  /**
+   * Opens or closes the add dialog to match {@see addDialogFor}.
+   *
+   * `showModal()` throws if the dialog is already open, and `close()` on a
+   * closed dialog fires nothing, so both are guarded on the element's own
+   * `open` property rather than on the state alone - the two can disagree
+   * after the user closes the dialog with Escape.
+   */
+  syncAddDialog() {
+    for (const child of childTypes) {
+      const dialog = this.renderRoot.querySelector(`dialog[data-dialog-for="${child}"]`);
+      if (dialog === null) {
+        continue;
+      }
+      const shouldBeOpen = this.addDialogFor === child;
+      if (shouldBeOpen && !dialog.open) {
+        dialog.showModal();
+      } else if (!shouldBeOpen && dialog.open) {
+        dialog.close();
+      }
+    }
+  }
+  openAddDialog(child) {
+    this.addDialogFor = child;
+  }
+  /**
+   * Closes the dialog and throws the half typed record away.
+   *
+   * Reached from four directions, which is why it is one method: the cancel
+   * button, the dialog's own `cancel` event (Escape), its `close` event, and
+   * `field-cancel` from a field inside it.
+   *
+   * That last one is the reason this does not rely on the native Escape
+   * handling alone. A field calls `preventDefault()` on Escape before
+   * emitting `field-cancel`, and whether that suppresses a dialog's close
+   * request is not something to depend on - it differs between engines. The
+   * surface therefore closes the dialog itself, and the native path becoming
+   * a no-op is fine: `close()` on a closed dialog does nothing.
+   */
+  closeAddDialog(child) {
+    var _a;
+    if (this.addDialogFor !== child) {
+      return;
+    }
+    this.addDialogFor = null;
+    this.edits = this.edits.endRecord(newChildTarget(child));
+    this.pendingFocus = null;
+    (_a = this.renderRoot.querySelector(`button[data-add-for="${child}"]`)) == null ? void 0 : _a.focus();
+  }
   updated() {
+    this.syncAddDialog();
     const key = this.pendingFocus;
     if (key === null) {
       return;
@@ -415,12 +473,45 @@ let ProfileEditElement = class extends LitElement {
    * `null`, so a `422` from `addChild` lands at the field exactly like one
    * from a save.
    */
+  /**
+   * The button that opens the add dialog, and the dialog itself.
+   *
+   * The dialog is always in the document and is opened with `showModal()`
+   * from {@see updated}, never by rendering the `open` attribute. Only
+   * `showModal()` promotes the element into the top layer and brings the
+   * focus trap, the inert background and the backdrop with it; `open` alone
+   * renders a non-modal box that the page scrolls behind and the focus walks
+   * straight out of.
+   */
   renderNewChild(child) {
     const target = newChildTarget(child);
     const defaults = initialValues(fieldsOfChild(child));
     const edit = this.edits.of(target);
     return html`
-            <div class="${classesFor(this.configuration, "child", "frontend-edit-child", "frontend-edit-child-new")}">
+            <div class="frontend-edit-child-actions">
+                <button
+                    class="${this.buttonClass("primary")}"
+                    type="button"
+                    data-variant="primary"
+                    data-add-for="${child}"
+                    ?disabled="${(edit == null ? void 0 : edit.busy) ?? false}"
+                    @click="${() => this.openAddDialog(child)}"
+                >
+                    ${icon(this.configuration, "add")}
+                    <span class="frontend-edit-button-label">${this.text(actionLabelKey("add"))}</span>
+                </button>
+            </div>
+            <dialog
+                class="frontend-edit-dialog"
+                data-dialog-for="${child}"
+                aria-labelledby="${this.uid}-dialog-${child}"
+                @cancel="${() => this.closeAddDialog(child)}"
+                @close="${() => this.closeAddDialog(child)}"
+            >
+                <h4 class="frontend-edit-dialog-title" id="${this.uid}-dialog-${child}">
+                    ${this.text(dialogTitleLabelKey(child))}
+                </h4>
+                <div class="${classesFor(this.configuration, "child", "frontend-edit-child", "frontend-edit-child-new")}">
                 ${this.renderGeneralErrors(target)}
                 ${fieldsOfChild(child).map((definition) => {
       const field = definition.name;
@@ -439,11 +530,12 @@ let ProfileEditElement = class extends LitElement {
                             .errors="${this.edits.errorsOf(target, field)}"
                             @field-input="${(event) => this.onInput(target, field, event.detail.value)}"
                             @field-apply="${() => void this.addChild(child)}"
-                            @field-cancel="${() => this.cancelRecord(target)}"
+                            @field-cancel="${() => this.closeAddDialog(child)}"
                         ></modern-extbase-frontend-edit-field>
                     `;
     })}
-                <div class="frontend-edit-child-actions">
+                </div>
+                <div class="frontend-edit-dialog-actions">
                     <button
                         class="${this.buttonClass("primary")}"
                         type="button"
@@ -454,8 +546,17 @@ let ProfileEditElement = class extends LitElement {
                         ${icon(this.configuration, "add")}
                         <span class="frontend-edit-button-label">${this.text(actionLabelKey("add"))}</span>
                     </button>
+                    <button
+                        class="${this.buttonClass()}"
+                        type="button"
+                        ?disabled="${(edit == null ? void 0 : edit.busy) ?? false}"
+                        @click="${() => this.closeAddDialog(child)}"
+                    >
+                        ${icon(this.configuration, "cancel")}
+                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("cancel"))}</span>
+                    </button>
                 </div>
-            </div>
+            </dialog>
         `;
   }
   renderGeneralErrors(target) {
@@ -552,7 +653,10 @@ let ProfileEditElement = class extends LitElement {
       "addChild",
       (profile) => addChildPayload(profile.uid, child, data),
       () => {
+        var _a;
         this.edits = this.edits.endRecord(target);
+        this.addDialogFor = null;
+        (_a = this.renderRoot.querySelector(`button[data-add-for="${child}"]`)) == null ? void 0 : _a.focus();
       }
     );
   }
@@ -799,6 +903,9 @@ __decorateClass([
 __decorateClass([
   state()
 ], ProfileEditElement.prototype, "imageRejected", 2);
+__decorateClass([
+  state()
+], ProfileEditElement.prototype, "addDialogFor", 2);
 ProfileEditElement = __decorateClass([
   customElement("modern-extbase-frontend-edit-profile")
 ], ProfileEditElement);
