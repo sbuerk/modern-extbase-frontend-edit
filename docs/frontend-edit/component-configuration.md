@@ -120,6 +120,10 @@ configuration.
 | `errors`         | `frontend-edit-field-errors`  |
 | `state`          | `frontend-edit-state`         |
 
+A configured class **wins** over the extension's own appearance. That needed a
+change to make true — see
+[the extension's appearance is the weakest thing on the page](styling.md#the-extensions-appearance-is-the-weakest-thing-on-the-page).
+
 Emphasis stays in `data-variant` rather than moving into the configured class,
 for the reason it went there in the first place: an appearance concern must not
 share an attribute with a selector the acceptance suite depends on.

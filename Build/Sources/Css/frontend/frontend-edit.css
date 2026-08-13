@@ -164,6 +164,34 @@ modern-extbase-frontend-edit-image {
  * ---------------------------------------------------------------------------
  * Controls
  * ---------------------------------------------------------------------------
+ *
+ * ## Appearance yields, structure does not
+ *
+ * Every rule below that decides how a control *looks* is wrapped in `:where()`,
+ * which contributes **no specificity at all**. Rules that decide how the surface
+ * holds together — `box-sizing`, the icon box, the visually hidden clip, and
+ * everything in the layout sections further down — are written normally.
+ *
+ * The reason is measured rather than assumed. An installation configures extra
+ * class names per element type, and a theme then styles them; but
+ * `button[data-variant='primary']` is one class and two elements of specificity,
+ * and a theme's `.button--primary` is one class. The extension won, so a themed
+ * button kept the extension's accent colour — the plugin overruling the design
+ * system it was asked to blend into.
+ *
+ * With `:where()` the extension's appearance is the **weakest** thing on the
+ * page: anything a site writes beats it, and configuring a class is enough to
+ * take over a control completely.
+ *
+ * That cuts both ways and the cost is real: a site with an aggressive
+ * `button { … }` reset now reaches these controls. That is the light DOM bargain
+ * this surface already accepted, and the defaults exist to make an unconfigured
+ * surface coherent, not to defend it.
+ *
+ * `@layer` says all of this better and is unusable: it needs Chrome 99 against
+ * the Chrome 89 floor the import map mechanism sets. `:where()` needs Chrome 88,
+ * Firefox 78 and Safari 14, so it clears the floor comfortably. That floor has
+ * now decided four CSS choices in this repository.
  */
 
 /*
@@ -177,9 +205,9 @@ modern-extbase-frontend-edit-image {
  * `Tests/Acceptance/Frontend/FieldLayout.spec.ts`.
  */
 modern-extbase-frontend-edit-profile button,
-modern-extbase-frontend-edit-profile input,
-modern-extbase-frontend-edit-profile select,
-modern-extbase-frontend-edit-profile textarea {
+:where(modern-extbase-frontend-edit-profile) :where(input),
+:where(modern-extbase-frontend-edit-profile) :where(select),
+:where(modern-extbase-frontend-edit-profile) :where(textarea) {
     box-sizing: border-box;
 }
 
@@ -191,8 +219,8 @@ modern-extbase-frontend-edit-profile textarea {
  * input the moment a file is read. A label keeps every native behaviour,
  * including opening the picker on click and on Enter.
  */
-modern-extbase-frontend-edit-profile button,
-modern-extbase-frontend-edit-profile .frontend-edit-file-picker {
+:where(modern-extbase-frontend-edit-profile) :where(button),
+:where(modern-extbase-frontend-edit-profile) :where(.frontend-edit-file-picker) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -212,14 +240,14 @@ modern-extbase-frontend-edit-profile .frontend-edit-file-picker {
         border-color var(--frontend-edit-transition-duration) var(--frontend-edit-transition-easing);
 }
 
-modern-extbase-frontend-edit-profile button:hover:not(:disabled),
-modern-extbase-frontend-edit-profile .frontend-edit-file-picker:not([data-disabled]):hover {
+:where(modern-extbase-frontend-edit-profile) :where(button:hover:not(:disabled)),
+:where(modern-extbase-frontend-edit-profile) :where(.frontend-edit-file-picker:not([data-disabled]):hover) {
     border-color: var(--frontend-edit-color-border-strong);
     background-color: var(--frontend-edit-color-surface-sunken);
 }
 
-modern-extbase-frontend-edit-profile button:active:not(:disabled),
-modern-extbase-frontend-edit-profile .frontend-edit-file-picker:not([data-disabled]):active {
+:where(modern-extbase-frontend-edit-profile) :where(button:active:not(:disabled)),
+:where(modern-extbase-frontend-edit-profile) :where(.frontend-edit-file-picker:not([data-disabled]):active) {
     border-color: var(--frontend-edit-color-accent);
 }
 
@@ -254,7 +282,7 @@ modern-extbase-frontend-edit-profile .frontend-edit-icon svg {
  * accessible name, so every spec that addresses a button by its label keeps
  * working and a screen reader still hears "Move up" rather than "button".
  */
-modern-extbase-frontend-edit-profile button[data-icon-only] {
+:where(modern-extbase-frontend-edit-profile) :where(button[data-icon-only]) {
     padding-inline: var(--frontend-edit-control-padding-block);
 }
 
@@ -272,31 +300,31 @@ modern-extbase-frontend-edit-profile button[data-icon-only] .frontend-edit-butto
 
 /* The one filled button in a row: it commits the change the reader came to
  * make. In a row of four bordered buttons a tint is not a hierarchy. */
-modern-extbase-frontend-edit-profile button[data-variant='primary'] {
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='primary']) {
     border-color: var(--frontend-edit-color-accent);
     background-color: var(--frontend-edit-color-accent);
     color: var(--frontend-edit-color-accent-contrast);
 }
 
-modern-extbase-frontend-edit-profile button[data-variant='primary']:hover:not(:disabled),
-modern-extbase-frontend-edit-profile button[data-variant='primary']:active:not(:disabled) {
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='primary']:hover:not(:disabled)),
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='primary']:active:not(:disabled)) {
     border-color: var(--frontend-edit-color-accent-hover);
     background-color: var(--frontend-edit-color-accent-hover);
 }
 
 /* Destructive, and quiet until it is about to be pressed. Colour identifies it;
  * the fill arrives on hover, when the intent is already there. */
-modern-extbase-frontend-edit-profile button[data-variant='danger'] {
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='danger']) {
     color: var(--frontend-edit-color-danger);
 }
 
-modern-extbase-frontend-edit-profile button[data-variant='danger']:hover:not(:disabled),
-modern-extbase-frontend-edit-profile button[data-variant='danger']:active:not(:disabled) {
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='danger']:hover:not(:disabled)),
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='danger']:active:not(:disabled)) {
     border-color: var(--frontend-edit-color-danger);
     background-color: var(--frontend-edit-color-danger-surface);
 }
 
-modern-extbase-frontend-edit-profile button[data-variant='danger']:focus-visible {
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='danger']:focus-visible) {
     outline-color: var(--frontend-edit-color-danger);
 }
 
@@ -305,7 +333,7 @@ modern-extbase-frontend-edit-profile button[data-variant='danger']:focus-visible
  * primary is dimmed rather than drawn at full strength: the variants set colour,
  * this sets opacity, and the two compose.
  */
-modern-extbase-frontend-edit-profile button:disabled {
+:where(modern-extbase-frontend-edit-profile) :where(button:disabled) {
     opacity: var(--frontend-edit-busy-opacity);
     cursor: default;
 }
@@ -315,14 +343,14 @@ modern-extbase-frontend-edit-profile button:disabled {
  * `:has()` is above the browser floor (Firefox needs 121, the floor is 108).
  * The component states it instead.
  */
-modern-extbase-frontend-edit-profile .frontend-edit-file-picker[data-disabled] {
+:where(modern-extbase-frontend-edit-profile) :where(.frontend-edit-file-picker[data-disabled]) {
     opacity: var(--frontend-edit-busy-opacity);
     cursor: default;
 }
 
-modern-extbase-frontend-edit-profile input,
-modern-extbase-frontend-edit-profile select,
-modern-extbase-frontend-edit-profile textarea {
+:where(modern-extbase-frontend-edit-profile) :where(input),
+:where(modern-extbase-frontend-edit-profile) :where(select),
+:where(modern-extbase-frontend-edit-profile) :where(textarea) {
     min-height: var(--frontend-edit-control-min-height);
     padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
     border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
@@ -333,12 +361,12 @@ modern-extbase-frontend-edit-profile textarea {
     font-family: var(--frontend-edit-font-family);
 }
 
-modern-extbase-frontend-edit-profile textarea {
+:where(modern-extbase-frontend-edit-profile) :where(textarea) {
     min-height: 6rem;
     resize: vertical;
 }
 
-modern-extbase-frontend-edit-profile input[type='file'] {
+:where(modern-extbase-frontend-edit-profile) :where(input[type='file']) {
     min-height: auto;
     padding: 0;
     border: none;
@@ -361,7 +389,7 @@ modern-extbase-frontend-edit-profile .frontend-edit-file-picker:focus-within {
     outline-offset: var(--frontend-edit-focus-offset);
 }
 
-modern-extbase-frontend-edit-profile [aria-invalid='true'] {
+:where(modern-extbase-frontend-edit-profile) :where([aria-invalid='true']) {
     border-color: var(--frontend-edit-color-danger);
     box-shadow: 0 0 0 var(--frontend-edit-border-width) var(--frontend-edit-color-danger);
 }
@@ -372,7 +400,7 @@ modern-extbase-frontend-edit-profile [aria-invalid='true'] {
  * either is drawn alone. Left in their own colours the blue one is the louder,
  * which makes the field look focused rather than wrong. One colour, one message.
  */
-modern-extbase-frontend-edit-profile [aria-invalid='true']:focus-visible {
+:where(modern-extbase-frontend-edit-profile) :where([aria-invalid='true']:focus-visible) {
     outline-color: var(--frontend-edit-color-danger);
 }
 
