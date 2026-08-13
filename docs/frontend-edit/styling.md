@@ -284,9 +284,9 @@ request, and inherits `currentColor`, so a glyph follows whatever colour its
 button already has — including the danger red and the filled primary.
 
 **Icons are decoration, and the label is never in `aria-label`.** Every glyph is
-`aria-hidden="true"` and `focusable="false"`, and every button carries its
-translated text in a `<span class="button-label">` — visible in most places,
-visually hidden in the record toolbars.
+wrapped in an `aria-hidden="true"` span, and every button carries its translated
+text in a `<span class="frontend-edit-button-label">` — visible on the record
+level actions, visually hidden on the repeated ones.
 
 That distinction is load bearing rather than pedantic. The tempting
 implementation of an icon-only button is `aria-label` and no text, which reads
@@ -297,11 +297,26 @@ their text. A visually hidden span satisfies the accessible name *and*
 `Tests/Acceptance/Frontend/ActionIcons.spec.ts` asserts exactly this, and was
 shown to fail against the `aria-label` version.
 
-**Only the record toolbars drop their labels** — move, hide, remove, repeated
-once per child. Four wide text buttons per child were the heaviest thing on the
-surface, row-level actions are the case where an icon alone is understood, and it
-is the treatment the TYPO3 backend gives the equivalent controls in a record
-list. Everything else keeps icon *and* text.
+**What decides whether a label is visible is repetition and scope**, not which
+part of the surface a button sits in.
+
+| Drawn as a glyph alone                   | Keeps its words                  |
+|------------------------------------------|----------------------------------|
+| `Edit` on a field                        | `Edit all fields` on a record    |
+| `Apply` and `Cancel` on a field          | `Save all fields`, `Cancel`      |
+| `Move up`, `Move down`, `Hide`, `Remove` | `Add address`, `Add e-mail`      |
+| `Remove` on the image                    | `Choose image` / `Replace image` |
+
+The left column is repeated once per row — twenty-six `Edit` buttons on the
+fixture profile — and a row level action is the case where a glyph alone is
+understood; it is the treatment the TYPO3 backend gives the equivalent controls
+in a record list. The right column acts on a **whole record or collection**, and
+its scope is exactly what a glyph cannot express: `Edit all fields` beside a
+column of `Edit` glyphs would otherwise be a second pencil meaning something
+much larger.
+
+Every icon-only button also carries a `title` with the same text, so a mouse
+user gets the name without a screen reader.
 
 ## The file input is a label wrapping a hidden input
 

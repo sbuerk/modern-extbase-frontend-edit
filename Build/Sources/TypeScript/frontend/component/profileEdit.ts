@@ -457,6 +457,7 @@ export class ProfileEditElement extends LitElement {
                         class="${this.buttonClass(null, true)}"
                         type="button"
                         data-icon-only
+                        title="${this.text(actionLabelKey('moveUp'))}"
                         ?disabled="${busy || index === 0}"
                         @click="${(): void => void this.moveChild(child, record.uid, -1)}"
                     >
@@ -467,6 +468,7 @@ export class ProfileEditElement extends LitElement {
                         class="${this.buttonClass(null, true)}"
                         type="button"
                         data-icon-only
+                        title="${this.text(actionLabelKey('moveDown'))}"
                         ?disabled="${busy || index === total - 1}"
                         @click="${(): void => void this.moveChild(child, record.uid, 1)}"
                     >
@@ -477,6 +479,7 @@ export class ProfileEditElement extends LitElement {
                         class="${this.buttonClass(null, true)}"
                         type="button"
                         data-icon-only
+                        title="${this.text(actionLabelKey(hidden ? 'show' : 'hide'))}"
                         ?disabled="${busy}"
                         @click="${(): void => void this.setChildVisibility(child, record.uid, !hidden)}"
                     >
@@ -488,6 +491,7 @@ export class ProfileEditElement extends LitElement {
                         type="button"
                         data-icon-only
                         data-variant="danger"
+                        title="${this.text(actionLabelKey('remove'))}"
                         ?disabled="${busy}"
                         @click="${(): void => void this.deleteChild(child, record.uid)}"
                     >

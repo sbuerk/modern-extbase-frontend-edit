@@ -68,9 +68,19 @@ test.describe('Action icons', (): void => {
         const hiddenBox = await hidden.boundingBox();
         expect(hiddenBox?.width ?? 0, 'a hidden label takes no room').toBeLessThanOrEqual(1);
 
-        // Shown: the same element, in a button that is not part of a toolbar.
-        const shown = surface.field('profile', 'firstname')
-            .getByRole('button', { name: 'Edit', exact: true })
+        /*
+         * Shown: the same element, in a button that is not drawn as an icon.
+         *
+         * This used to be the per-field `Edit` button, which is icon-only now -
+         * so the contrast moved to a record level action, and the move is the
+         * point rather than an inconvenience. What separates the two groups is
+         * not "toolbar or not" but **repetition and scope**: an action repeated
+         * once per row is understood from its glyph, and one that acts on a
+         * whole record has to say what it acts on. `Edit all fields` beside a
+         * column of `Edit` glyphs is exactly the case that needs the words.
+         */
+        const shown = surface.recordOf('profile')
+            .getByRole('button', { name: 'Edit all fields', exact: true })
             .locator('.frontend-edit-button-label');
         const shownBox = await shown.boundingBox();
         expect(shownBox?.width ?? 0, 'a visible label is laid out').toBeGreaterThan(1);

@@ -247,10 +247,12 @@ modern-extbase-frontend-edit-profile .frontend-edit-icon svg {
 }
 
 /*
- * A record toolbar is the one place the labels are dropped. The text is hidden,
- * never removed: it stays in `textContent` and in the accessible name, so every
- * spec that addresses a button by its label keeps working and a screen reader
- * still hears "Move up" rather than "button".
+ * An action repeated once per row is drawn as a glyph alone; one that acts on a
+ * whole record keeps its words, because its scope is what a glyph cannot say.
+ *
+ * The text is hidden, never removed: it stays in `textContent` and in the
+ * accessible name, so every spec that addresses a button by its label keeps
+ * working and a screen reader still hears "Move up" rather than "button".
  */
 modern-extbase-frontend-edit-profile button[data-icon-only] {
     padding-inline: var(--frontend-edit-control-padding-block);
