@@ -376,28 +376,32 @@ let ProfileEditElement = class extends LitElement {
                             <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveToTop"))}</span>
                         </button>
                     `}
-                    <button
-                        class="${this.buttonClass(null, true)}"
-                        type="button"
-                        data-icon-only
-                        title="${this.text(actionLabelKey("moveUp"))}"
-                        ?disabled="${busy || index === 0}"
-                        @click="${() => void this.moveChild(child, record.uid, -1)}"
-                    >
-                        ${icon(this.configuration, "moveUp")}
-                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveUp"))}</span>
-                    </button>
-                    <button
-                        class="${this.buttonClass(null, true)}"
-                        type="button"
-                        data-icon-only
-                        title="${this.text(actionLabelKey("moveDown"))}"
-                        ?disabled="${busy || index === total - 1}"
-                        @click="${() => void this.moveChild(child, record.uid, 1)}"
-                    >
-                        ${icon(this.configuration, "moveDown")}
-                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveDown"))}</span>
-                    </button>
+                    ${index === 0 ? nothing : html`
+                        <button
+                            class="${this.buttonClass(null, true)}"
+                            type="button"
+                            data-icon-only
+                            title="${this.text(actionLabelKey("moveUp"))}"
+                            ?disabled="${busy}"
+                            @click="${() => void this.moveChild(child, record.uid, -1)}"
+                        >
+                            ${icon(this.configuration, "moveUp")}
+                            <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveUp"))}</span>
+                        </button>
+                    `}
+                    ${index === total - 1 ? nothing : html`
+                        <button
+                            class="${this.buttonClass(null, true)}"
+                            type="button"
+                            data-icon-only
+                            title="${this.text(actionLabelKey("moveDown"))}"
+                            ?disabled="${busy}"
+                            @click="${() => void this.moveChild(child, record.uid, 1)}"
+                        >
+                            ${icon(this.configuration, "moveDown")}
+                            <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveDown"))}</span>
+                        </button>
+                    `}
                     ${index === total - 1 ? nothing : html`
                         <button
                             class="${this.buttonClass(null, true)}"

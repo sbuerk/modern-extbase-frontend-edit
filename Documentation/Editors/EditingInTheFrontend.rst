@@ -196,13 +196,18 @@ The buttons of a record are:
 
     *   -   :guilabel:`Move up`, :guilabel:`Move down`
         -   Change the order of the collection by one position, which is the
-            order the detail page renders it in. The button that would move the
-            record out of the list is shown but disabled.
+            order the detail page renders it in.
 
     *   -   :guilabel:`Move to top`, :guilabel:`Move to bottom`
         -   Send the record to one end of the collection in a single step,
-            rather than repeating :guilabel:`Move up` for a long list. These
-            are not shown at all on a record that is already at that end.
+            rather than repeating :guilabel:`Move up` for a long list.
+
+..  note::
+    A reordering action is **not shown** on a record it could not move: the
+    first record of a collection offers no :guilabel:`Move up` or
+    :guilabel:`Move to top`, and the last offers no :guilabel:`Move down` or
+    :guilabel:`Move to bottom`. A collection with only one record shows none of
+    the four.
 
     *   -   :guilabel:`Hide`, :guilabel:`Show`
         -   Take the record off the list and the detail page, or put it back. A
