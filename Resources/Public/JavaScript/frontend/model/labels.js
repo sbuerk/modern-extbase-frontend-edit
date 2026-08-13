@@ -26,12 +26,16 @@ function actionLabelKey(action) {
 function sectionLabelKey(scope) {
   return `section.${scope}`;
 }
+function dialogTitleLabelKey(scope) {
+  return `dialog.${scope}`;
+}
 function stateLabelKey(state) {
   return `state.${state}`;
 }
 export {
   actionLabelKey,
   choiceLabelKey,
+  dialogTitleLabelKey,
   fieldLabelKey,
   label,
   parseLabels,

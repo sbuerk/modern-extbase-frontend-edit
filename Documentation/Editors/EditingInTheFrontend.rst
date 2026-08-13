@@ -92,7 +92,8 @@ show a stale value next to a fresh one.
     :guilabel:`Edit` button next to it; each record carries an :guilabel:`Edit
     all fields` button of its own; each child record adds :guilabel:`Move to
     top`, :guilabel:`Move up`, :guilabel:`Move down`, :guilabel:`Move to
-    bottom`, :guilabel:`Hide` and :guilabel:`Remove`; and each
+    bottom`, :guilabel:`Hide` and :guilabel:`Remove`; each collection ends in
+    an :guilabel:`Add` button that opens a dialog; and each
     collection ends in an empty form for a new entry. The hidden address is
     marked :guilabel:`Hidden` and offers :guilabel:`Show` instead of
     :guilabel:`Hide`.

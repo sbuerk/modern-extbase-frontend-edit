@@ -75,6 +75,18 @@ export function sectionLabelKey(scope: string): string {
 }
 
 /**
+ * The heading of the dialog that creates a record: `dialog.address`.
+ *
+ * A key of its own rather than the section label, which names the *collection*
+ * — a dialog headed "Addresses" says where the record will land and not what
+ * the reader is about to do. Composing it from the `Add` action and the section
+ * label was the other option and produces "Add Addresses".
+ */
+export function dialogTitleLabelKey(scope: string): string {
+    return `dialog.${scope}`;
+}
+
+/**
  * The label of a record state the surface shows but cannot change:
  * `state.hidden`.
  */

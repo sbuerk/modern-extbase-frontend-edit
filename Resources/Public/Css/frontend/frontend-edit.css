@@ -336,6 +336,36 @@ modern-extbase-frontend-edit-profile .frontend-edit-errors {
   color: var(--frontend-edit-color-danger);
   font-size: var(--frontend-edit-font-size-sm);
 }
+modern-extbase-frontend-edit-profile .frontend-edit-dialog {
+  margin: auto;
+  max-width: min(36rem, calc(100vw - 2 * var(--frontend-edit-space-lg)));
+  max-height: calc(100vh - 2 * var(--frontend-edit-space-lg));
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border-radius: var(--frontend-edit-radius-lg);
+  padding: var(--frontend-edit-gap-record);
+  background-color: var(--frontend-edit-color-surface);
+  color: inherit;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-dialog::backdrop {
+  background-color: rgb(23 28 33 / 45%);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-dialog-title {
+  margin: 0 0 var(--frontend-edit-gap-record);
+  font-size: 1.125em;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-dialog .frontend-edit-child {
+  border-inline-start: none;
+  padding-inline-start: 0;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--frontend-edit-space-sm);
+  margin-top: var(--frontend-edit-gap-record);
+  border-top: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  padding-top: var(--frontend-edit-gap-record);
+}
 .frontend-edit-loaded modern-extbase-frontend-edit-profile {
   outline: var(--frontend-edit-outline-width, 1px) dashed var(--frontend-edit-outline-color, #0a7bd4);
   outline-offset: var(--frontend-edit-space-xs);

@@ -635,3 +635,53 @@ versioned the moment anything consumed it.
   node based suites.
 - [Quality gates](../development/quality-gates.md) — where `unitJs` sits among
   the gates.
+
+## A new record is collected in a dialog
+
+The form that creates a child used to sit at the foot of its collection,
+permanently, showing empty controls for a record nobody had asked to create. On
+a profile with two collections that was two empty forms on every page load, and
+the surface read as though four records existed where two did.
+
+It is a native `<dialog>` now, opened from an `Add` button.
+
+**`showModal()`, never the `open` attribute.** Only `showModal()` promotes the
+element into the top layer and brings the focus trap, the inert background and
+the backdrop with it. Rendering `open` produces a box that looks similar, that
+the page scrolls behind, and that the focus walks straight out of.
+
+**The open state is driven from `updated()`, not from the click handler.** The
+dialog is re-rendered on every state change — a keystroke in one of its own
+fields included — and lit reuses the element rather than replacing it. Deciding
+"should this be open" once per render, and reconciling it with the element's own
+`open` property, keeps intent and reality the same thing. Calling `showModal()`
+from the click would work exactly until the first re-render.
+
+### Escape is handled by the surface, not left to the platform
+
+This is the part that was not knowable by reading, and it is why the behaviour
+is asserted rather than assumed.
+
+A field calls `preventDefault()` on Escape before emitting `field-cancel`, which
+is how Escape cancels an inline edit. Whether that suppresses a dialog's *close
+request* is not something to depend on across engines. So `closeAddDialog()` is
+reached from all four directions — the cancel button, the dialog's `cancel`
+event, its `close` event, and `field-cancel` from a field inside it — and the
+native path becoming a no-op is fine, because `close()` on a closed dialog does
+nothing.
+
+The acceptance suite asserts the **outcome** (the dialog is gone and the draft
+is discarded) rather than the path, which is what makes it survive a browser
+changing its mind.
+
+### What closing means
+
+Closing always discards. There is no draft kept behind a closed dialog: reopening
+starts from the values a new record starts from, which the suite asserts by
+typing, pressing Escape, reopening and finding the control empty.
+
+A **rejected** record is the exception that shapes the rest — the dialog stays
+open and shows the validation messages, which is why it is not closed
+optimistically when the request is sent.
+
+Focus returns to the `Add` button that opened it.

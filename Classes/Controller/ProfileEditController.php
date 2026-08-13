@@ -156,6 +156,9 @@ final class ProfileEditController extends ActionController
         'action.show',
         'action.chooseImage',
         'action.replaceImage',
+        // Headings of the dialogs that create a record — dialogTitleLabelKey().
+        'dialog.address',
+        'dialog.email',
         // Section headings, `section.<scope>` — sectionLabelKey().
         'section.address',
         'section.email',
