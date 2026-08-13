@@ -409,6 +409,47 @@ for the anonymous and server rendered states here: that would be a second copy o
 coverage that already exists, and two more images to re-record on every restyle.
 → [Acceptance tests](../testing/acceptance-tests.md#what-checks-the-generator)
 
+## The extension's appearance is the weakest thing on the page
+
+Configuring a class is not enough on its own, and this was found by measuring a
+computed colour rather than by reading the stylesheet.
+
+An installation configures `buttonPrimary => button--primary`, the theme styles
+`.button--primary`, and the button kept the **extension's** accent. The reason is
+arithmetic: `button[data-variant='primary']` is one class and two elements of
+specificity; `.button--primary` is one class. The extension won, so the plugin
+overruled the design system it had just been asked to blend into.
+
+Every rule that decides how a control *looks* is therefore wrapped in `:where()`,
+which contributes **no specificity at all**:
+
+```css
+:where(modern-extbase-frontend-edit-profile) :where(button[data-variant='primary']) {
+    background-color: var(--frontend-edit-color-accent);
+}
+```
+
+Rules that decide how the surface *holds together* — `box-sizing`, the icon box,
+the visually hidden clip, and the whole layout section — are written normally. A
+theme is meant to restyle the surface, not to make its rows reflow.
+
+**The cost is real and is accepted.** With zero specificity, a site with an
+aggressive `button { … }` reset now reaches these controls. That is the light DOM
+bargain this surface already took; the defaults exist to make an *unconfigured*
+surface coherent, not to defend it against the page.
+
+`@layer` expresses this far better and cannot be used: it needs Chrome 99 against
+the Chrome 89 floor the import map mechanism sets. `:where()` needs Chrome 88,
+Firefox 78 and Safari 14. **That floor has now decided four CSS choices** —
+`color-mix()`, container queries, `:has()` and now `@layer`; check it before
+reaching for anything modern.
+
+`Tests/Acceptance/Frontend/ThemeOverride.spec.ts` asserts the outcome, and it was
+shown to fail by putting one selector back at its old specificity. It is the only
+suite that can see this: `ButtonHierarchy.spec.ts` deliberately asserts nothing
+about colour, so the surface could mark every button correctly and still overrule
+the theme.
+
 ## Class names are structural, not presentational
 
 `.frontend-edit-field-value`, `.frontend-edit-field-control`,
