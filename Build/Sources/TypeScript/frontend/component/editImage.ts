@@ -39,7 +39,8 @@
 import { html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import { icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js';
+import type { ComponentConfiguration, ElementType } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js';
+import { classesFor, emptyConfiguration, icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/componentConfiguration.js';
 import type { ProfileImageRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
 import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 import { actionLabelKey, fieldLabelKey, label } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
@@ -81,6 +82,16 @@ export class EditImageElement extends LitElement {
     public labels: LabelMap = {};
 
     /**
+     * The icon markup and the additional CSS classes, resolved by the server.
+     *
+     * A property rather than an attribute read here: the record element owns it
+     * and hands the same object to every child, which is what stops two
+     * elements of one surface from disagreeing about it.
+     */
+    @property({ attribute: false })
+    public configuration: ComponentConfiguration = emptyConfiguration;
+
+    /**
      * The profile name, for the alternative text fallback. It comes from the
      * document rather than from the page, so it follows a saved name change.
      */
@@ -112,13 +123,13 @@ export class EditImageElement extends LitElement {
 
         return html`
             <div class="frontend-edit-field">
-                <span class="frontend-edit-field-label" id="${this.uid}-label">${this.text(fieldLabelKey('profile', imageField))}</span>
+                <span class="${classesFor(this.configuration, 'label', 'frontend-edit-field-label')}" id="${this.uid}-label">${this.text(fieldLabelKey('profile', imageField))}</span>
                 <div class="frontend-edit-field-body">
                     ${this.renderImage()}
                     <span class="frontend-edit-field-actions">
-                        <label class="frontend-edit-file-picker" ?data-disabled="${this.busy}">
+                        <label class="${classesFor(this.configuration, 'filePicker', 'frontend-edit-file-picker')}" ?data-disabled="${this.busy}">
                             <input
-                                class="frontend-edit-field-control frontend-edit-visually-hidden"
+                                class="${classesFor(this.configuration, 'control', 'frontend-edit-field-control', 'frontend-edit-visually-hidden')}"
                                 type="file"
                                 accept="${imageAccept}"
                                 aria-labelledby="${this.uid}-label"
@@ -127,19 +138,20 @@ export class EditImageElement extends LitElement {
                                 ?disabled="${this.busy}"
                                 @change="${this.onSelect}"
                             />
-                            ${icon('chooseImage')}
+                            ${icon(this.configuration, 'chooseImage')}
                             <span class="frontend-edit-button-label">
                                 ${this.text(actionLabelKey(this.image === null ? 'chooseImage' : 'replaceImage'))}
                             </span>
                         </label>
                         <button
+                            class="${this.buttonClass('danger')}"
                             type="button"
                             data-variant="danger"
                             aria-describedby="${this.uid}-label"
                             ?disabled="${this.busy || this.image === null}"
                             @click="${this.onRemove}"
                         >
-                            ${icon('remove')}
+                            ${icon(this.configuration, 'remove')}
                             <span class="frontend-edit-button-label">${this.text(actionLabelKey('remove'))}</span>
                         </button>
                     </span>
@@ -192,7 +204,7 @@ export class EditImageElement extends LitElement {
 
     private renderErrors(messages: readonly string[]): TemplateResult {
         return html`
-            <ul class="frontend-edit-field-errors" id="${this.uid}-errors" role="alert">
+            <ul class="${classesFor(this.configuration, 'errors', 'frontend-edit-field-errors')}" id="${this.uid}-errors" role="alert">
                 ${messages.map((message: string): TemplateResult => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -221,6 +233,32 @@ export class EditImageElement extends LitElement {
 
     private text(key: string): string {
         return label(this.labels, key);
+    }
+    /**
+     * The class attribute of a button, including whatever the installation
+     * configured for its kind.
+     *
+     * `data-variant` still decides the *emphasis* and stays an attribute: it is
+     * this extension's own presentational state and the acceptance suite reads
+     * it. The classes here are the seam a project styles through, and they are
+     * additive - the configured value cannot remove anything the surface needs.
+     */
+    private buttonClass(variant: 'primary' | 'danger' | null = null, iconOnly = false): string {
+        const kinds: ElementType[] = ['button'];
+        if (variant === 'primary') {
+            kinds.push('buttonPrimary');
+        }
+        if (variant === 'danger') {
+            kinds.push('buttonDanger');
+        }
+        if (iconOnly) {
+            kinds.push('buttonIconOnly');
+        }
+
+        return kinds
+            .map((kind: ElementType): string => classesFor(this.configuration, kind))
+            .filter((entry: string): boolean => entry !== '')
+            .join(' ');
     }
 }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SBUERK\ModernExtbaseFrontendEdit\Controller;
 
 use Psr\Http\Message\ResponseInterface;
+use SBUERK\ModernExtbaseFrontendEdit\Configuration\ComponentConfigurationFactory;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Address;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Email;
 use SBUERK\ModernExtbaseFrontendEdit\Domain\Model\Profile;
@@ -210,6 +211,7 @@ final class ProfileEditController extends ActionController
         private readonly ProfileDocumentFactory $profileDocumentFactory,
         private readonly Context $context,
         private readonly WorkspaceGuard $workspaceGuard,
+        private readonly ComponentConfigurationFactory $componentConfigurationFactory,
     ) {}
 
     /**
@@ -295,6 +297,17 @@ final class ProfileEditController extends ActionController
             'profileJson' => $this->encode($this->profileDocumentFactory->create($profile, $addresses, $emails)),
             'endpointsJson' => $this->encode($this->endpointUris()),
             'labelsJson' => $this->encode($this->labels()),
+            /*
+             * The icons and the additional CSS classes, resolved from
+             * `$GLOBALS['TYPO3_CONF_VARS']['modern_extbase_frontend_edit']`.
+             *
+             * It travels in the document rather than being fetched, like every
+             * other payload here: a surface that renders before its
+             * configuration arrives would draw one frame of unstyled, glyphless
+             * buttons. The DTO is `JsonSerializable` so serving it from an
+             * endpoint later needs no new data structure.
+             */
+            'configJson' => $this->encode($this->componentConfigurationFactory->create()->jsonSerialize()),
             'requestToken' => $this->issueRequestToken(),
         ]);
 

@@ -40,18 +40,19 @@ supported core versions.
 > and that the image belongs outside the custom element
 > → [The edit plugin](edit-plugin.md#the-enhanced-surface-is-client-rendered).
 
-| Page                                                  | Contents                                                                                        |
-|-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                    |
-| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The three plugins, their registration and settings, and the partial API.                        |
-| [The edit plugin](edit-plugin.md)                     | The two editing modes, the client-rendered surface, degradation, the one document factory.      |
-| [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.     |
-| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the nine endpoints, the request token.         |
-| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence lives.       |
-| [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers.   |
-| [Image handling](image-handling.md)                   | The two image endpoints, the upload rules, the read-side wrapper, replacement and cleanup.      |
-| [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain, the gates and the CI job. |
-| [Styling](styling.md)                                 | The design tokens, why only the outer element declares them, and how a site overrides them.     |
+| Page                                                  | Contents                                                                                                |
+|-------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| [Domain and schema](domain-schema.md)                 | The three tables, their TCA, and why none of it needs a version conditional.                            |
+| [Plugins and the Fluid layer](plugins-and-fluid.md)   | The three plugins, their registration and settings, and the partial API.                                |
+| [The edit plugin](edit-plugin.md)                     | The two editing modes, the client-rendered surface, degradation, the one document factory.              |
+| [Persistence and sorting](persistence-and-sorting.md) | What Extbase persistence does not do for us: sorting, orphans, hidden children, workspaces.             |
+| [AJAX transport](ajax-transport.md)                   | Why a page type rather than eID or a middleware, the nine endpoints, the request token.                 |
+| [Authorization](authorization.md)                     | Ownership resolved from the session, the security checklist and where each defence lives.               |
+| [DTOs and validation](dto-and-validation.md)          | Rules as data, full versus partial validation, hydration, the custom validators, the mappers.           |
+| [Image handling](image-handling.md)                   | The two image endpoints, the upload rules, the read-side wrapper, replacement and cleanup.              |
+| [Frontend assets](frontend-assets.md)                 | Import maps in the frontend, mapping `lit`, the TypeScript toolchain, the gates and the CI job.         |
+| [Styling](styling.md)                                 | The light DOM boundary, the design tokens, and how a site overrides them.                               |
+| [Configuring the surface](component-configuration.md) | Icons and additional CSS classes from `TYPO3_CONF_VARS`, and why the extension registers its own icons. |
 
 ## The short version
 

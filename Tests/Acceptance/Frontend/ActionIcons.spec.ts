@@ -85,23 +85,35 @@ test.describe('Action icons', (): void => {
         await surface.open();
         await surface.waitForEnhancement();
 
-        const glyphs = await surface.element.locator('button .frontend-edit-icon').evaluateAll(
-            (icons: Element[]): { hidden: string | null; focusable: string | null }[] =>
-                icons.map((svg: Element): { hidden: string | null; focusable: string | null } => ({
-                    hidden: svg.getAttribute('aria-hidden'),
-                    focusable: svg.getAttribute('focusable'),
-                })),
+        /*
+         * Two elements now, not one. The component draws a wrapping span that
+         * carries `aria-hidden` whatever the icon file contains - which is what
+         * lets a project register a replacement SVG without knowing this
+         * extension's conventions - and the `<svg>` inside it comes from that
+         * file and carries `focusable`.
+         */
+        const wrappers = await surface.element.locator('button .frontend-edit-icon').evaluateAll(
+            (icons: Element[]): (string | null)[] =>
+                icons.map((wrapper: Element): string | null => wrapper.getAttribute('aria-hidden')),
         );
+        expect(wrappers.length).toBeGreaterThan(0);
+        expect(wrappers.filter((hidden: string | null): boolean => hidden !== 'true')).toEqual([]);
 
         // Every button draws one, so an empty result would mean the icons never
         // rendered rather than that they are all correct.
-        expect(glyphs.length).toBeGreaterThan(0);
-        expect(glyphs.filter(({ hidden }): boolean => hidden !== 'true')).toEqual([]);
-        // "focusable" is not needed by any browser this extension targets, and
-        // is asserted because it is cheap insurance rather than because a bug
-        // was observed: an SVG that a browser treats as focusable puts a stop in
-        // the tab order between two buttons, and a keyboard user would find that
-        // before a test did.
-        expect(glyphs.filter(({ focusable }): boolean => focusable !== 'false')).toEqual([]);
+        const glyphs = await surface.element.locator('button .frontend-edit-icon svg').count();
+
+        expect(glyphs).toBeGreaterThan(0);
+        /*
+         * `focusable` is no longer asserted, and the reason is a finding rather
+         * than a relaxation: core's SVG sanitiser strips the attribute, so an
+         * icon resolved through `IconRegistry` cannot carry it however the file
+         * is written. It is unnecessary at this extension's browser floor
+         * anyway - it exists for Internet Explorer and pre-Chromium Edge - and
+         * the accessibility tree is covered by the `aria-hidden` above, which
+         * lives on the wrapper and never goes near a sanitiser.
+         *
+         * See `Tests/Functional/Configuration/IconRegistrationTest.php`.
+         */
     });
 });
