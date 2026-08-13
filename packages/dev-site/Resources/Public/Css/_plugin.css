@@ -1,0 +1,80 @@
+/*
+ * Where this theme adapts the editing surface of
+ * `modern_extbase_frontend_edit`.
+ *
+ * The surface renders into the light DOM and can be styled two ways: by setting
+ * its custom properties, and by writing rules against class names an
+ * installation configures it to carry. This file does the first; the class names
+ * are configured in the test instance's settings.
+ *
+ * ## Why this exists at all
+ *
+ * Both stylesheets define a spacing scale and a radius scale, and they agreed —
+ * by **coincidence**. Nothing connected them. If this theme changed
+ * `--radius-sm` to 6px, the surface would carry on at 4px and no gate would say
+ * anything; the two designs would drift apart one value at a time and the result
+ * would look assembled rather than designed.
+ *
+ * Declaring the surface's tokens in terms of this theme's makes the agreement
+ * **constructed**. There is now one scale, and the surface follows it.
+ *
+ * ## Mapped by value, not by name
+ *
+ * The two radius scales are offset by one step, which is worth stating because
+ * the mapping below looks like a typo:
+ *
+ *     surface `--frontend-edit-radius`     0.25rem  ==  theme `--radius-sm`
+ *     surface `--frontend-edit-radius-lg`  0.5rem   ==  theme `--radius`
+ *     (nothing)                            0.75rem  ==  theme `--radius-lg`
+ *
+ * The surface's *large* radius is this theme's *medium*. Mapping by name —
+ * `--frontend-edit-radius-lg` to `--radius-lg` — would read better and would
+ * make the dialog and the stored image 12px instead of 8px, which is a visual
+ * change rather than a wiring change. By value, nothing moves, which is what
+ * makes this file provably a no-op the day it lands.
+ *
+ * ## What is deliberately not mapped
+ *
+ * **Colour.** The buttons and controls already take this theme's colours through
+ * the configured class names, and the surface's own colour tokens still drive
+ * the parts no class reaches — the child marker, the dashed frame. Wiring those
+ * too is a separate decision with pixels attached.
+ *
+ * **The focus ring.** `--frontend-edit-focus-width` and `-offset` are documented
+ * as independently overridable so a site can raise the focus contrast alone to
+ * satisfy an audit, without repainting the surface. Folding them into the
+ * theme's scale would take that away.
+ *
+ * **A token this file does not list is not wired.** If the surface gains one,
+ * add it here — nothing detects the omission.
+ */
+
+modern-extbase-frontend-edit-profile {
+    /* Spacing. The four `--frontend-edit-gap-*` tokens derive from these, so
+     * they follow without being named. */
+    --frontend-edit-space-xs: var(--space-1);
+    --frontend-edit-space-sm: var(--space-2);
+    --frontend-edit-space-md: var(--space-3);
+    --frontend-edit-space-lg: var(--space-4);
+    --frontend-edit-space-xl: var(--space-6);
+
+    /*
+     * The one token here the theme sets to a value the surface would not have
+     * chosen, and it is chosen for having **no pixels attached**.
+     *
+     * `ThemeOverride.spec.ts` reads it to prove that a site override reaches the
+     * surface at all. The spacing and radius tokens cannot answer that, because
+     * they agree by construction. The measure could and was tried first - it
+     * moved six baselines, which is a visual change made for a test's
+     * convenience rather than for a design reason.
+     *
+     * An easing curve is observable in a computed style and invisible in every
+     * screenshot, because both image suites disable animations.
+     */
+    --frontend-edit-transition-easing: cubic-bezier(0.2, 0, 0.2, 1);
+
+    /* Shape. See the note above about the offset. */
+    --frontend-edit-border-width: var(--border-width);
+    --frontend-edit-radius: var(--radius-sm);
+    --frontend-edit-radius-lg: var(--radius);
+}

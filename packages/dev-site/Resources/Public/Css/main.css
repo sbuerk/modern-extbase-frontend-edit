@@ -19,3 +19,6 @@
 @import '_form.css';
 @import '_button.css';
 @import '_content.css';
+
+/* Last, because it adapts a component the files above know nothing about. */
+@import '_plugin.css';

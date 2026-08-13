@@ -1,6 +1,6 @@
 /* Generated from Build/Sources/Css — do not edit. */
 /* Sources/Css/frontend/frontend-edit.css */
-modern-extbase-frontend-edit-profile {
+:where(modern-extbase-frontend-edit-profile) {
   --frontend-edit-color-accent: #0a7bd4;
   --frontend-edit-color-accent-hover: #0968b4;
   --frontend-edit-color-accent-contrast: #ffffff;
@@ -37,12 +37,14 @@ modern-extbase-frontend-edit-profile {
   --frontend-edit-busy-opacity: 0.6;
   --frontend-edit-transition-duration: 120ms;
   --frontend-edit-transition-easing: ease;
+}
+modern-extbase-frontend-edit-profile {
   display: block;
   max-width: var(--frontend-edit-measure);
   font-family: var(--frontend-edit-font-family);
 }
 @media (prefers-color-scheme: dark) {
-  modern-extbase-frontend-edit-profile {
+  :where(modern-extbase-frontend-edit-profile) {
     --frontend-edit-color-accent: #4c9ce4;
     --frontend-edit-color-accent-hover: #6fb2ea;
     --frontend-edit-color-accent-contrast: #08121c;
@@ -56,7 +58,7 @@ modern-extbase-frontend-edit-profile {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  modern-extbase-frontend-edit-profile {
+  :where(modern-extbase-frontend-edit-profile) {
     --frontend-edit-transition-duration: 0ms;
   }
 }

@@ -85,6 +85,48 @@ test.describe('Theme override', (): void => {
     });
 
     /**
+     * A site can override a design token, which is what the documentation has
+     * promised all along and what stopped being true without anyone noticing.
+     *
+     * Under a shadow root it worked for free: a declaration in the outer tree
+     * beats a `:host` default whatever the source order. Moving into the light
+     * DOM turned both into ordinary rules on the same element with the same
+     * specificity, so source order decided — and the extension's stylesheet is
+     * emitted by the plugin, *after* the site's. The site's override lost every
+     * time, and nothing exercised the mechanism, so nothing said so.
+     *
+     * The surface's token defaults are declared at zero specificity now. This
+     * test is what stops that regressing a second time: it fails if the
+     * `:where()` is removed from the token block, and it fails if the site
+     * package stops declaring them.
+     *
+     * It works by choosing a token whose value the theme sets **differently**
+     * from the extension's own default. The spacing and radius scales agree by
+     * construction, so they cannot answer this question.
+     *
+     * The token is deliberately one with no pixels attached. The measure was
+     * tried first and moved six baselines — a visual change made for a test's
+     * convenience, which is the wrong trade. An easing curve is readable in a
+     * computed style and invisible in every screenshot, because both image
+     * suites disable animations.
+     */
+    test('a design token declared by the site wins over the extension default', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        const easing = await surface.element.evaluate((el: HTMLElement): string =>
+            getComputedStyle(el).getPropertyValue('--frontend-edit-transition-easing').trim());
+
+        expect(easing, 'the site package sets its own curve; the extension defaults to "ease"')
+            .toBe('cubic-bezier(0.2, 0, 0.2, 1)');
+    });
+
+    /**
      * The surface still has to be coherent with no configuration at all, which
      * is the other half of the bargain: the extension's appearance is the
      * weakest thing on the page, not absent.
