@@ -47,7 +47,7 @@ test.describe('Child collections', (): void => {
         // Address 4 is hidden in the fixture, and the editing surface is the one
         // view that has to show it - it is the record the owner has to be able
         // to find again in order to publish it.
-        await expect(surface.childRow('address:4').locator('.state')).toHaveText('Hidden');
+        await expect(surface.childRow('address:4').locator('.frontend-edit-state')).toHaveText('Hidden');
     });
 
     test('a reorder is persisted and survives a reload', async ({ page, loginAs }): Promise<void> => {
@@ -159,13 +159,13 @@ test.describe('Child collections', (): void => {
         await surface.childRow('address:4').getByRole('button', { name: 'Show', exact: true }).click();
 
         expect((await pending).status()).toBe(200);
-        await expect(surface.childRow('address:4').locator('.state')).toHaveCount(0);
+        await expect(surface.childRow('address:4').locator('.frontend-edit-state')).toHaveCount(0);
         expect(readColumn(ADDRESS_TABLE, 4, 'hidden')).toBe(0);
 
         await page.reload();
         await surface.waitForEnhancement();
 
-        await expect(surface.childRow('address:4').locator('.state')).toHaveCount(0);
+        await expect(surface.childRow('address:4').locator('.frontend-edit-state')).toHaveCount(0);
         await expect(surface.childRow('address:4').getByRole('button', { name: 'Hide', exact: true }))
             .toBeVisible();
     });

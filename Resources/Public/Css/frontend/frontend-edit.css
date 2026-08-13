@@ -1,12 +1,339 @@
 /* Generated from Build/Sources/Css — do not edit. */
 /* Sources/Css/frontend/frontend-edit.css */
-.frontend-edit-loaded modern-extbase-frontend-edit-profile {
+modern-extbase-frontend-edit-profile {
+  --frontend-edit-color-accent: #0a7bd4;
+  --frontend-edit-color-accent-hover: #0968b4;
+  --frontend-edit-color-accent-contrast: #ffffff;
+  --frontend-edit-color-danger: #a4141a;
+  --frontend-edit-color-danger-surface: #fdf2f2;
+  --frontend-edit-color-border: #c7ccd1;
+  --frontend-edit-color-border-strong: #8b9299;
+  --frontend-edit-color-surface: #ffffff;
+  --frontend-edit-color-surface-sunken: #f2f4f5;
+  --frontend-edit-color-muted: #5c6469;
+  --frontend-edit-space-xs: 0.25rem;
+  --frontend-edit-space-sm: 0.5rem;
+  --frontend-edit-space-md: 0.75rem;
+  --frontend-edit-space-lg: 1rem;
+  --frontend-edit-space-xl: 1.5rem;
+  --frontend-edit-gap-within: var(--frontend-edit-space-xs);
+  --frontend-edit-gap-field: var(--frontend-edit-space-sm);
+  --frontend-edit-gap-record: var(--frontend-edit-space-lg);
+  --frontend-edit-gap-section: var(--frontend-edit-space-xl);
+  --frontend-edit-label-width: 9rem;
+  --frontend-edit-border-width: 1px;
+  --frontend-edit-radius: 0.25rem;
+  --frontend-edit-radius-lg: 0.5rem;
+  --frontend-edit-measure: 48rem;
+  --frontend-edit-font-family: inherit;
+  --frontend-edit-font-size-sm: 0.875em;
+  --frontend-edit-label-weight: 600;
+  --frontend-edit-control-min-height: 2.25rem;
+  --frontend-edit-control-padding-block: 0.375rem;
+  --frontend-edit-control-padding-inline: 0.5rem;
+  --frontend-edit-focus-color: var(--frontend-edit-color-accent);
+  --frontend-edit-focus-width: 2px;
+  --frontend-edit-focus-offset: 2px;
+  --frontend-edit-busy-opacity: 0.6;
+  --frontend-edit-transition-duration: 120ms;
+  --frontend-edit-transition-easing: ease;
   display: block;
-  outline: var(--frontend-edit-outline-width) dashed var(--frontend-edit-outline-color);
-  outline-offset: 2px;
+  max-width: var(--frontend-edit-measure);
+  font-family: var(--frontend-edit-font-family);
 }
-.frontend-edit-loaded modern-extbase-frontend-edit-profile:focus-within {
-  outline-style: solid;
+@media (prefers-color-scheme: dark) {
+  modern-extbase-frontend-edit-profile {
+    --frontend-edit-color-accent: #4c9ce4;
+    --frontend-edit-color-accent-hover: #6fb2ea;
+    --frontend-edit-color-accent-contrast: #08121c;
+    --frontend-edit-color-danger: #ef8f93;
+    --frontend-edit-color-danger-surface: #3a2224;
+    --frontend-edit-color-border: #3c444c;
+    --frontend-edit-color-border-strong: #6a747d;
+    --frontend-edit-color-surface: #262c33;
+    --frontend-edit-color-surface-sunken: #1d2228;
+    --frontend-edit-color-muted: #a3acb4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  modern-extbase-frontend-edit-profile {
+    --frontend-edit-transition-duration: 0ms;
+  }
+}
+modern-extbase-frontend-edit-field,
+modern-extbase-frontend-edit-image {
+  display: block;
+}
+modern-extbase-frontend-edit-profile button,
+modern-extbase-frontend-edit-profile input,
+modern-extbase-frontend-edit-profile select,
+modern-extbase-frontend-edit-profile textarea {
+  box-sizing: border-box;
+}
+modern-extbase-frontend-edit-profile button,
+modern-extbase-frontend-edit-profile .frontend-edit-file-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--frontend-edit-space-xs);
+  min-height: var(--frontend-edit-control-min-height);
+  padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border-radius: var(--frontend-edit-radius);
+  background-color: var(--frontend-edit-color-surface);
+  color: inherit;
+  font: inherit;
+  font-family: var(--frontend-edit-font-family);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color var(--frontend-edit-transition-duration) var(--frontend-edit-transition-easing), border-color var(--frontend-edit-transition-duration) var(--frontend-edit-transition-easing);
+}
+modern-extbase-frontend-edit-profile button:hover:not(:disabled),
+modern-extbase-frontend-edit-profile .frontend-edit-file-picker:not([data-disabled]):hover {
+  border-color: var(--frontend-edit-color-border-strong);
+  background-color: var(--frontend-edit-color-surface-sunken);
+}
+modern-extbase-frontend-edit-profile button:active:not(:disabled),
+modern-extbase-frontend-edit-profile .frontend-edit-file-picker:not([data-disabled]):active {
+  border-color: var(--frontend-edit-color-accent);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-icon {
+  display: block;
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+}
+modern-extbase-frontend-edit-profile button[data-icon-only] {
+  padding-inline: var(--frontend-edit-control-padding-block);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-visually-hidden,
+modern-extbase-frontend-edit-profile button[data-icon-only] .frontend-edit-button-label {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+modern-extbase-frontend-edit-profile button[data-variant=primary] {
+  border-color: var(--frontend-edit-color-accent);
+  background-color: var(--frontend-edit-color-accent);
+  color: var(--frontend-edit-color-accent-contrast);
+}
+modern-extbase-frontend-edit-profile button[data-variant=primary]:hover:not(:disabled),
+modern-extbase-frontend-edit-profile button[data-variant=primary]:active:not(:disabled) {
+  border-color: var(--frontend-edit-color-accent-hover);
+  background-color: var(--frontend-edit-color-accent-hover);
+}
+modern-extbase-frontend-edit-profile button[data-variant=danger] {
+  color: var(--frontend-edit-color-danger);
+}
+modern-extbase-frontend-edit-profile button[data-variant=danger]:hover:not(:disabled),
+modern-extbase-frontend-edit-profile button[data-variant=danger]:active:not(:disabled) {
+  border-color: var(--frontend-edit-color-danger);
+  background-color: var(--frontend-edit-color-danger-surface);
+}
+modern-extbase-frontend-edit-profile button[data-variant=danger]:focus-visible {
+  outline-color: var(--frontend-edit-color-danger);
+}
+modern-extbase-frontend-edit-profile button:disabled {
+  opacity: var(--frontend-edit-busy-opacity);
+  cursor: default;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-file-picker[data-disabled] {
+  opacity: var(--frontend-edit-busy-opacity);
+  cursor: default;
+}
+modern-extbase-frontend-edit-profile input,
+modern-extbase-frontend-edit-profile select,
+modern-extbase-frontend-edit-profile textarea {
+  min-height: var(--frontend-edit-control-min-height);
+  padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border-radius: var(--frontend-edit-radius);
+  background-color: var(--frontend-edit-color-surface);
+  color: inherit;
+  font: inherit;
+  font-family: var(--frontend-edit-font-family);
+}
+modern-extbase-frontend-edit-profile textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+modern-extbase-frontend-edit-profile input[type=file] {
+  min-height: auto;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}
+modern-extbase-frontend-edit-profile button:focus-visible,
+modern-extbase-frontend-edit-profile input:focus-visible,
+modern-extbase-frontend-edit-profile select:focus-visible,
+modern-extbase-frontend-edit-profile textarea:focus-visible,
+modern-extbase-frontend-edit-profile .frontend-edit-file-picker:focus-within {
+  outline: var(--frontend-edit-focus-width) solid var(--frontend-edit-focus-color);
+  outline-offset: var(--frontend-edit-focus-offset);
+}
+modern-extbase-frontend-edit-profile [aria-invalid=true] {
+  border-color: var(--frontend-edit-color-danger);
+  box-shadow: 0 0 0 var(--frontend-edit-border-width) var(--frontend-edit-color-danger);
+}
+modern-extbase-frontend-edit-profile [aria-invalid=true]:focus-visible {
+  outline-color: var(--frontend-edit-color-danger);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--frontend-edit-gap-within) var(--frontend-edit-space-md);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-label {
+  flex: 0 0 var(--frontend-edit-label-width);
+  padding-block: var(--frontend-edit-control-padding-block);
+  color: var(--frontend-edit-color-muted);
+  font-size: var(--frontend-edit-font-size-sm);
+  font-weight: var(--frontend-edit-label-weight);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-body {
+  display: flex;
+  flex: 1 1 18rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--frontend-edit-space-sm);
+  min-width: 0;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-value {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  min-height: var(--frontend-edit-control-min-height);
+  min-width: 0;
+  padding-block: var(--frontend-edit-control-padding-block);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-value.is-empty {
+  color: var(--frontend-edit-color-muted);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-control {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--frontend-edit-space-xs);
+  align-items: center;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-field-errors {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--frontend-edit-color-danger);
+  font-size: var(--frontend-edit-font-size-sm);
+}
+@media (max-width: 30rem) {
+  modern-extbase-frontend-edit-profile .frontend-edit-field-label {
+    flex-basis: 100%;
+    padding-block: 0;
+  }
+}
+modern-extbase-frontend-edit-image figure {
+  margin: 0;
+}
+modern-extbase-frontend-edit-image img {
+  display: block;
+  max-width: 12rem;
+  height: auto;
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border-radius: var(--frontend-edit-radius-lg);
+  background-color: var(--frontend-edit-color-surface-sunken);
+}
+modern-extbase-frontend-edit-image figcaption {
+  margin-top: var(--frontend-edit-space-xs);
+  color: var(--frontend-edit-color-muted);
+  font-size: var(--frontend-edit-font-size-sm);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-record {
+  display: grid;
+  gap: var(--frontend-edit-gap-field);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-record-actions,
+modern-extbase-frontend-edit-profile .frontend-edit-child-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--frontend-edit-space-sm);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-children {
+  display: grid;
+  gap: var(--frontend-edit-gap-record);
+  margin-top: var(--frontend-edit-gap-section);
+  border-top: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  padding-top: var(--frontend-edit-gap-record);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-children h3 {
+  margin: 0;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-children-list {
+  display: grid;
+  gap: var(--frontend-edit-gap-record);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-child {
+  display: grid;
+  gap: var(--frontend-edit-gap-field);
+  border-inline-start: 3px solid var(--frontend-edit-color-border);
+  border-radius: 0 var(--frontend-edit-radius) var(--frontend-edit-radius) 0;
+  padding-inline-start: var(--frontend-edit-space-md);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-child-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--frontend-edit-space-sm);
+  border-bottom: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  padding-bottom: var(--frontend-edit-gap-within);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-child-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline-end: auto;
+  font-weight: var(--frontend-edit-label-weight);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-child-new {
+  border-inline-start-style: dashed;
+  border-inline-start-color: var(--frontend-edit-color-border-strong);
+}
+modern-extbase-frontend-edit-profile .frontend-edit-state {
+  align-self: center;
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border-radius: var(--frontend-edit-radius);
+  padding: 0 var(--frontend-edit-space-xs);
+  color: var(--frontend-edit-color-muted);
+  font-size: var(--frontend-edit-font-size-sm);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+modern-extbase-frontend-edit-profile .frontend-edit-errors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--frontend-edit-color-danger);
+  font-size: var(--frontend-edit-font-size-sm);
+}
+.frontend-edit-loaded modern-extbase-frontend-edit-profile {
+  outline: var(--frontend-edit-outline-width, 1px) dashed var(--frontend-edit-outline-color, #0a7bd4);
+  outline-offset: var(--frontend-edit-space-xs);
 }
 .frontend-edit-loaded modern-extbase-frontend-edit-profile:not(:defined) {
   outline: none;

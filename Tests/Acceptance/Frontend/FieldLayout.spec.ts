@@ -57,8 +57,8 @@ test.describe('Field layout', (): void => {
         await surface.waitForEnhancement();
 
         const field = surface.field('profile', 'firstname');
-        const label = field.locator('.field-label');
-        const body = field.locator('.field-body');
+        const label = field.locator('.frontend-edit-field-label');
+        const body = field.locator('.frontend-edit-field-body');
 
         // Wide: one row, so both start at the same height.
         const wideLabel = await label.boundingBox();
