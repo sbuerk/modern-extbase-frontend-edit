@@ -16,6 +16,7 @@ Documentation for people **using** the extension lives in
 | [Development environment](development/environment.md) | `runTests.sh`, container runtimes, suites and options.                       |
 | [Dual core setup](development/dual-core-setup.md)     | Running against TYPO3 v13 and v14, and the rule that avoids false positives. |
 | [Quality gates](development/quality-gates.md)         | Every gate and its configuration, PHPStan per core version, CI.              |
+| [Brand assets](development/brand-assets.md)           | The extension icon, the logo, and why the mark exists twice.                 |
 
 ## [Architecture](architecture/Index.md)
 

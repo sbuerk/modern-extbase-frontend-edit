@@ -19,6 +19,12 @@ cannot reach the composer package of the extension.
 Those three names differ from each other on purpose and none of them can be
 derived from the others — see [the note on naming](#the-three-names).
 
+It carries an extension icon at `Resources/Public/Icons/Extension.svg` — the
+same mark the extension itself uses, deliberately, so the fixture is not the one
+entry in the extension list without a face. It never ships, for the same reason
+nothing else here does.
+→ [Brand assets](../../docs/development/brand-assets.md)
+
 ## What it provides
 
 - A `PAGEVIEW` based page rendering with one layout, a header, a footer and one

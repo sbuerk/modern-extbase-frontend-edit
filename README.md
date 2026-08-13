@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Resources/Public/Icons/Logo/lockup-dark.svg">
+  <img src="Resources/Public/Icons/Logo/lockup-light.svg" alt="Stefan Buerk — hack0r" height="44">
+</picture>
+
 # TYPO3 extension `modern_extbase_frontend_edit`
 
 > [!CAUTION]
