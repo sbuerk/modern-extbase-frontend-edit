@@ -122,15 +122,19 @@ test.describe('Child collections', (): void => {
     });
 
     /**
-     * The end actions are not drawn where they would do nothing.
+     * No reordering action is drawn where it would do nothing.
      *
-     * "Move up" and "Move down" are *disabled* on the first and last record
-     * rather than hidden, which is the older convention here. These two are
-     * absent instead, which is what was asked for - so the toolbars are not
-     * uniform, and this test pins both halves so the inconsistency is a decision
-     * on record rather than something that drifts.
+     * All four follow one rule now. They briefly did not: the end actions were
+     * absent while "Move up" and "Move down" were shown and disabled, which is
+     * two statements about the same situation in one toolbar. Absent won,
+     * because a disabled control still claims a place in the row and still
+     * invites a click that cannot do anything.
+     *
+     * A record in the middle offers all four, and the first and last offer three
+     * - which is also why this asserts the middle case: a test that only checked
+     * the ends would pass against a surface that had lost the buttons entirely.
      */
-    test('the end actions are absent where they would change nothing', async ({
+    test('no reordering action is drawn where it would change nothing', async ({
         page,
         loginAs,
     }): Promise<void> => {
@@ -154,11 +158,22 @@ test.describe('Child collections', (): void => {
         await expect(middle.getByRole('button', { name: 'Move to top', exact: true })).toHaveCount(1);
         await expect(middle.getByRole('button', { name: 'Move to bottom', exact: true })).toHaveCount(1);
 
-        // The relative moves are still drawn on the first and last row, and
-        // disabled. Absent and disabled are two different statements, and both
-        // are deliberate.
-        await expect(first.getByRole('button', { name: 'Move up', exact: true })).toBeDisabled();
-        await expect(last.getByRole('button', { name: 'Move down', exact: true })).toBeDisabled();
+        // The relative moves follow the same rule, which is the whole point of
+        // this test: one convention, not two.
+        await expect(first.getByRole('button', { name: 'Move up', exact: true })).toHaveCount(0);
+        await expect(first.getByRole('button', { name: 'Move down', exact: true })).toHaveCount(1);
+
+        await expect(last.getByRole('button', { name: 'Move down', exact: true })).toHaveCount(0);
+        await expect(last.getByRole('button', { name: 'Move up', exact: true })).toHaveCount(1);
+
+        await expect(middle.getByRole('button', { name: 'Move up', exact: true })).toHaveCount(1);
+        await expect(middle.getByRole('button', { name: 'Move down', exact: true })).toHaveCount(1);
+
+        // The actions that always apply are on every row, so "absent" never
+        // means the toolbar failed to render.
+        for (const row of [first, middle, last]) {
+            await expect(row.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(1);
+        }
     });
 
     test('a removed child is gone after a reload', async ({ page, loginAs }): Promise<void> => {
@@ -297,6 +312,50 @@ test.describe('Child collections', (): void => {
         expect(response.status()).toBe(422);
         await expect(surface.addDialog('email')).toBeVisible();
         await expect(surface.fieldErrors('email:new', 'email')).not.toHaveCount(0);
+    });
+
+    /**
+     * A collection of one offers no reordering at all.
+     *
+     * The case where "absent rather than disabled" is most visible, and the one
+     * the fixture cannot show on its own: every collection it seeds has at
+     * least two records, so the only way to reach a single-record collection is
+     * to make one. The toolbar drops from six actions to two.
+     *
+     * It is worth asserting because the two conditions are independent in the
+     * component - `index === 0` hides two of the buttons and
+     * `index === total - 1` hides the other two - and a record that is both the
+     * first and the last satisfies both at once.
+     */
+    test('a collection of one record offers no reordering action', async ({
+        page,
+        loginAs,
+    }): Promise<void> => {
+        await loginAs('owner');
+        const surface = new ProfileEditPage(page);
+        await surface.open();
+        await surface.waitForEnhancement();
+
+        // Two e-mail addresses are seeded; removing one leaves a collection
+        // whose only record is simultaneously the first and the last.
+        const response = await surface.removeChild('email:1');
+        expect(response.status()).toBe(200);
+
+        await expect
+            .poll(async (): Promise<number> => (await surface.renderedChildUids('email')).length)
+            .toBe(1);
+
+        const only = surface.childRow('email:2');
+        for (const name of ['Move to top', 'Move up', 'Move down', 'Move to bottom']) {
+            await expect(
+                only.getByRole('button', { name, exact: true }),
+                `"${name}" must not be drawn for the only record of a collection`,
+            ).toHaveCount(0);
+        }
+
+        // What is left is what still means something.
+        await expect(only.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(1);
+        await expect(only.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(1);
     });
 
     test('a child added through the form is stored with what was typed', async ({

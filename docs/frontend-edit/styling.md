@@ -318,6 +318,15 @@ much larger.
 Every icon-only button also carries a `title` with the same text, so a mouse
 user gets the name without a screen reader.
 
+**A reordering action is absent rather than disabled where it cannot do
+anything.** All four follow one rule: no `Move up` on the first record, no
+`Move down` on the last, and none of the four in a collection of one. They
+briefly did not — the end actions were absent while the relative ones were shown
+and disabled, which is two statements about one situation inside a single
+toolbar. A disabled control still claims a place in the row and still invites a
+click that cannot do anything; the toolbar is right aligned, so a shorter row
+costs nothing.
+
 ## The file input is a label wrapping a hidden input
 
 `<input type="file">` is the one form control whose box the browser owns. Its

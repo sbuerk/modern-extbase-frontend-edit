@@ -25,10 +25,18 @@ import { expect, test } from '../fixtures';
 import { ProfileEditPage } from '../Support/profileEditPage';
 
 /**
- * The record toolbar of the first owned address, which is the only place the
- * surface hides a label.
+ * The labels of a record toolbar, taken from a record in the **middle** of its
+ * collection.
+ *
+ * The middle matters. No reordering action is drawn where it would do nothing,
+ * so the first row has no `Move up` and the last has no `Move down`; a toolbar
+ * with all six only exists between them. The stored order of the fixture is
+ * `[2, 3, 1, 4]`, which makes uid 3 the second of four.
  */
-const toolbarLabels = ['Move up', 'Move down', 'Hide', 'Remove'] as const;
+const toolbarLabels = ['Move to top', 'Move up', 'Move down', 'Move to bottom', 'Hide', 'Remove'] as const;
+
+/** A record with a neighbour on both sides. See {@see toolbarLabels}. */
+const middleRow = 'address:3';
 
 test.describe('Action icons', (): void => {
     test('a toolbar button keeps the name its label gives it', async ({
@@ -40,7 +48,7 @@ test.describe('Action icons', (): void => {
         await surface.open();
         await surface.waitForEnhancement();
 
-        const row = surface.childRow('address:2');
+        const row = surface.childRow(middleRow);
         for (const name of toolbarLabels) {
             const button = row.getByRole('button', { name, exact: true });
             await expect(button, `${name} is addressable by its accessible name`).toHaveCount(1);
@@ -62,7 +70,7 @@ test.describe('Action icons', (): void => {
         await surface.waitForEnhancement();
 
         // Hidden: clipped to a pixel, so it occupies no width in the toolbar.
-        const hidden = surface.childRow('address:2')
+        const hidden = surface.childRow(middleRow)
             .getByRole('button', { name: 'Move up', exact: true })
             .locator('.frontend-edit-button-label');
         const hiddenBox = await hidden.boundingBox();
