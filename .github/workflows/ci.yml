@@ -125,6 +125,9 @@ jobs:
       - name: "Ensure test methods do not start with \"test\""
         run: "Build/Scripts/runTests.sh -b docker -t ${{ matrix.typo3 }} -p ${{ matrix.php-version }} -s checkTestMethodsPrefix"
 
+      - name: "Ensure every design token has a single source"
+        run: "Build/Scripts/runTests.sh -b docker -t ${{ matrix.typo3 }} -p ${{ matrix.php-version }} -s checkDesignTokenWiring"
+
   phpstan:
     name: "phpstan (v${{ matrix.typo3 }})"
     runs-on: ubuntu-latest

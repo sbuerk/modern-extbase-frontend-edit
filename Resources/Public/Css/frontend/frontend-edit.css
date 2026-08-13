@@ -34,6 +34,8 @@
   --frontend-edit-focus-color: var(--frontend-edit-color-accent);
   --frontend-edit-focus-width: 2px;
   --frontend-edit-focus-offset: 2px;
+  --frontend-edit-outline-width: var(--frontend-edit-border-width);
+  --frontend-edit-outline-color: var(--frontend-edit-color-accent);
   --frontend-edit-busy-opacity: 0.6;
   --frontend-edit-transition-duration: 120ms;
   --frontend-edit-transition-easing: ease;
@@ -369,7 +371,7 @@ modern-extbase-frontend-edit-profile .frontend-edit-dialog-actions {
   padding-top: var(--frontend-edit-gap-record);
 }
 .frontend-edit-loaded modern-extbase-frontend-edit-profile {
-  outline: var(--frontend-edit-outline-width, 1px) dashed var(--frontend-edit-outline-color, #0a7bd4);
+  outline: var(--frontend-edit-outline-width) dashed var(--frontend-edit-outline-color);
   outline-offset: var(--frontend-edit-space-xs);
 }
 .frontend-edit-loaded modern-extbase-frontend-edit-profile:not(:defined) {

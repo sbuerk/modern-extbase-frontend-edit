@@ -344,6 +344,8 @@ Options:
             - buildJs: compile Build/Sources/ into Resources/Public/
             - cgl: test and fix all php files
             - checkBom: check UTF-8 files do not contain BOM
+            - checkDesignTokenWiring: check every design token of the editing surface has a
+              single source rather than a value repeated in the site package
             - checkDocumentationScreenshots: check the committed documentation screenshots still
               match the surface, and that every one of them is produced and embedded
             - checkExceptionCodes: check for duplicate and missing exception codes
@@ -935,6 +937,11 @@ case ${TEST_SUITE} in
     checkBom)
         COMMAND="Build/Scripts/checkUtf8Bom.sh"
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-bom-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    checkDesignTokenWiring)
+        COMMAND="php -dxdebug.mode=off Build/Scripts/checkDesignTokenWiring.php"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-design-token-wiring-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
         SUITE_EXIT_CODE=$?
         ;;
     checkExceptionCodes)

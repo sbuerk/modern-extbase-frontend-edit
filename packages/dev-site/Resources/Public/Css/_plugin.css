@@ -9,16 +9,41 @@
  *
  * ## Why this exists at all
  *
- * Both stylesheets define a spacing scale and a radius scale, and they agreed —
- * by **coincidence**. Nothing connected them. If this theme changed
- * `--radius-sm` to 6px, the surface would carry on at 4px and no gate would say
- * anything; the two designs would drift apart one value at a time and the result
- * would look assembled rather than designed.
+ * Both stylesheets define a scale, and they agreed — by **coincidence**. Nothing
+ * connected them. If this theme changed `--radius-sm` to 6px, the surface would
+ * carry on at 4px and no gate would say anything; the two designs would drift
+ * apart one value at a time and the result would look assembled rather than
+ * designed.
  *
  * Declaring the surface's tokens in terms of this theme's makes the agreement
- * **constructed**. There is now one scale, and the surface follows it.
+ * **constructed**. There is one scale, and the surface follows it.
  *
- * ## Mapped by value, not by name
+ * ## Every token, and what "wired" means
+ *
+ * The first version of this file mapped nine tokens and said of the rest that
+ * they were a separate decision. They are all mapped now, so the sentence that
+ * used to close it — "a token this file does not list is not wired" — is a rule
+ * with no exceptions rather than a warning about a known hole.
+ *
+ * A surface token counts as wired if its value comes from one place. There are
+ * three ways that happens, and only the first is visible below:
+ *
+ * 1. **Mapped** — declared here as `var(--theme-token)`. Everything in the block
+ *    at the bottom of this file.
+ * 2. **Derived** — the surface computes it from a token that is mapped. The four
+ *    `--frontend-edit-gap-*` steps derive from the space scale and
+ *    `--frontend-edit-outline-color` from the accent, so mapping them again
+ *    would create the second copy this file exists to remove.
+ * 3. **Inherited** — `--frontend-edit-font-family` is `inherit`, which takes
+ *    whatever the host page sets. That is *stronger* than a mapping: pointing it
+ *    at `--font-body` would pin the surface to the page's default family even
+ *    inside a section that deliberately changed it.
+ *
+ * `Build/Scripts/checkDesignTokenWiring.php` decides which of the three each
+ * token is and fails if it is none of them, so the next token added to the
+ * surface cannot quietly be a fourth kind.
+ *
+ * ## Mapped by value where a value exists, by role where none does
  *
  * The two radius scales are offset by one step, which is worth stating because
  * the mapping below looks like a typo:
@@ -30,26 +55,52 @@
  * The surface's *large* radius is this theme's *medium*. Mapping by name —
  * `--frontend-edit-radius-lg` to `--radius-lg` — would read better and would
  * make the dialog and the stored image 12px instead of 8px, which is a visual
- * change rather than a wiring change. By value, nothing moves, which is what
- * makes this file provably a no-op the day it lands.
+ * change rather than a wiring change.
  *
- * ## What is deliberately not mapped
+ * **Colour cannot be mapped that way and is mapped by role instead.** Four of
+ * the ten agree exactly — white, and the whole danger pair — and the other six
+ * do not, the accent included, which is what
+ * `Tests/Acceptance/Frontend/ThemeOverride.spec.ts` was built on. So wiring the
+ * ten *moves pixels*, and mapping only the four that already agreed would have
+ * left the drift exactly where it was.
  *
- * **Colour.** The buttons and controls already take this theme's colours through
- * the configured class names, and the surface's own colour tokens still drive
- * the parts no class reaches — the child marker, the dashed frame. Wiring those
- * too is a separate decision with pixels attached.
+ * What it moved is worth recording, because it is not what one would guess: four
+ * of the six screenshots in the manual, and **none** of the ten visual
+ * baselines. Those are crops of components whose buttons and controls already
+ * took the theme's colours through a configured class, the remaining shifts are
+ * a few steps per channel and fall under the comparison threshold, and the
+ * accent is drawn outside every crop. The manual's shots are the ones with the
+ * wider view; a DOM assertion covers the rest.
  *
- * **The focus ring.** `--frontend-edit-focus-width` and `-offset` are documented
- * as independently overridable so a site can raise the focus contrast alone to
- * satisfy an audit, without repainting the surface. Folding them into the
- * theme's scale would take that away.
+ * ## What follows from colour being wired
  *
- * **A token this file does not list is not wired.** If the surface gains one,
- * add it here — nothing detects the omission.
+ * The surface now follows the scheme this theme is in, rather than the scheme
+ * the *browser* is in. Those are not the same question: a site can pin `light`
+ * or `dark` through `devSite.colorScheme`, and until this file mapped colour a
+ * page pinned to dark drew a light editing surface on a dark page, because the
+ * extension's own dark values sit behind `prefers-color-scheme` and nothing
+ * else. The extension's `@media` block is still its fallback for a site that
+ * declares nothing; here it is inert, which is the correct outcome and not a
+ * dead rule.
  */
 
 modern-extbase-frontend-edit-profile {
+    /*
+     * Colour, by role. The extension's own palette is a coherent default for a
+     * page that themes nothing; where a theme exists, two coherent palettes on
+     * one page is one too many.
+     */
+    --frontend-edit-color-accent: var(--c-accent);
+    --frontend-edit-color-accent-hover: var(--c-accent-strong);
+    --frontend-edit-color-accent-contrast: var(--c-accent-contrast);
+    --frontend-edit-color-danger: var(--c-danger);
+    --frontend-edit-color-danger-surface: var(--c-danger-soft);
+    --frontend-edit-color-border: var(--c-border);
+    --frontend-edit-color-border-strong: var(--c-border-strong);
+    --frontend-edit-color-surface: var(--c-surface);
+    --frontend-edit-color-surface-sunken: var(--c-surface-sunken);
+    --frontend-edit-color-muted: var(--c-text-muted);
+
     /* Spacing. The four `--frontend-edit-gap-*` tokens derive from these, so
      * they follow without being named. */
     --frontend-edit-space-xs: var(--space-1);
@@ -58,23 +109,73 @@ modern-extbase-frontend-edit-profile {
     --frontend-edit-space-lg: var(--space-4);
     --frontend-edit-space-xl: var(--space-6);
 
-    /*
-     * The one token here the theme sets to a value the surface would not have
-     * chosen, and it is chosen for having **no pixels attached**.
-     *
-     * `ThemeOverride.spec.ts` reads it to prove that a site override reaches the
-     * surface at all. The spacing and radius tokens cannot answer that, because
-     * they agree by construction. The measure could and was tried first - it
-     * moved six baselines, which is a visual change made for a test's
-     * convenience rather than for a design reason.
-     *
-     * An easing curve is observable in a computed style and invisible in every
-     * screenshot, because both image suites disable animations.
-     */
-    --frontend-edit-transition-easing: cubic-bezier(0.2, 0, 0.2, 1);
-
     /* Shape. See the note above about the offset. */
     --frontend-edit-border-width: var(--border-width);
     --frontend-edit-radius: var(--radius-sm);
     --frontend-edit-radius-lg: var(--radius);
+
+    /*
+     * Type. The family is not here on purpose — see the note about inheritance
+     * above. `--text-sm` is `0.875rem` against the surface's `0.875em`, which is
+     * the same computed size everywhere the surface uses it (no ancestor of a
+     * small text element sets a font size) and stops being the same the moment
+     * one does. The absolute step is the theme's answer and the one the rest of
+     * the page is set in.
+     */
+    --frontend-edit-font-size-sm: var(--text-sm);
+    --frontend-edit-label-weight: var(--weight-label);
+
+    /*
+     * Controls. The inline padding maps to the space scale rather than to a
+     * control token, because this theme gives a button and an input different
+     * inline padding and the surface wants the input's.
+     */
+    --frontend-edit-control-min-height: var(--control-height);
+    --frontend-edit-control-padding-block: var(--control-padding-block);
+    --frontend-edit-control-padding-inline: var(--space-2);
+
+    /*
+     * The focus ring.
+     *
+     * This file used to leave these three alone, reasoning that a site should be
+     * able to raise the focus contrast of the surface alone to satisfy an audit.
+     * That was backwards: `--focus-width` *is* this theme's knob for exactly
+     * that, and leaving the surface off it meant raising the page's focus
+     * contrast and finding the plugin had not moved.
+     */
+    --frontend-edit-focus-color: var(--focus-color);
+    --frontend-edit-focus-width: var(--focus-width);
+    --frontend-edit-focus-offset: var(--focus-offset);
+
+    /*
+     * State and motion.
+     *
+     * `--frontend-edit-transition-easing` is the token `ThemeOverride.spec.ts`
+     * reads to prove that a site override reaches the surface at all, and it can
+     * still answer that: the theme's curve is not the extension's `ease`. It was
+     * chosen for having **no pixels attached** — the measure was tried first and
+     * moved six baselines, a visual change made for a test's convenience — and
+     * an easing curve is readable in a computed style and invisible in every
+     * screenshot, because both image suites disable animations.
+     *
+     * **Mapping the duration makes the extension's own reduced motion block
+     * inert**, and that is safe here rather than an oversight. The surface
+     * answers `prefers-reduced-motion` by setting its duration to `0ms` in a
+     * `:where()` block — zero specificity, so the declaration below wins over
+     * it. What still answers the preference is `_reset.css`, whose universal
+     * `!important` override reaches the surface exactly as it reaches
+     * everything else on the page. A theme that dropped that sweep would have
+     * to stop mapping this token, or answer the preference itself.
+     */
+    --frontend-edit-busy-opacity: var(--disabled-opacity);
+    --frontend-edit-transition-duration: var(--transition-duration);
+    --frontend-edit-transition-easing: var(--transition-easing);
+
+    /*
+     * Proportion. Two values this theme declares for the surface and uses
+     * nowhere else — see `_variables.css` for why they live there anyway, and
+     * why the form measure is not the text measure.
+     */
+    --frontend-edit-measure: var(--measure-form);
+    --frontend-edit-label-width: var(--form-label-width);
 }
