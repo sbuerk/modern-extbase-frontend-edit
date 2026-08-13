@@ -99,8 +99,15 @@ export class ProfileEditPage {
         return this.page.locator('modern-extbase-frontend-edit-profile');
     }
 
-    public async open(): Promise<void> {
-        await this.page.goto(manifest.editPagePath);
+    /**
+     * Opens the edit page.
+     *
+     * The argument exists for the sites that pin a colour scheme, which are the
+     * same page of the same profile under a different site configuration; every
+     * other caller wants the default and does not pass one.
+     */
+    public async open(path: string = manifest.editPagePath): Promise<void> {
+        await this.page.goto(path);
     }
 
     /**

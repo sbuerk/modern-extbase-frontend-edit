@@ -499,9 +499,14 @@ border tokens. Breaking one dark-only token proves the point: it reddens exactly
 one dark baseline and **none** of the seven light ones, which is coverage no
 light baseline could ever provide.
 
-A site that *pins* `light` or `dark` through the site setting is still not
-covered, and neither is legibility — these pin that the dark scheme has not
-**changed**, not that it is readable.
+A site that *pins* `light` or `dark` through the site setting is not covered
+**here**, and deliberately so: pinning is a site setting, and a baseline is a
+crop. It is covered instead by
+[`PinnedColorScheme.spec.ts`](../../Tests/Acceptance/Frontend/PinnedColorScheme.spec.ts),
+which asserts it in the DOM against two extra sites — see
+[a pinned scheme is a second site](#a-pinned-scheme-is-a-second-site).
+Legibility remains uncovered by any of them: these pin that the dark scheme has
+not **changed**, not that it is readable.
 
 **They also cannot see a colour that only the theme decides, and that is a second
 blind spot worth stating.** Wiring all ten colour tokens onto the site package's
@@ -533,6 +538,46 @@ still fails something. Together the two suites are why there is **no** baseline
 for the anonymous and server rendered states here: that would be a second copy of
 coverage that already exists, and two more images to re-record on every restyle.
 → [Acceptance tests](../testing/acceptance-tests.md#what-checks-the-generator)
+
+## A pinned scheme is a second site
+
+`devSite.colorScheme` is a **site** setting, so a site that forces `light` or
+`dark` cannot be reached by emulating a media feature, and one site cannot answer
+it two ways. The acceptance instance therefore seeds three sites: `acme`, which
+leaves the setting at `auto`, plus `acme-dark` and `acme-light`, which pin it.
+They are separated by base path — `/dark/edit-profile`, `/light/edit-profile` —
+rather than by host, because a second host would need a second network alias on
+the apache container in both branches of `runTests.sh` and no test would observe
+the difference.
+
+**Wiring colour changed what a pinned scheme does, and the change was reasoned
+for a whole pull request before anything observed it.** The extension's own dark
+values sit behind `prefers-color-scheme` and nothing else, so before colour was
+mapped, pinning `dark` moved the *page* into the dark palette and left the
+*surface* in its light one — a white editing surface on a dark page. Mapping onto
+`--c-*` fixes it for free, because those flip on `body[data-color-scheme]`.
+
+The two cases are opposites, and each is sharp for a different reason:
+
+| Site         | Browser reports | An unwired token would paint  | Which proves                      |
+|--------------|-----------------|-------------------------------|-----------------------------------|
+| `acme-dark`  | `light`         | the extension's *light* value | the defect above, directly        |
+| `acme-light` | `dark`          | the extension's *dark* value  | the setting beats the media query |
+
+The second is the half worth having. Without it, a surface that merely happened
+to agree with `prefers-color-scheme` would pass everything.
+
+The assertion is the state badge's painted colour, for the same reason
+`ThemeOverride.spec.ts` uses it: `modern-extbase-frontend-edit-profile
+.frontend-edit-state` is not wrapped in `:where()` and no configured class
+reaches it, so its colour can only have come from the token layer. **No colour is
+written down in the spec** — the expected value is read from the theme and
+resolved to `rgb()` through a throwaway element, because a literal there would be
+a third copy of the value the wiring gate exists to prevent.
+
+It was shown to fail by removing one mapping from `_plugin.css`, and the failure
+values are the two the table predicts: `#5c6469` where the theme's dark
+`#a8b1b8` belongs, and `#a3acb4` where the theme's light `#5c656c` does.
 
 ## The extension's appearance is the weakest thing on the page
 

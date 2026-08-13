@@ -101,6 +101,32 @@ record: it needs no record at all, so the whole TypoScript configuration of the
 instance is two files next to each other. Both flavours are covered by the
 functional suite, so choosing one here costs no coverage.
 
+### Three sites, because one setting is per site
+
+`acme` is the site every spec uses. Two more exist for one reason:
+`devSite.colorScheme` is a **site** setting, so a site that pins `light` or
+`dark` cannot be reached by emulating a media feature and one site cannot answer
+it two ways.
+
+| Site         | Base                | `devSite.colorScheme` |
+|--------------|---------------------|-----------------------|
+| `acme`       | `http://web/`       | `auto`, the default   |
+| `acme-dark`  | `http://web/dark/`  | `dark`                |
+| `acme-light` | `http://web/light/` | `light`               |
+
+They are separated by base **path** rather than by host. A second host would work
+— the session JWT is deliberately scopeless and `trustedHostsPattern` is `.*` —
+but it would need a second `--network-alias` on the apache container in both the
+docker and the podman branch of `runTests.sh`, which is infrastructure to
+maintain for a difference no test observes.
+
+Their page trees are the one fixture **not** shared with the functional suite:
+`Tests/Acceptance/Fixtures/Database/PinnedColorSchemeSites.csv`. A second and
+third site root exist only so a browser can ask for a pinned scheme, and putting
+them in the fixtures every functional test imports would change the page tree of
+tests that have nothing to do with colour.
+→ [A pinned scheme is a second site](../frontend-edit/styling.md#a-pinned-scheme-is-a-second-site)
+
 ### Logging in without a login form
 
 EXT:felogin is not a dependency of this extension, and adding one so that a test
@@ -237,6 +263,7 @@ the shadow roots and back up to the field element.
 | [`ChildCollections.spec.ts`](../../Tests/Acceptance/Frontend/ChildCollections.spec.ts)             | The stored order including the owner's hidden record; adding stores what was typed; reorder and removal survive a reload; unhiding is persisted.                    |
 | [`ProgressiveEnhancement.spec.ts`](../../Tests/Acceptance/Frontend/ProgressiveEnhancement.spec.ts) | The profile is readable without JavaScript; `lit` resolves from the import map; the upgraded element does not slot its light DOM.                                   |
 | [`ImageUpload.spec.ts`](../../Tests/Acceptance/Frontend/ImageUpload.spec.ts)                       | A picked file is stored and served after a reload, and the file itself is fetchable; a removal takes the record *and* the file with it.                             |
+| [`PinnedColorScheme.spec.ts`](../../Tests/Acceptance/Frontend/PinnedColorScheme.spec.ts)           | A site that pins `dark` draws the *surface* dark and not only the page; a site that pins `light` stays light against a visitor asking for dark.                     |
 
 Every spec that asserts a write asserts it twice: the **reloaded page** has to
 serve the new value, which is the only proof that the server persisted it rather

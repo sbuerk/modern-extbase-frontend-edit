@@ -23,6 +23,15 @@ export interface SessionManifest {
 export interface AcceptanceManifest {
     readonly baseUrl: string;
     readonly editPagePath: string;
+    /**
+     * The edit page of each site that *pins* a colour scheme, keyed by the
+     * scheme it pins.
+     *
+     * `devSite.colorScheme` is a site setting, so a pinned scheme is a second
+     * site rather than a second page — see the constant of the same shape in
+     * `Build/Scripts/setupAcceptanceInstance.php`.
+     */
+    readonly pinnedSchemeEditPagePaths: Readonly<Record<string, string>>;
     readonly instancePath: string;
     readonly databaseFile: string;
     readonly pristineDatabaseFile: string;
