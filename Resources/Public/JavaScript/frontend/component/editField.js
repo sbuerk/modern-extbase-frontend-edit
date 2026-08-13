@@ -179,7 +179,15 @@ let EditFieldElement = class extends LitElement {
     }
     if (!this.editing) {
       return html`
-                <button type="button" class="${this.buttonClass()}" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onEdit}">
+                <button
+                    class="${this.buttonClass(null, true)}"
+                    type="button"
+                    data-icon-only
+                    title="${label(this.labels, actionLabelKey("edit"))}"
+                    aria-describedby="${this.uid}-label"
+                    ?disabled="${this.busy}"
+                    @click="${this.onEdit}"
+                >
                     ${icon(this.configuration, "edit")}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("edit"))}</span>
                 </button>
@@ -188,9 +196,11 @@ let EditFieldElement = class extends LitElement {
     return html`
             <span class="frontend-edit-field-actions">
                 <button
-                    class="${this.buttonClass("primary")}"
+                    class="${this.buttonClass("primary", true)}"
                     type="button"
                     data-variant="primary"
+                    data-icon-only
+                    title="${label(this.labels, actionLabelKey("apply"))}"
                     aria-describedby="${this.uid}-label"
                     ?disabled="${this.busy}"
                     @click="${this.onApply}"
@@ -198,7 +208,15 @@ let EditFieldElement = class extends LitElement {
                     ${icon(this.configuration, "apply")}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("apply"))}</span>
                 </button>
-                <button type="button" class="${this.buttonClass()}" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onCancel}">
+                <button
+                    class="${this.buttonClass(null, true)}"
+                    type="button"
+                    data-icon-only
+                    title="${label(this.labels, actionLabelKey("cancel"))}"
+                    aria-describedby="${this.uid}-label"
+                    ?disabled="${this.busy}"
+                    @click="${this.onCancel}"
+                >
                     ${icon(this.configuration, "cancel")}
                     <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("cancel"))}</span>
                 </button>
