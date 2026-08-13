@@ -132,6 +132,19 @@
     --frontend-edit-focus-width: 2px;
     --frontend-edit-focus-offset: 2px;
 
+    /*
+     * The dashed frame drawn around an upgraded surface.
+     *
+     * These two used to exist only as fallbacks inside the `var()` call that
+     * reads them, which made them tokens nothing declared: a site could not
+     * find them by reading the block that is supposed to list every token, and
+     * the hardcoded fallback colour was a second copy of the accent that did
+     * not follow it. In the dark scheme it did not even agree — the accent
+     * changed and the frame stayed at the light blue.
+     */
+    --frontend-edit-outline-width: var(--frontend-edit-border-width);
+    --frontend-edit-outline-color: var(--frontend-edit-color-accent);
+
     --frontend-edit-busy-opacity: 0.6;
     --frontend-edit-transition-duration: 120ms;
     --frontend-edit-transition-easing: ease;
@@ -750,7 +763,7 @@ modern-extbase-frontend-edit-profile .frontend-edit-dialog-actions {
  * as an editing surface it does not have.
  */
 .frontend-edit-loaded modern-extbase-frontend-edit-profile {
-    outline: var(--frontend-edit-outline-width, 1px) dashed var(--frontend-edit-outline-color, #0a7bd4);
+    outline: var(--frontend-edit-outline-width) dashed var(--frontend-edit-outline-color);
     outline-offset: var(--frontend-edit-space-xs);
 }
 

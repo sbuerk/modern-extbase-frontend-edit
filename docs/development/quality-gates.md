@@ -38,6 +38,9 @@ Build/Scripts/runTests.sh -s checkRstSectionAdornments
 # Ensure test methods do not start with "test".
 Build/Scripts/runTests.sh -s checkTestMethodsPrefix
 
+# Ensure every design token of the editing surface has a single source.
+Build/Scripts/runTests.sh -s checkDesignTokenWiring
+
 # The frontend assets: lint, type check, run the TypeScript unit tests, and
 # prove the committed artifacts still match their sources.
 Build/Scripts/runTests.sh -s lintTypescript -n
@@ -57,6 +60,7 @@ Build/Scripts/runTests.sh -s checkJsBuildClean
 | `checkMarkdownTables`       | [`Build/Scripts/checkMarkdownTables.php`](../../Build/Scripts/checkMarkdownTables.php)               | no                     |
 | `checkRstSectionAdornments` | [`Build/Scripts/checkRstSectionAdornments.php`](../../Build/Scripts/checkRstSectionAdornments.php)   | no                     |
 | `checkTestMethodsPrefix`    | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)       | no                     |
+| `checkDesignTokenWiring`    | [`Build/Scripts/DesignTokenWiringChecker.php`](../../Build/Scripts/DesignTokenWiringChecker.php)     | no                     |
 | `lintTypescript`            | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                           | no                     |
 | `typecheckJs`               | [`Build/tsconfig.json`](../../Build/tsconfig.json) and the two projects extending it                 | no                     |
 | `unitJs`                    | [`Build/package.json`](../../Build/package.json), `Build/Tests/TypeScript/`                          | no                     |
@@ -150,6 +154,41 @@ public function getExtensionKeyReturnsExtensionKey(): void
     // ...
 }
 ```
+
+## Design token wiring
+
+`checkDesignTokenWiring` reads the two stylesheets that decide the appearance of
+the editing surface — the extension's
+[`frontend-edit.css`](../../Build/Sources/Css/frontend/frontend-edit.css), which
+declares every `--frontend-edit-*` token with a default, and the development site
+package's
+[`_plugin.css`](../../packages/dev-site/Resources/Public/Css/_plugin.css), which
+declares them again in terms of the theme's own scale — and fails when a value
+exists in both files rather than in one.
+
+A token passes when it is **mapped** onto a theme token, **derived** from another
+token that is, or declared `inherit`. It fails when it is a second copy, when the
+surface reads a token it never declares, when a mapping repeats a literal instead
+of naming a theme token, or when it names a theme token the theme does not have.
+
+The defect is invisible without it. An unmapped token is a valid declaration that
+renders correctly for exactly as long as the two values happen to agree, and the
+image suites cannot help: they compare the surface against itself, so they see
+the drift only once it has already been re-recorded around.
+
+```bash
+Build/Scripts/runTests.sh -s checkDesignTokenWiring
+```
+
+It is pointed at a **fixture** on purpose. `packages/dev-site` is the only place
+in this repository where an integrator's side of the contract is written down, so
+it is the only place the contract can be checked. A surface token with nothing on
+the other end of it is a token nobody has ever been shown how to set.
+
+What it cannot answer is whether a mapping is the *right* one — that a radius
+points at the theme's medium step rather than its large one is a visual question,
+and belongs to `visualRegression` and a person.
+→ [Styling](../frontend-edit/styling.md#every-token-has-one-source-and-a-gate-says-so)
 
 ## Markdown table formatting
 

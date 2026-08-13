@@ -120,6 +120,69 @@ is wrapped in `:where()` now, for the same reason the appearance rules are.
 site package deliberately sets to a value the extension would not choose, and was
 shown to fail by removing the `:where()`.
 
+## Every token has one source, and a gate says so
+
+The development site package declares **every** one of the surface's tokens in
+terms of its own scale, in
+[`_plugin.css`](../../packages/dev-site/Resources/Public/Css/_plugin.css). Not as
+tidiness: before it did, both stylesheets defined a spacing scale, a radius scale
+and a palette, and they agreed by **coincidence**. Nothing connected them, so
+changing `--radius-sm` in the theme left the surface at the old value and no gate
+said anything. Two designs drifting apart one value at a time look assembled
+rather than designed.
+
+A token counts as wired when its value comes from one place. There are three
+shapes, and only the first is visible in that file:
+
+| Shape         | What it looks like                             | Which ones                                                               |
+|---------------|------------------------------------------------|--------------------------------------------------------------------------|
+| **mapped**    | the site package declares `var(--theme-token)` | the palette, the space and radius scales, control metrics, motion, focus |
+| **derived**   | the surface computes it from a mapped token    | the four `--frontend-edit-gap-*`, `--frontend-edit-outline-*`            |
+| **inherited** | the default is `inherit`                       | `--frontend-edit-font-family`                                            |
+
+`inherit` is *stronger* than a mapping rather than an exception to it: pointing
+the family at the theme's `--font-body` would pin the surface to the page's
+default face even inside a section that deliberately changed it.
+
+**`Build/Scripts/runTests.sh -s checkDesignTokenWiring` decides which of the three
+each token is and fails if it is none.** It also reports three things nothing else
+can see:
+
+- a token the surface **reads and never declares** — which is how
+  `--frontend-edit-outline-color` and `--frontend-edit-outline-width` lived for
+  several pull requests, as fallbacks inside the `var()` that read them. The
+  manual listed both as tokens the whole time; a reader who went looking in the
+  stylesheet would not have found either, and the hardcoded fallback colour was a
+  second copy of the accent that did not follow it into the dark scheme.
+- a mapping that **repeats a value** instead of naming a theme token, which is
+  the original failure wearing the costume of the fix.
+- a mapping that names a theme token **the theme does not declare**, because a
+  custom property that does not resolve fails silently.
+
+What it deliberately cannot answer is whether a mapping is the *right* one. That
+is a question for the image suites and a person.
+
+## Mapped by value where a value exists, by role where none does
+
+The two radius scales are offset by one step, which matters because the mapping
+reads like a typo: the surface's `--frontend-edit-radius-lg` (`0.5rem`) is the
+theme's plain `--radius`, and the theme's `--radius-lg` (`0.75rem`) has no
+counterpart. Mapping by name would move the dialog and the stored image from 8 to
+12 pixels — a visual change made to make a mapping look tidier.
+
+**Colour cannot be mapped that way.** Four of the ten agree exactly — white, and
+both danger values — and the other six do not, the accent included. Wiring all
+ten therefore moves pixels, and four of the six documentation screenshots were
+re-recorded with it; mapping only the four that already agreed would have left
+the drift exactly where it was.
+
+Two values have no counterpart at all — the form's measure and the width of its
+label column. They are declared by the theme anyway, beside the scales it uses
+itself, because proportion is the theme's decision even when the surface is the
+only thing asking. The form measure is deliberately **not** the theme's text
+measure: a form with a label column beside its values needs more room than a
+column of prose.
+
 ## Why the tokens used to be in the component, and no longer are
 
 Worth keeping, because it documents what the light DOM gave up.
@@ -440,6 +503,27 @@ A site that *pins* `light` or `dark` through the site setting is still not
 covered, and neither is legibility — these pin that the dark scheme has not
 **changed**, not that it is readable.
 
+**They also cannot see a colour that only the theme decides, and that is a second
+blind spot worth stating.** Wiring all ten colour tokens onto the site package's
+palette moved **none** of the ten baselines. Two reasons, both structural rather
+than accidental: the shifts are a few steps per channel and fall under the per
+pixel threshold, and the accent — the one colour that moved far — is drawn in
+places no baseline crops. The buttons and controls in these shots already took
+the theme's accent through a configured class; the dashed frame that would have
+shown it is on the surface element, *outside* every component crop.
+
+The same wiring moved four of the six documentation screenshots by thousands of
+pixels, so the manual's shots are the ones with the wider view. What covers the
+gap directly is a DOM assertion:
+`ThemeOverride.spec.ts` reads the border colour of the state badge — an element
+no configured class touches — and compares it against the theme's own
+`--c-border`, so the only thing that can make it pass is the token layer. It was
+shown to fail by deleting one line from `_plugin.css`.
+
+This is the same lesson as the disabled icon-only button that could be removed
+without moving a baseline: **a pixel comparison is not a substitute for an
+assertion about a thing you can name.**
+
 **And the manual is guarded separately.**
 `Build/Scripts/runTests.sh -s checkDocumentationScreenshots` compares the six
 screenshots `Documentation/` embeds against the surface they claim to show. It
@@ -485,11 +569,23 @@ Firefox 78 and Safari 14. **That floor has now decided four CSS choices** —
 `color-mix()`, container queries, `:has()` and now `@layer`; check it before
 reaching for anything modern.
 
-`Tests/Acceptance/Frontend/ThemeOverride.spec.ts` asserts the outcome, and it was
-shown to fail by putting one selector back at its old specificity. It is the only
-suite that can see this: `ButtonHierarchy.spec.ts` deliberately asserts nothing
-about colour, so the surface could mark every button correctly and still overrule
-the theme.
+`Tests/Acceptance/Frontend/ThemeOverride.spec.ts` asserts the outcome. It is the
+only suite that can see this: `ButtonHierarchy.spec.ts` deliberately asserts
+nothing about colour, so the surface could mark every button correctly and still
+overrule the theme.
+
+**It no longer asserts a colour to prove it, and the reason is worth reading
+before changing it.** The proof used to be that a themed button drew the theme's
+accent rather than the extension's — which worked only because the two palettes
+disagreed, and its docblock said so: bringing them into agreement would leave the
+test passing and proving nothing. Wiring colour did exactly that, deliberately.
+
+The discriminator is **type** now: the theme's `.button` sets a font size and a
+weight, the extension's rule sets `font: inherit` and no weight, and neither
+value can travel through a token. Whatever replaces it later has to keep that
+property — a discriminator has to be something the theme decides *only* through
+a class. It was shown to fail by removing the theme's font rules, which returns
+the button to 16px.
 
 ## Class names are structural, not presentational
 

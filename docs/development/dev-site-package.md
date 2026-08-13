@@ -105,6 +105,43 @@ That is the whole argument for
 until that lands this package themes the page around the surface rather than the
 surface itself.
 
+## `_plugin.css` is the only file here that knows the plugin exists
+
+Every other stylesheet in this package is written as though the extension were
+not installed, which is the point of the fixture: an integrator's design system
+does not have a chapter about somebody's plugin. The wiring lives in one file,
+loaded last, and it does one thing — declare each of the surface's design tokens
+in terms of this theme's scale.
+
+**It maps all of them.** A token it does not list is a value that exists twice
+and will drift, so the omission is a gate failure rather than a matter of taste:
+`Build/Scripts/runTests.sh -s checkDesignTokenWiring`. The three shapes a wired
+token can take, and why colour is mapped by role rather than by value, are in
+[Styling](../frontend-edit/styling.md#every-token-has-one-source-and-a-gate-says-so).
+
+Wiring it also pulled a set of literals in this package up into
+`_variables.css` — the control height, the vertical control padding, the disabled
+opacity, the transition duration and curve, and the two weights that carry
+meaning. They were typed identically in `_form.css` and `_button.css` and agreed
+by having been typed the same, which is the same defect one level down.
+
+Two of the tokens `_variables.css` now declares are used by **nothing but** the
+editing surface: `--measure-form` and `--form-label-width`. They live here anyway
+because proportion is the theme's decision. `--measure-form` is deliberately not
+`--measure`: a form with a label column beside its values needs more room than a
+column of prose, and folding the two together would have narrowed the surface by
+2rem to make a mapping look tidier.
+
+**One consequence is worth naming.** The surface now follows the scheme *this
+theme* is in rather than the scheme the *browser* is in. Those are not the same
+question here — see [the three states](#the-colour-scheme-has-three-states-not-two)
+— and before colour was mapped, a page pinned to `dark` through
+`devSite.colorScheme` drew a light editing surface on a dark page, because the
+extension's own dark values sit behind `prefers-color-scheme` and nothing else.
+The extension's `@media` block is still its fallback for a site that declares
+nothing; in this instance it is inert, which is the correct outcome rather than a
+dead rule.
+
 ## See also
 
 - [Quality gates](quality-gates.md)

@@ -109,9 +109,57 @@
     --focus-width: 2px;
     --focus-offset: 2px;
 
+    /*
+     * Controls. One height and one vertical padding for every control on the
+     * page, which is what keeps a button and the input beside it on the same
+     * line box — the box model trap `_button.css` describes has a partner, and
+     * this is it: two rules that agree by having been typed the same are one
+     * edit away from disagreeing.
+     *
+     * The inline padding is not here because a button and an input do not want
+     * the same one: a button pads to `--space-3` so its label is not cramped
+     * against its border, an input to `--space-2` so the caret starts near the
+     * edge. Both are steps of the space scale, so neither is a loose value.
+     */
+    --control-height: 2.25rem;
+    --control-padding-block: 0.375rem;
+
+    /* State. What "not right now" looks like, everywhere. */
+    --disabled-opacity: 0.6;
+
+    /*
+     * Motion. One duration and one curve for the whole page, the editing
+     * surface included.
+     *
+     * They are **not** what answers `prefers-reduced-motion` — `_reset.css`
+     * does that with a universal `!important` override, which is the blunt
+     * instrument that works whether or not a component was written to be
+     * asked. These exist so that the two values are decided once instead of
+     * being retyped in every component that transitions something.
+     */
+    --transition-duration: 120ms;
+    --transition-easing: cubic-bezier(0.2, 0, 0.2, 1);
+
+    /* Weights that carry meaning rather than decoration. */
+    --weight-label: 600;
+    --weight-button: 500;
+
     /* The measure of a column of text. */
     --measure: 46rem;
     --container: 72rem;
+
+    /*
+     * Two values this theme decides for the editing surface and uses nowhere
+     * else, which is why they sit apart from the scales above.
+     *
+     * They are here rather than in the plugin for the reason every other token
+     * is: proportion is the theme's decision. `--measure-form` is deliberately
+     * **not** `--measure` — a form with a label column beside its values needs
+     * more room than a column of prose, and folding the two together would
+     * narrow the surface by 2rem to make a mapping look tidier.
+     */
+    --measure-form: 48rem;
+    --form-label-width: 9rem;
 }
 
 /*
