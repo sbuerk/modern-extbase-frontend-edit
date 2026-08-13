@@ -26,6 +26,13 @@ ways to style it, and they compose:
     goes both ways: a site can now style the surface, and a site can now break
     it.
 
+..  important::
+    A site's declaration wins **whatever order the stylesheets load in**. The
+    extension declares its defaults at zero specificity precisely so that a rule
+    written in a site package does not have to compete with them — the
+    extension's own stylesheet is emitted after the site's, and would otherwise
+    always win.
+
 Everything below is optional. The extension ships defaults that are deliberately
 quiet — no typeface of its own, no brand colour, no decoration — so a site that
 configures nothing gets a surface that stays out of the way.

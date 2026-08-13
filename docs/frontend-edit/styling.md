@@ -107,6 +107,19 @@ so one declaration reaches the whole surface; declaring them again on a child
 would be a **direct hit** on that child and would beat the inherited, overridden
 value, so a site's override would recolour the frame and nothing inside it.
 
+**The defaults are declared at zero specificity, and that is what makes the
+override work.** Under a shadow root it worked for free — a declaration in the
+outer tree beats a `:host` default whatever the source order. In the light DOM
+both are ordinary rules on the same element with the same specificity, so
+**source order decides**, and this stylesheet is emitted by the plugin *after*
+the site's. The documented override therefore did nothing at all for several
+pull requests, and nothing noticed because nothing exercised it. The token block
+is wrapped in `:where()` now, for the same reason the appearance rules are.
+
+`Tests/Acceptance/Frontend/ThemeOverride.spec.ts` reads a token the development
+site package deliberately sets to a value the extension would not choose, and was
+shown to fail by removing the `:where()`.
+
 ## Why the tokens used to be in the component, and no longer are
 
 Worth keeping, because it documents what the light DOM gave up.

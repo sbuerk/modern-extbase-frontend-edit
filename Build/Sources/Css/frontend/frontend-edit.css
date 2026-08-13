@@ -63,7 +63,22 @@
  * What *has* changed is that a site no longer has to use tokens at all — it can
  * write ordinary rules against the classes below.
  */
-modern-extbase-frontend-edit-profile {
+/*
+ * The tokens are declared at **zero specificity**, and that is load bearing.
+ *
+ * A site overrides one by declaring it on this element - which is what the
+ * documentation has always promised. Under a shadow root that worked for free:
+ * a declaration in the outer tree beats a `:host` default whatever the source
+ * order. In the light DOM both declarations are ordinary rules on the same
+ * element with the same specificity, so **source order decides** - and this
+ * stylesheet is emitted by the plugin, after the site's, so the extension won
+ * every time and the documented mechanism silently did nothing.
+ *
+ * Found by changing a value in the development site package and watching the
+ * surface ignore it. `:where()` puts the defaults below every site rule, in the
+ * same way and for the same reason as the appearance rules further down.
+ */
+:where(modern-extbase-frontend-edit-profile) {
     /* Colour. */
     --frontend-edit-color-accent: #0a7bd4;
     --frontend-edit-color-accent-hover: #0968b4;
@@ -120,7 +135,14 @@ modern-extbase-frontend-edit-profile {
     --frontend-edit-busy-opacity: 0.6;
     --frontend-edit-transition-duration: 120ms;
     --frontend-edit-transition-easing: ease;
+}
 
+/*
+ * Structure, at normal specificity. A custom element is inline until something
+ * says otherwise, and the measure is what stops the surface from stretching a
+ * full width page - neither is a default a site should override by accident.
+ */
+modern-extbase-frontend-edit-profile {
     display: block;
     max-width: var(--frontend-edit-measure);
     font-family: var(--frontend-edit-font-family);
@@ -135,7 +157,7 @@ modern-extbase-frontend-edit-profile {
  * Firefox 108 floor the import map mechanism sets.
  */
 @media (prefers-color-scheme: dark) {
-    modern-extbase-frontend-edit-profile {
+    :where(modern-extbase-frontend-edit-profile) {
         --frontend-edit-color-accent: #4c9ce4;
         --frontend-edit-color-accent-hover: #6fb2ea;
         --frontend-edit-color-accent-contrast: #08121c;
@@ -150,7 +172,7 @@ modern-extbase-frontend-edit-profile {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    modern-extbase-frontend-edit-profile {
+    :where(modern-extbase-frontend-edit-profile) {
         --frontend-edit-transition-duration: 0ms;
     }
 }
