@@ -36,57 +36,39 @@
  *    it. The empty control and the notice below it say the same true thing
  *    twice.
  */
-import { css, html, LitElement, nothing } from 'lit';
+import { html, LitElement, nothing } from 'lit';
 import type { TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
 import { icon } from '@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js';
-import { controls } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js';
-import { field } from '@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js';
 import type { ProfileImageRecord } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js';
 import type { LabelMap } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 import { actionLabelKey, fieldLabelKey, label } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js';
 import { imageAccept, imageAlternative, imageField, isDisplayable, uploadFailureMessages } from '@sbuerk/modern-extbase-frontend-edit/frontend/model/imageEdit.js';
 
+/**
+ * Unique per document, for the same reason the field element needs one: in the
+ * light DOM `id="errors"` is not scoped to anything.
+ */
+let instances = 0;
+
 @customElement('modern-extbase-frontend-edit-image')
 export class EditImageElement extends LitElement {
-    public static override readonly styles = [
-        controls,
-        field,
-        css`
-            :host {
-                display: block;
-            }
+    /**
+     * Renders into the light DOM, for the reason {@see ./editField.js} gives.
+     *
+     * The figure, the image and the caption this element draws are styled from
+     * `Build/Sources/Css/frontend/frontend-edit.css` now. They are the only
+     * rules of the surface that are not shared with another element, and they
+     * moved with everything else rather than being kept here as the one
+     * exception - a component that carried some of its own CSS and not the rest
+     * would be worse than either arrangement.
+     */
+    protected override createRenderRoot(): HTMLElement {
+        return this;
+    }
 
-            figure {
-                margin: 0;
-            }
-
-            /*
-             * The stored dimensions are written as attributes so the layout does
-             * not jump while the image loads, and bounded here because a
-             * portrait straight from a camera is wider than the surface.
-             *
-             * The frame is what separates a stored image from one the page
-             * happens to contain: it is the same border the controls beside it
-             * carry, so the image reads as part of the editing surface rather
-             * than as content inside it.
-             */
-            img {
-                display: block;
-                max-width: 12rem;
-                height: auto;
-                border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
-                border-radius: var(--frontend-edit-radius-lg);
-                background-color: var(--frontend-edit-color-surface-sunken);
-            }
-
-            figcaption {
-                margin-top: var(--frontend-edit-space-xs);
-                font-size: var(--frontend-edit-font-size-sm);
-                color: var(--frontend-edit-color-muted);
-            }
-        `,
-    ];
+    /** Unique across the document. See the counter in `editField.ts`. */
+    private readonly uid = `frontend-edit-image-${++instances}`;
 
     /**
      * The stored image, or `null` for a profile that has none — a state, not an
@@ -122,43 +104,43 @@ export class EditImageElement extends LitElement {
     @property({ type: Boolean })
     public rejected = false;
 
-    @query('.field-control')
+    @query('.frontend-edit-field-control')
     private readonly control!: HTMLInputElement | null;
 
     public override render(): TemplateResult {
         const messages = uploadFailureMessages(this.errors, this.rejected ? this.text('error.imageNotStored') : '');
 
         return html`
-            <div class="field">
-                <span class="field-label" id="label">${this.text(fieldLabelKey('profile', imageField))}</span>
-                <div class="field-body">
+            <div class="frontend-edit-field">
+                <span class="frontend-edit-field-label" id="${this.uid}-label">${this.text(fieldLabelKey('profile', imageField))}</span>
+                <div class="frontend-edit-field-body">
                     ${this.renderImage()}
-                    <span class="field-actions">
-                        <label class="file-picker" ?data-disabled="${this.busy}">
+                    <span class="frontend-edit-field-actions">
+                        <label class="frontend-edit-file-picker" ?data-disabled="${this.busy}">
                             <input
-                                class="field-control visually-hidden"
+                                class="frontend-edit-field-control frontend-edit-visually-hidden"
                                 type="file"
                                 accept="${imageAccept}"
-                                aria-labelledby="label"
+                                aria-labelledby="${this.uid}-label"
                                 aria-invalid="${messages.length > 0 ? 'true' : 'false'}"
-                                aria-describedby="${messages.length > 0 ? 'errors' : nothing}"
+                                aria-describedby="${messages.length > 0 ? `${this.uid}-errors` : nothing}"
                                 ?disabled="${this.busy}"
                                 @change="${this.onSelect}"
                             />
                             ${icon('chooseImage')}
-                            <span class="button-label">
+                            <span class="frontend-edit-button-label">
                                 ${this.text(actionLabelKey(this.image === null ? 'chooseImage' : 'replaceImage'))}
                             </span>
                         </label>
                         <button
                             type="button"
                             data-variant="danger"
-                            aria-describedby="label"
+                            aria-describedby="${this.uid}-label"
                             ?disabled="${this.busy || this.image === null}"
                             @click="${this.onRemove}"
                         >
                             ${icon('remove')}
-                            <span class="button-label">${this.text(actionLabelKey('remove'))}</span>
+                            <span class="frontend-edit-button-label">${this.text(actionLabelKey('remove'))}</span>
                         </button>
                     </span>
                 </div>
@@ -191,11 +173,11 @@ export class EditImageElement extends LitElement {
         if (!isDisplayable(image)) {
             // Also the case for a reference whose file is gone: there is nothing
             // to show, and `Remove` stays enabled so it can be cleared.
-            return html`<span class="field-value is-empty"></span>`;
+            return html`<span class="frontend-edit-field-value is-empty"></span>`;
         }
 
         return html`
-            <figure class="field-value">
+            <figure class="frontend-edit-field-value">
                 <img
                     src="${image.publicUrl}"
                     alt="${imageAlternative(image, this.text('profile.image.alt'), this.profileName)}"
@@ -210,7 +192,7 @@ export class EditImageElement extends LitElement {
 
     private renderErrors(messages: readonly string[]): TemplateResult {
         return html`
-            <ul class="field-errors" id="errors" role="alert">
+            <ul class="frontend-edit-field-errors" id="${this.uid}-errors" role="alert">
                 ${messages.map((message: string): TemplateResult => html`<li>${message}</li>`)}
             </ul>
         `;

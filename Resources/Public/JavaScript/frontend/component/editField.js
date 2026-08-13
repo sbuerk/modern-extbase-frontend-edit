@@ -9,15 +9,16 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-import { css, html, LitElement, nothing } from "lit";
+import { html, LitElement, nothing } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
-import { controls } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js";
-import { field } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/field.js";
 import { actionLabelKey, choiceLabelKey, fieldLabelKey, label } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/labels.js";
+let instances = 0;
 let EditFieldElement = class extends LitElement {
   constructor() {
     super(...arguments);
+    /** Unique across the document. See {@see instances}. */
+    this.uid = `frontend-edit-field-${++instances}`;
     this.definition = { name: "", control: "line" };
     this.scope = "profile";
     this.labels = {};
@@ -28,12 +29,29 @@ let EditFieldElement = class extends LitElement {
     this.recordMode = false;
     this.errors = [];
   }
+  /**
+   * Renders into the light DOM.
+   *
+   * The surface has to be styleable and overridable by the site it renders
+   * into, and nothing that lives in a shadow root can be. The cost is stated
+   * rather than hidden: the page's CSS now applies to everything in here, and
+   * a page can break the surface the same way it can break any markup.
+   *
+   * The consequence for this file is that `static styles` is gone. Lit only
+   * adopts it into a shadow root, so it would be silently ignored - the whole
+   * appearance is in
+   * `Build/Sources/Css/frontend/frontend-edit.css`, which the plugin template
+   * emits, and which is no longer optional.
+   */
+  createRenderRoot() {
+    return this;
+  }
   render() {
     const hasErrors = this.errors.length > 0;
     return html`
-            <div class="field">
-                <span class="field-label" id="label">${label(this.labels, fieldLabelKey(this.scope, this.definition.name))}</span>
-                <div class="field-body">
+            <div class="frontend-edit-field">
+                <span class="frontend-edit-field-label" id="${this.uid}-label">${label(this.labels, fieldLabelKey(this.scope, this.definition.name))}</span>
+                <div class="frontend-edit-field-body">
                     ${this.editing ? this.renderControl(hasErrors) : this.renderValue()}
                     ${this.renderActions()}
                 </div>
@@ -74,7 +92,7 @@ let EditFieldElement = class extends LitElement {
   }
   renderValue() {
     const value = this.displayValue();
-    return html`<span class="field-value ${value === "" ? "is-empty" : ""}">${value}</span>`;
+    return html`<span class="frontend-edit-field-value ${value === "" ? "is-empty" : ""}">${value}</span>`;
   }
   /**
    * The stored value as it is shown when the field is not being edited.
@@ -95,13 +113,13 @@ let EditFieldElement = class extends LitElement {
   renderControl(hasErrors) {
     const shared = {
       invalid: hasErrors ? "true" : "false",
-      describedBy: hasErrors ? "errors" : void 0
+      describedBy: hasErrors ? `${this.uid}-errors` : void 0
     };
     if (this.definition.control === "choice") {
       return html`
                 <select
-                    class="field-control"
-                    aria-labelledby="label"
+                    class="frontend-edit-field-control"
+                    aria-labelledby="${this.uid}-label"
                     aria-invalid="${shared.invalid}"
                     aria-describedby="${shared.describedBy ?? nothing}"
                     ?disabled="${this.busy}"
@@ -119,8 +137,8 @@ let EditFieldElement = class extends LitElement {
     if (this.definition.control === "text") {
       return html`
                 <textarea
-                    class="field-control"
-                    aria-labelledby="label"
+                    class="frontend-edit-field-control"
+                    aria-labelledby="${this.uid}-label"
                     aria-invalid="${shared.invalid}"
                     aria-describedby="${shared.describedBy ?? nothing}"
                     maxlength="${this.definition.maxLength ?? nothing}"
@@ -133,9 +151,9 @@ let EditFieldElement = class extends LitElement {
     }
     return html`
             <input
-                class="field-control"
+                class="frontend-edit-field-control"
                 type="${this.definition.control === "date" ? "date" : "text"}"
-                aria-labelledby="label"
+                aria-labelledby="${this.uid}-label"
                 aria-invalid="${shared.invalid}"
                 aria-describedby="${shared.describedBy ?? nothing}"
                 maxlength="${this.definition.maxLength ?? nothing}"
@@ -160,34 +178,34 @@ let EditFieldElement = class extends LitElement {
     }
     if (!this.editing) {
       return html`
-                <button type="button" aria-describedby="label" ?disabled="${this.busy}" @click="${this.onEdit}">
+                <button type="button" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onEdit}">
                     ${icon("edit")}
-                    <span class="button-label">${label(this.labels, actionLabelKey("edit"))}</span>
+                    <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("edit"))}</span>
                 </button>
             `;
     }
     return html`
-            <span class="field-actions">
+            <span class="frontend-edit-field-actions">
                 <button
                     type="button"
                     data-variant="primary"
-                    aria-describedby="label"
+                    aria-describedby="${this.uid}-label"
                     ?disabled="${this.busy}"
                     @click="${this.onApply}"
                 >
                     ${icon("apply")}
-                    <span class="button-label">${label(this.labels, actionLabelKey("apply"))}</span>
+                    <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("apply"))}</span>
                 </button>
-                <button type="button" aria-describedby="label" ?disabled="${this.busy}" @click="${this.onCancel}">
+                <button type="button" aria-describedby="${this.uid}-label" ?disabled="${this.busy}" @click="${this.onCancel}">
                     ${icon("cancel")}
-                    <span class="button-label">${label(this.labels, actionLabelKey("cancel"))}</span>
+                    <span class="frontend-edit-button-label">${label(this.labels, actionLabelKey("cancel"))}</span>
                 </button>
             </span>
         `;
   }
   renderErrors() {
     return html`
-            <ul class="field-errors" id="errors" role="alert">
+            <ul class="frontend-edit-field-errors" id="${this.uid}-errors" role="alert">
                 ${this.errors.map((message) => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -233,20 +251,6 @@ let EditFieldElement = class extends LitElement {
     );
   }
 };
-/*
- * Everything this element draws is the shared field chrome, so its own block
- * is one declaration: the custom element is inline by default and has to be
- * told otherwise before any of the layout below it applies.
- */
-EditFieldElement.styles = [
-  controls,
-  field,
-  css`
-            :host {
-                display: block;
-            }
-        `
-];
 __decorateClass([
   property({ attribute: false })
 ], EditFieldElement.prototype, "definition", 2);
@@ -275,7 +279,7 @@ __decorateClass([
   property({ attribute: false })
 ], EditFieldElement.prototype, "errors", 2);
 __decorateClass([
-  query(".field-control")
+  query(".frontend-edit-field-control")
 ], EditFieldElement.prototype, "control", 2);
 EditFieldElement = __decorateClass([
   customElement("modern-extbase-frontend-edit-field")

@@ -9,7 +9,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-import { css, html, LitElement, nothing } from "lit";
+import { html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { childTypes } from "@sbuerk/modern-extbase-frontend-edit/frontend/model/types.js";
@@ -50,8 +50,6 @@ import {
 } from "@sbuerk/modern-extbase-frontend-edit/frontend/api/payload.js";
 import { ProfileEndpointClient } from "@sbuerk/modern-extbase-frontend-edit/frontend/api/client.js";
 import { icon } from "@sbuerk/modern-extbase-frontend-edit/frontend/icon/icons.js";
-import { controls } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/controls.js";
-import { tokens } from "@sbuerk/modern-extbase-frontend-edit/frontend/style/tokens.js";
 import "@sbuerk/modern-extbase-frontend-edit/frontend/component/editField.js";
 import "@sbuerk/modern-extbase-frontend-edit/frontend/component/editImage.js";
 let ProfileEditElement = class extends LitElement {
@@ -71,6 +69,36 @@ let ProfileEditElement = class extends LitElement {
      */
     this.pendingFocus = null;
   }
+  /**
+   * Renders into the light DOM.
+   *
+   * This is the decision the whole styling layer turns on, and it reverses the
+   * one this component shipped with. A shadow root gave the surface perfect
+   * encapsulation and made it impossible for a site to style: selectors do not
+   * cross the boundary, so a theme's own `.button` rules could never reach a
+   * button in here and only inherited properties like `font-family` got
+   * through. `::part()` would expose the elements and still not let a theme
+   * *reuse* its existing rules on them.
+   *
+   * What is given up is real. The page's CSS now applies to everything the
+   * surface draws, and a host page can break it exactly as it can break any
+   * other markup on the page. That is the trade a proof of concept about
+   * project-overridable editing should be making.
+   *
+   * Two consequences that are not obvious:
+   *
+   * - `static styles` is gone from all three components. Lit only adopts it
+   *   into a shadow root, so leaving it would look like styling and do
+   *   nothing. The appearance lives in
+   *   `Build/Sources/Css/frontend/frontend-edit.css`.
+   * - That stylesheet is **no longer optional**. It used to be a pure
+   *   addition, with the tokens shipped inside the component precisely so a
+   *   page that failed to load it still rendered a coherent surface. There is
+   *   no such fallback now.
+   */
+  createRenderRoot() {
+    return this;
+  }
   connectedCallback() {
     super.connectedCallback();
     this.initialize();
@@ -78,7 +106,7 @@ let ProfileEditElement = class extends LitElement {
   render() {
     const profile = this.profile;
     if (profile === null) {
-      return html`<slot></slot>`;
+      return nothing;
     }
     return html`
             ${this.renderRecord(profile, profileTarget)}
@@ -120,15 +148,41 @@ let ProfileEditElement = class extends LitElement {
     }
     this.labels = parseLabels(readJson(this.getAttribute("data-labels")));
     this.client = new ProfileEndpointClient(endpoints, token);
+    this.takeOverFromServerRendering();
     this.profile = profile;
+  }
+  /**
+   * Removes the server rendered view this element wraps.
+   *
+   * Under a shadow root this needed no code at all: light DOM children are
+   * not rendered unless a `<slot>` asks for them, so {@see render} returned
+   * one while unenhanced and returned none once it had a profile. That single
+   * mechanism did the hiding, and it does not exist in the light DOM.
+   *
+   * Nothing replaces it implicitly either. `lit-html` **inserts** its parts
+   * into the container and does not clear what is already there, so the
+   * server rendered profile stays exactly where it was and the reader sees the
+   * profile twice - once as static text, once as the editing surface. That is
+   * not a subtle regression; it was the first thing the acceptance suite
+   * caught.
+   *
+   * Called from {@see initialize} rather than from a render hook, and only
+   * once enhancement is certain. Removing it any earlier would take away the
+   * server rendered view from a visitor whose element is about to decide it
+   * cannot enhance - which is the one case that view exists for.
+   */
+  takeOverFromServerRendering() {
+    while (this.firstChild !== null) {
+      this.removeChild(this.firstChild);
+    }
   }
   renderRecord(profile, target) {
     const edit = this.edits.of(target);
     return html`
-            <div class="record">
-                <div class="record-actions">
+            <div class="frontend-edit-record">
+                <div class="frontend-edit-record-actions">
                     ${this.renderRecordActions(profile, target, edit)}
-                    ${target.child === null && profile.hidden ? html`<span class="state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
+                    ${target.child === null && profile.hidden ? html`<span class="frontend-edit-state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
                 </div>
                 ${this.renderGeneralErrors(target)}
                 ${target.child === null ? this.renderImage(profile, target, edit) : nothing}
@@ -177,11 +231,11 @@ let ProfileEditElement = class extends LitElement {
                     @click="${() => void this.submitRecord(target)}"
                 >
                     ${icon("apply")}
-                    <span class="button-label">${this.text(actionLabelKey("save"))}</span>
+                    <span class="frontend-edit-button-label">${this.text(actionLabelKey("save"))}</span>
                 </button>
                 <button type="button" ?disabled="${edit.busy}" @click="${() => this.cancelRecord(target)}">
                     ${icon("cancel")}
-                    <span class="button-label">${this.text(actionLabelKey("cancel"))}</span>
+                    <span class="frontend-edit-button-label">${this.text(actionLabelKey("cancel"))}</span>
                 </button>
             `;
     }
@@ -192,7 +246,7 @@ let ProfileEditElement = class extends LitElement {
                 @click="${() => this.beginRecord(profile, target)}"
             >
                 ${icon("editRecord")}
-                <span class="button-label">${this.text(actionLabelKey("editRecord"))}</span>
+                <span class="frontend-edit-button-label">${this.text(actionLabelKey("editRecord"))}</span>
             </button>
         `;
   }
@@ -221,9 +275,9 @@ let ProfileEditElement = class extends LitElement {
   renderChildren(profile, child) {
     const records = childrenOf(profile, child);
     return html`
-            <section class="children">
+            <section class="frontend-edit-children">
                 <h3>${this.text(sectionLabelKey(child))}</h3>
-                <ol class="children-list">
+                <ol class="frontend-edit-children-list">
                     ${repeat(
       records,
       (record) => record.uid,
@@ -239,11 +293,11 @@ let ProfileEditElement = class extends LitElement {
     const busy = this.edits.isBusy(target);
     const hidden = isChildHidden(profile, child, record.uid);
     return html`
-            <li class="child">
-                <header class="child-header">
+            <li class="frontend-edit-child">
+                <header class="frontend-edit-child-header">
                     ${this.renderChildTitle(child, record)}
-                    ${hidden ? html`<span class="state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
-                <div class="child-actions">
+                    ${hidden ? html`<span class="frontend-edit-state">${this.text(stateLabelKey("hidden"))}</span>` : nothing}
+                <div class="frontend-edit-child-actions">
                     <button
                         type="button"
                         data-icon-only
@@ -251,7 +305,7 @@ let ProfileEditElement = class extends LitElement {
                         @click="${() => void this.moveChild(child, record.uid, -1)}"
                     >
                         ${icon("moveUp")}
-                        <span class="button-label">${this.text(actionLabelKey("moveUp"))}</span>
+                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveUp"))}</span>
                     </button>
                     <button
                         type="button"
@@ -260,7 +314,7 @@ let ProfileEditElement = class extends LitElement {
                         @click="${() => void this.moveChild(child, record.uid, 1)}"
                     >
                         ${icon("moveDown")}
-                        <span class="button-label">${this.text(actionLabelKey("moveDown"))}</span>
+                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("moveDown"))}</span>
                     </button>
                     <button
                         type="button"
@@ -269,7 +323,7 @@ let ProfileEditElement = class extends LitElement {
                         @click="${() => void this.setChildVisibility(child, record.uid, !hidden)}"
                     >
                         ${icon(hidden ? "show" : "hide")}
-                        <span class="button-label">${this.text(actionLabelKey(hidden ? "show" : "hide"))}</span>
+                        <span class="frontend-edit-button-label">${this.text(actionLabelKey(hidden ? "show" : "hide"))}</span>
                     </button>
                     <button
                         type="button"
@@ -279,7 +333,7 @@ let ProfileEditElement = class extends LitElement {
                         @click="${() => void this.deleteChild(child, record.uid)}"
                     >
                         ${icon("remove")}
-                        <span class="button-label">${this.text(actionLabelKey("remove"))}</span>
+                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("remove"))}</span>
                     </button>
                 </div>
                 </header>
@@ -308,7 +362,7 @@ let ProfileEditElement = class extends LitElement {
     if (parts.length === 0) {
       return nothing;
     }
-    return html`<span class="child-title">${parts.join(" \xB7 ")}</span>`;
+    return html`<span class="frontend-edit-child-title">${parts.join(" \xB7 ")}</span>`;
   }
   /**
    * The form that creates a child.
@@ -325,7 +379,7 @@ let ProfileEditElement = class extends LitElement {
     const defaults = initialValues(fieldsOfChild(child));
     const edit = this.edits.of(target);
     return html`
-            <div class="child child-new">
+            <div class="frontend-edit-child frontend-edit-child-new">
                 ${this.renderGeneralErrors(target)}
                 ${fieldsOfChild(child).map((definition) => {
       const field = definition.name;
@@ -347,7 +401,7 @@ let ProfileEditElement = class extends LitElement {
                         ></modern-extbase-frontend-edit-field>
                     `;
     })}
-                <div class="child-actions">
+                <div class="frontend-edit-child-actions">
                     <button
                         type="button"
                         data-variant="primary"
@@ -355,7 +409,7 @@ let ProfileEditElement = class extends LitElement {
                         @click="${() => void this.addChild(child)}"
                     >
                         ${icon("add")}
-                        <span class="button-label">${this.text(actionLabelKey("add"))}</span>
+                        <span class="frontend-edit-button-label">${this.text(actionLabelKey("add"))}</span>
                     </button>
                 </div>
             </div>
@@ -367,7 +421,7 @@ let ProfileEditElement = class extends LitElement {
       return nothing;
     }
     return html`
-            <ul class="errors" role="alert">
+            <ul class="frontend-edit-errors" role="alert">
                 ${messages.map((message) => html`<li>${message}</li>`)}
             </ul>
         `;
@@ -636,157 +690,6 @@ let ProfileEditElement = class extends LitElement {
     return label(this.labels, key);
   }
 };
-/*
- * This element is the only one that carries {@see tokens}, and that is a
- * requirement rather than a tidy-up — the token module's docblock explains
- * why declaring them on a child would break a site's ability to override
- * them.
- */
-ProfileEditElement.styles = [
-  tokens,
-  controls,
-  css`
-            :host {
-                display: block;
-                max-width: var(--frontend-edit-measure);
-            }
-
-            /*
-             * One record is a stack of fields, and the gap between them is the
-             * only thing separating them — the field itself carries no vertical
-             * padding, so there is a single place that decides how far apart two
-             * fields sit.
-             */
-            .record {
-                display: grid;
-                gap: var(--frontend-edit-gap-field);
-            }
-
-            .record-actions,
-            .child-actions {
-                display: flex;
-                flex-wrap: wrap;
-                gap: var(--frontend-edit-space-sm);
-                align-items: center;
-            }
-
-            /*
-             * A hairline in the border colour rather than in "currentColor",
-             * which drew a rule as dark as the body text and made the separator
-             * louder than the records it separates.
-             */
-            /*
-             * A section is the heading, the list, and the form that adds to it.
-             * The gap between those three is the record step rather than the
-             * field step: they are separate things, not lines of one thing.
-             */
-            .children {
-                display: grid;
-                gap: var(--frontend-edit-gap-record);
-                border-top: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
-                margin-top: var(--frontend-edit-gap-section);
-                padding-top: var(--frontend-edit-gap-record);
-            }
-
-            .children h3 {
-                margin: 0;
-            }
-
-            .children-list {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-                display: grid;
-                gap: var(--frontend-edit-gap-record);
-            }
-
-            /*
-             * A child is one record inside another, and the marker on its
-             * leading edge is what says so. It is the accent rather than the
-             * text colour because it is a structural cue and not content.
-             */
-            /*
-             * A grid rather than a plain block, because a child holds a record
-             * and its toolbar as siblings and nothing else would space them.
-             * The record's own fields dropped their padding, so this is where
-             * that separation now comes from.
-             */
-            .child {
-                display: grid;
-                gap: var(--frontend-edit-gap-field);
-                border-inline-start: 3px solid var(--frontend-edit-color-border);
-                border-radius: 0 var(--frontend-edit-radius) var(--frontend-edit-radius) 0;
-                padding-inline-start: var(--frontend-edit-space-md);
-            }
-
-            /*
-             * The heading of a child, and the toolbar that acts on it, on one
-             * line. The toolbar used to sit at the foot of the record with
-             * nothing naming what it would move or delete; beside the title it
-             * has a referent, and a list of four addresses stops being four
-             * identical blocks.
-             *
-             * "space-between" rather than a column, because the title is as long
-             * as the data makes it and the buttons are not — pushing the toolbar
-             * to the far edge is what keeps it in one column down the list.
-             */
-            .child-header {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                justify-content: space-between;
-                gap: var(--frontend-edit-space-sm);
-                border-bottom: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
-                padding-bottom: var(--frontend-edit-gap-within);
-            }
-
-            /*
-             * "min-width: 0" so a long address line wraps inside the header
-             * instead of pushing the toolbar out of it, and "margin-inline-end:
-             * auto" so the toolbar stays at the edge even when the title is
-             * missing entirely.
-             */
-            .child-title {
-                flex: 1 1 auto;
-                min-width: 0;
-                margin-inline-end: auto;
-                font-weight: var(--frontend-edit-label-weight);
-            }
-
-            /*
-             * The add form is a record that does not exist yet, and the dashed
-             * edge is the whole statement: same shape, not yet real.
-             */
-            .child-new {
-                border-inline-start-style: dashed;
-                border-inline-start-color: var(--frontend-edit-color-border-strong);
-            }
-
-            /*
-             * A state is a badge, not prose: it labels the record it sits beside
-             * rather than telling the reader something new, so it is set small,
-             * spaced out and quiet.
-             */
-            .state {
-                align-self: center;
-                border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
-                border-radius: var(--frontend-edit-radius);
-                padding: 0 var(--frontend-edit-space-xs);
-                font-size: var(--frontend-edit-font-size-sm);
-                color: var(--frontend-edit-color-muted);
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-
-            .errors {
-                margin: 0;
-                padding: 0;
-                list-style: none;
-                color: var(--frontend-edit-color-danger);
-                font-size: var(--frontend-edit-font-size-sm);
-            }
-        `
-];
 __decorateClass([
   state()
 ], ProfileEditElement.prototype, "profile", 2);

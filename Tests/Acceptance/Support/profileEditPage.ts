@@ -114,43 +114,43 @@ export class ProfileEditPage {
      * The value a field shows while it is *not* being edited.
      */
     public displayedValue(target: Target, name: string): Locator {
-        return this.field(target, name).locator('.field-value');
+        return this.field(target, name).locator('.frontend-edit-field-value');
     }
 
     /**
      * The control a field is edited with - input, textarea or select.
      */
     public control(target: Target, name: string): Locator {
-        return this.field(target, name).locator('.field-control');
+        return this.field(target, name).locator('.frontend-edit-field-control');
     }
 
     public fieldErrors(target: Target, name: string): Locator {
-        return this.field(target, name).locator('.field-errors li');
+        return this.field(target, name).locator('.frontend-edit-field-errors li');
     }
 
     public recordErrors(target: Target): Locator {
-        return this.recordOf(target).locator('.errors li');
+        return this.recordOf(target).locator('.frontend-edit-errors li');
     }
 
     /**
-     * The `.record` block of one record.
+     * The `.frontend-edit-record` block of one record.
      *
      * The profile's is the first one rendered; a child's is the one inside the
      * list item that carries that child's fields.
      */
     public recordOf(target: Target): Locator {
         if (target === 'profile') {
-            return this.element.locator('.record').first();
+            return this.element.locator('.frontend-edit-record').first();
         }
 
-        return this.childRow(target).locator('.record');
+        return this.childRow(target).locator('.frontend-edit-record');
     }
 
     /**
      * The list item of one child record.
      */
     public childRow(target: Target): Locator {
-        return this.element.locator('li.child').filter({
+        return this.element.locator('li.frontend-edit-child').filter({
             has: this.page.locator(`[data-focus^="${target}|"]`),
         });
     }
@@ -162,7 +162,7 @@ export class ProfileEditPage {
      * detail — so `toHaveCount(0)` is how "no heading" is asserted.
      */
     public childTitle(target: Target): Locator {
-        return this.childRow(target).locator('.child-title');
+        return this.childRow(target).locator('.frontend-edit-child-title');
     }
 
     /**
@@ -171,22 +171,22 @@ export class ProfileEditPage {
      */
     public renderedChildTitles(child: ChildType): Promise<string[]> {
         return this.element
-            .locator('li.child')
+            .locator('li.frontend-edit-child')
             .filter({ has: this.page.locator(`[data-focus^="${child}:"]`) })
-            .locator('.child-title')
+            .locator('.frontend-edit-child-title')
             .allInnerTexts();
     }
 
     /**
      * The form that creates a child, addressed through a field of its own.
      *
-     * It is a `div.child-new` rather than an `li.child`, so {@see childRow}
+     * It is a `div.frontend-edit-child-new` rather than an `li.frontend-edit-child`, so {@see childRow}
      * does not reach it - and both collections render one, which is why it is
      * filtered by the `new` target of the collection it belongs to instead of
      * taken by position.
      */
     public newChildForm(child: ChildType): Locator {
-        return this.element.locator('.child-new').filter({
+        return this.element.locator('.frontend-edit-child-new').filter({
             has: this.page.locator(`[data-focus^="${child}:new|"]`),
         });
     }
@@ -284,7 +284,7 @@ export class ProfileEditPage {
      * `Apply` — picking a file *is* the write.
      */
     public get imageControl(): Locator {
-        return this.imageElement.locator('input.field-control');
+        return this.imageElement.locator('input.frontend-edit-field-control');
     }
 
     /**
@@ -298,7 +298,7 @@ export class ProfileEditPage {
      * file.
      */
     public get imagePicker(): Locator {
-        return this.imageElement.locator('.file-picker');
+        return this.imageElement.locator('.frontend-edit-file-picker');
     }
 
     /**
@@ -324,7 +324,7 @@ export class ProfileEditPage {
     }
 
     public get imageErrors(): Locator {
-        return this.imageElement.locator('.field-errors li');
+        return this.imageElement.locator('.frontend-edit-field-errors li');
     }
 
     /**

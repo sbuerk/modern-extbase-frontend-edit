@@ -64,14 +64,14 @@ test.describe('Action icons', (): void => {
         // Hidden: clipped to a pixel, so it occupies no width in the toolbar.
         const hidden = surface.childRow('address:2')
             .getByRole('button', { name: 'Move up', exact: true })
-            .locator('.button-label');
+            .locator('.frontend-edit-button-label');
         const hiddenBox = await hidden.boundingBox();
         expect(hiddenBox?.width ?? 0, 'a hidden label takes no room').toBeLessThanOrEqual(1);
 
         // Shown: the same element, in a button that is not part of a toolbar.
         const shown = surface.field('profile', 'firstname')
             .getByRole('button', { name: 'Edit', exact: true })
-            .locator('.button-label');
+            .locator('.frontend-edit-button-label');
         const shownBox = await shown.boundingBox();
         expect(shownBox?.width ?? 0, 'a visible label is laid out').toBeGreaterThan(1);
     });
@@ -85,7 +85,7 @@ test.describe('Action icons', (): void => {
         await surface.open();
         await surface.waitForEnhancement();
 
-        const glyphs = await surface.element.locator('button .icon').evaluateAll(
+        const glyphs = await surface.element.locator('button .frontend-edit-icon').evaluateAll(
             (icons: Element[]): { hidden: string | null; focusable: string | null }[] =>
                 icons.map((svg: Element): { hidden: string | null; focusable: string | null } => ({
                     hidden: svg.getAttribute('aria-hidden'),

@@ -38,7 +38,7 @@ const shapes = {
 };
 const icon = (name) => html`
     <svg
-        class="icon"
+        class="frontend-edit-icon"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

@@ -3,48 +3,98 @@
 How the editing surface is styled, why the values live where they live, and what
 a site has to do to make it look like the rest of its pages.
 
-Everything here is in `Build/Sources/TypeScript/frontend/style/` and in the one
-emitted stylesheet, `Build/Sources/Css/frontend/frontend-edit.css`.
+Everything here is in the one emitted stylesheet,
+`Build/Sources/Css/frontend/frontend-edit.css`.
 
-## The problem this layer solves
+## The surface renders into the light DOM
 
-The surface is drawn inside a shadow root. That is what keeps the component from
-being broken by a theme it knows nothing about, and it is also what makes it
-unreachable: a site cannot restyle it with a selector, because no selector
-crosses the boundary. Left there, the component either imposes its own look on
-every site that installs it or has no look at all.
+It used to render into a shadow root, and that decision was reversed
+deliberately. The reasoning of both positions is kept, because the trade is real
+and a reader deciding whether to copy this approach needs to see it.
 
-Before this layer it had close to none. Each of the three components carried its
-own copy of the field rules, every button said `font: inherit` and nothing else —
-so a user agent button sat between two styled inputs at a different height — and
-the error colour was written as a literal `#a4141a` in three files that had
-already started to drift apart.
+**What the shadow root bought.** The component could not be broken by a theme it
+knew nothing about. Its class names could not collide with anything. A site
+could restyle it only through custom properties, which are the one thing that
+crosses the boundary, and that was the whole theming interface.
 
-Custom properties are the one thing that does cross a shadow boundary, so they
-are the whole interface: **every value the components use is a token, and a site
-themes the surface by setting tokens.**
+**What it cost, and why the cost won.** A boundary that cannot be crossed cannot
+be crossed *in either direction*. Three things this proof of concept has to
+demonstrate were impossible behind it:
 
-## Three modules, and what each is for
+- A site cannot style the surface with its own rules. A theme's `.button` can
+  never reach a button inside a shadow root, so the surface can only ever look
+  like itself in a page that looks like something else.
+- A project cannot add a class to a control. A class inside a shadow root is not
+  selectable from outside it, so per-element class configuration would be inert.
+- Form controls cannot look like the site's other forms without every rule of
+  the site's form styling being restated inside the component.
 
-| Module        | Holds                                                               | Applied to     |
-|---------------|---------------------------------------------------------------------|----------------|
-| `tokens.ts`   | Every colour, distance, radius, duration and the measure. No rules. | `profileEdit`  |
-| `controls.ts` | Buttons, inputs, the focus ring, the invalid ring.                  | all three      |
-| `field.ts`    | The label / value / actions / errors chrome of a field.             | the two fields |
+`::part()` was considered and closes only the first of the three: it exposes an
+element to be styled, and a theme still cannot apply its **existing** rules to
+it. Making the surface match a design system would still mean copying that design
+system into the component.
 
-They are `CSSResult` values, not stylesheets: lit takes an array for
-`static styles` and adopts each once per component, so importing the same module
-into three elements costs one constructed stylesheet, not three.
+So the components override `createRenderRoot()` to return `this`, and the page's
+CSS applies to everything they draw. **A host page can now break the surface**,
+exactly as it can break any other markup on the page. That is the trade, stated
+rather than hidden.
 
-## Only the outer element declares the tokens
+### What this changed, beyond the boundary itself
 
-`tokens` is part of `ProfileEditElement.styles` and of no other component. This
-is load bearing, and the mistake it prevents is invisible until somebody tries to
-theme the thing.
+Four consequences, three of which were found by running the suite rather than by
+reasoning about them.
 
-Custom properties inherit down the flattened tree, so a property set on
-`modern-extbase-frontend-edit-profile` reaches every shadow root below it. A site
-overrides one by declaring it on that element:
+**The stylesheet is no longer optional.** Lit only adopts `static styles` into a
+shadow root, so under light DOM it is silently ignored. The whole appearance is
+now in `frontend-edit.css`, and a page that fails to load it renders unstyled
+markup. This reverses the reasoning in the next section, which is kept below
+because it is exactly why the old arrangement existed.
+
+**Every rule had to be scoped.** Inside a shadow root `button { … }` meant
+"every button of this component". In the light DOM the identical rule means
+**every button on the page**, the site's own included. Every selector in
+`frontend-edit.css` is a descendant of `modern-extbase-frontend-edit-profile`,
+and nothing may be written unscoped.
+
+**Every class had to be prefixed.** `.field`, `.record` and `.state` are names
+any site might already use — the development site package defines `.form-field`
+and `.card` itself. They are all `frontend-edit-` prefixed now, which is also
+what gives a project a stable hook to style against.
+
+**`id` had to become unique per instance.** In a shadow root `id="label"` was
+scoped to that root and every field could use it. In the light DOM all
+twenty-six fields share one document, so a fixed `aria-labelledby` resolves to
+the *first* field's label for every field on the page. Nothing throws, no test
+fails, and a screen reader reads the wrong label for all but one field. Both
+field elements carry a module level counter for this; scope and field name would
+not do, because a profile has one `line1` and four addresses have four.
+
+### The element has to take over from the server rendering
+
+This one was a visible defect, and the acceptance suite caught it immediately.
+
+The custom element wraps the server rendered profile — that markup is the
+no-JavaScript view. Under a shadow root, hiding it cost no code at all: light DOM
+children are not rendered unless a `<slot>` asks for them, so `render()` returned
+a `<slot>` while unenhanced and returned none once it had a profile.
+
+There is no equivalent in the light DOM, and nothing happens implicitly.
+`lit-html` **inserts** its parts into the container and leaves whatever is
+already there, so the server rendered profile stayed exactly where it was and
+the page showed the profile twice — once static, once live, with the static copy
+going stale on the first save.
+
+`ProfileEditElement` therefore removes those children explicitly, in
+`initialize()` and only once enhancement is certain. Removing them any earlier
+would take the fallback away from a visitor whose element is about to decide it
+*cannot* enhance, which is the one case the fallback exists for. It is a removal
+rather than a hide, because a hidden copy of the whole profile would still be in
+the document showing the values the page was loaded with.
+
+## The tokens still exist, and still live on the outer element
+
+Custom properties are no longer the *only* interface, but they are still the
+cheapest one, and the rule about where they are declared is unchanged:
 
 ```css
 modern-extbase-frontend-edit-profile {
@@ -52,36 +102,25 @@ modern-extbase-frontend-edit-profile {
 }
 ```
 
-That works because a declaration in the **outer** tree beats a `:host`
-declaration in the inner tree — the shipped value is a default, which is the
-relationship wanted.
+They are declared on that element and on nothing below it. Properties inherit,
+so one declaration reaches the whole surface; declaring them again on a child
+would be a **direct hit** on that child and would beat the inherited, overridden
+value, so a site's override would recolour the frame and nothing inside it.
 
-But the override lands on the *profile* element only, and reaches the field and
-image elements by inheritance. If those elements also declared the property on
-their own `:host`, that declaration would be a **direct hit** on the element and
-would beat the inherited, overridden value. The frame would change colour and
-every field inside it would keep the shipped default. Declaring the tokens once,
-at the top, is what makes the override reach the whole surface.
+## Why the tokens used to be in the component, and no longer are
 
-## Why the tokens are not in the stylesheet
+Worth keeping, because it documents what the light DOM gave up.
 
-The obvious alternative is `frontend-edit.css`, which is greppable without a
-build and is where a CSS author would look first. It was rejected.
+The tokens shipped inside the component so that the stylesheet could be a **pure
+addition**: a template that never called the asset ViewHelper, or a cache that
+served a stale `<head>`, left the page without it, and if the stylesheet had
+owned the tokens every `var()` would have been invalid at computed value time —
+unstyled text with nothing to indicate why.
 
-That stylesheet is an **optional page asset**. A template that never calls the
-asset ViewHelper, or a cache that served a stale `<head>`, leaves the page
-without it — and if it owned the tokens, every `var()` in every component would
-be invalid at computed value time. The surface would render as unstyled text with
-nothing to indicate why. Shipped inside the component, the tokens arrive with the
-code that consumes them, and the stylesheet is a pure addition that can go
-missing without taking the surface with it.
-
-The stylesheet does *read* the tokens — the dashed outline it draws around the
-element is `var(--frontend-edit-outline-color)`. That is safe without a fallback
-for a reason worth knowing: a rule applies to the same element that `:host`
-declares the properties on, so the values are there whenever the element is
-upgraded, and every declaration reading one is inside a block that
-`&:not(:defined)` switches off while it is not.
+That protection is gone, and it could not be kept: under light DOM the component
+has no stylesheet of its own to put them in. The stylesheet is emitted by
+`<f:asset.css>` from the plugin's own template, so it arrives whenever the plugin
+does, and the failure mode is now "no CSS at all" rather than "half a surface".
 
 ## What is deliberately not a token
 
@@ -237,7 +276,7 @@ alternatives were available and both are closed:
   Policy this extension declares, which permits the installation's own origin
   only.
 - **TYPO3's `IconFactory`, through a ViewHelper**, cannot reach these buttons.
-  Every action is rendered *client side*, in a shadow root, from JSON handed over
+  Every action is rendered *client side*, from JSON handed over
   in an attribute — by the time a button exists, Fluid has long finished.
 
 Inline SVG touches no CSP directive at all (markup is not a fetch), costs no
@@ -357,10 +396,16 @@ coverage that already exists, and two more images to re-record on every restyle.
 
 ## Class names are structural, not presentational
 
-`.field-value`, `.field-control`, `.field-errors` and `.record` are addressed by
-the acceptance suite — `Tests/Acceptance/Support/profileEditPage.ts` selects
-through them precisely because they describe structure and not appearance.
-Renaming one is a test change, not a styling change.
+`.frontend-edit-field-value`, `.frontend-edit-field-control`,
+`.frontend-edit-field-errors` and `.frontend-edit-record` are addressed by the
+acceptance suite — `Tests/Acceptance/Support/profileEditPage.ts` selects through
+them precisely because they describe structure and not appearance. Renaming one
+is a test change, not a styling change.
+
+**Every one of them is prefixed**, and that became load bearing with the light
+DOM rather than merely tidy: unprefixed, `.field` and `.record` would collide
+with the surrounding site in both directions — its rules would reach the surface
+by accident, and the surface's rules would reach its markup.
 
 ## What this layer does not do yet
 

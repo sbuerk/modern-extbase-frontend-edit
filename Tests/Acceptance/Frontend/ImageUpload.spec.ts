@@ -75,12 +75,26 @@ test.describe('The profile image', (): void => {
         const source = await surface.enhancedImage.getAttribute('src');
         expect(source).not.toBeNull();
 
-        await page.reload();
+        const reloaded = await page.reload();
         await surface.waitForEnhancement();
 
-        // The markup the server sent, not the surface the component drew: the
-        // `Profile/Image` partial is the no-JavaScript view of this page.
-        await expect(surface.servedImage).toHaveAttribute('src', source ?? '');
+        /*
+         * The markup the server sent, not the surface the component drew - read
+         * from the response body rather than from the DOM.
+         *
+         * It used to be a DOM assertion, and it cannot be one any more: the
+         * element renders into the light DOM now and removes the server rendered
+         * view when it takes over, so by the time the page has enhanced there is
+         * nothing left of the `Profile/Image` partial to look at. Under a shadow
+         * root the same markup stayed in the document, unrendered, and could be
+         * queried.
+         *
+         * The response body is a better answer to the same question anyway. It
+         * is what the server actually sent, uncontaminated by anything the
+         * component did afterwards, which is precisely what this assertion has
+         * always claimed to check.
+         */
+        expect(await reloaded?.text()).toContain(`src="${source ?? ''}"`);
         // And the attribute the document travels in, which is what the surface
         // is rebuilt from after the reload.
         await expect(surface.element).toHaveAttribute('data-profile', new RegExp(`"publicUrl":"${source}"`));

@@ -131,7 +131,24 @@ test.describe('Progressive enhancement', (): void => {
         expect(pageErrors).toEqual([]);
     });
 
-    test('the upgraded element does not slot its light DOM children', async ({
+    /**
+     * The replacement for a test that asserted the opposite mechanism.
+     *
+     * While the components rendered into a shadow root this read "the upgraded
+     * element does not slot its light DOM children": the server rendered view
+     * stayed in the document and was simply never rendered, because the shadow
+     * root contained no `<slot>`. Hiding it cost no code.
+     *
+     * In the light DOM there is no such thing. `lit-html` inserts its parts into
+     * the container and leaves whatever is already there, so the fallback would
+     * be displayed *beside* the editing surface - the profile twice, once
+     * static and once live, with the static copy going stale on the first save.
+     * The element therefore removes it explicitly when it takes over.
+     *
+     * The two assertions below are the ones that matter about that: it is gone,
+     * and the surface that replaced it is real.
+     */
+    test('the upgraded element replaces the server rendered view', async ({
         page,
         loginAs,
     }): Promise<void> => {
@@ -140,13 +157,18 @@ test.describe('Progressive enhancement', (): void => {
         await surface.open();
         await surface.waitForEnhancement();
 
-        // The server rendered view is still in the document - that is what makes
-        // it the fallback - but the shadow root renders no <slot>, so none of it
-        // is displayed next to the editing surface.
-        await expect(surface.element.locator('h3.modern-extbase-frontend-edit-profile-name')).toHaveCount(1);
-        await expect(surface.element.locator('h3.modern-extbase-frontend-edit-profile-name')).toBeHidden();
-        expect(await page.evaluate((): number =>
-            document.querySelector('modern-extbase-frontend-edit-profile')?.shadowRoot
-                ?.querySelectorAll('slot').length ?? -1)).toBe(0);
+        // Not merely hidden: removed. A hidden copy of the whole profile would
+        // still be in the document, and would still be showing the values the
+        // page was loaded with after the first save.
+        await expect(surface.element.locator('h3.modern-extbase-frontend-edit-profile-name')).toHaveCount(0);
+
+        // And nothing renders into a shadow root any more, which is the change
+        // that made the removal necessary in the first place.
+        expect(await page.evaluate((): boolean =>
+            document.querySelector('modern-extbase-frontend-edit-profile')?.shadowRoot === null)).toBe(true);
+
+        // The surface itself is there, in the light DOM, where the page can see
+        // it.
+        await expect(surface.field('profile', 'firstname')).toHaveCount(1);
     });
 });

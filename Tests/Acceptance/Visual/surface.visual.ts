@@ -86,7 +86,7 @@ test.describe('The editing surface', (): void => {
 
         // Its identity and the toolbar that acts on it, including the four
         // icon-only buttons and the disabled `Move up` of the first row.
-        await expect(surface.childRow('address:2').locator('.child-header'))
+        await expect(surface.childRow('address:2').locator('.frontend-edit-child-header'))
             .toHaveScreenshot('child-header.png');
     });
 
@@ -98,7 +98,7 @@ test.describe('The editing surface', (): void => {
 
         // The one row that carries the state badge, and the one that draws the
         // open eye rather than the struck-through one.
-        await expect(surface.childRow('address:4').locator('.child-header'))
+        await expect(surface.childRow('address:4').locator('.frontend-edit-child-header'))
             .toHaveScreenshot('child-header-hidden.png');
     });
 
