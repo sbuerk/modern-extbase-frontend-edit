@@ -369,11 +369,12 @@ The fix is the standard one, and it is worth knowing why each half is needed:
 component: it is a control, and that is the module that makes a control look like
 one.
 
-## The appearance is guarded by seven baselines
+## The appearance is guarded by ten baselines
 
-`Tests/Acceptance/Visual/surface.visual.ts` compares seven components against
-committed PNGs: a field at rest, a field being edited, a rejected field, a child
-header, a hidden child header, the image row, and a field in a narrow column.
+`Tests/Acceptance/Visual/surface.visual.ts` compares ten components against
+committed PNGs. Seven in the light scheme: a field at rest, a field being edited,
+a rejected field, a child header, a hidden child header, the image row, and a
+field in a narrow column. Three of those again in dark — see below.
 
 ```bash
 Build/Scripts/runTests.sh -s visualRegression                      # the gate
@@ -393,7 +394,8 @@ Four things about it are decisions rather than defaults:
   large binary that fails on any change anywhere and names none of them. All
   seven together are 56 kB.
 - **`maxDiffPixels: 60`, measured not estimated.** Raising
-  `--frontend-edit-border-width` from `1px` to `2px` fails all seven, and the
+  `--frontend-edit-border-width` from `1px` to `2px` fails all seven light
+  baselines, and the
   smallest of them differs by 188 pixels. A change small enough to slip through
   is smaller than a border.
 - **`deviceScaleFactor: 1`**, unlike the documentation screenshots. A 2×
@@ -403,10 +405,27 @@ Four things about it are decisions rather than defaults:
   which would invite a second set recorded on a host — and a host run is exactly
   the one with different fonts. One set, recorded in the container, is the point.
 
-**No dark scheme baseline.** `prefers-color-scheme` can be emulated and the eight
-dark tokens would then be pinned, but a second set doubles what a restyle has to
-re-record, and the dark values are a courtesy rather than a supported theme.
-Named rather than hidden.
+**Three of the ten baselines are dark**, and that reverses an earlier decision.
+The dark scheme used to be pinned by nothing, on the argument that a second set
+doubles what a restyle must re-record and that the dark values are a courtesy
+rather than a supported theme. The first half of that is true and is why there
+are three rather than seven; the second half stopped being a reason once two
+stylesheets were drawing a dark scheme that nobody had ever looked at.
+
+`colorScheme: 'dark'` emulates `prefers-color-scheme`, and one context option
+flips both stylesheets: the site package applies its dark palette inside the
+media query to `body[data-color-scheme="auto"]`, which is what the instance
+renders. No instance configuration is touched.
+
+The three are chosen by where a dark palette actually goes wrong — the base
+contrast, the danger state, and a child header full of `currentColor` icons and
+border tokens. Breaking one dark-only token proves the point: it reddens exactly
+one dark baseline and **none** of the seven light ones, which is coverage no
+light baseline could ever provide.
+
+A site that *pins* `light` or `dark` through the site setting is still not
+covered, and neither is legibility — these pin that the dark scheme has not
+**changed**, not that it is readable.
 
 **And the manual is guarded separately.**
 `Build/Scripts/runTests.sh -s checkDocumentationScreenshots` compares the six

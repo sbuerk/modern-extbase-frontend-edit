@@ -259,8 +259,9 @@ TYPO3 core reaches this extension as a broken page rather than as a red gate.
 
 ## The visual regression suite rides on it too
 
-`runTests.sh -s visualRegression` compares seven components of the surface
-against committed PNG baselines, using the same instance, page object and reset.
+`runTests.sh -s visualRegression` compares ten components of the surface
+against committed PNG baselines — seven in the light scheme and three in dark —
+using the same instance, page object and reset.
 Four suites now share the harness, and the ones that photograph something are
 easy to confuse:
 
