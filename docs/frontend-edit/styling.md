@@ -172,7 +172,8 @@ counterpart. Mapping by name would move the dialog and the stored image from 8 t
 
 **Colour cannot be mapped that way.** Four of the ten agree exactly — white, and
 both danger values — and the other six do not, the accent included. Wiring all
-ten therefore moves pixels, and four of the six documentation screenshots were
+ten therefore moves pixels, and four of the six documentation screenshots then
+in the manual were
 re-recorded with it; mapping only the four that already agreed would have left
 the drift exactly where it was.
 
@@ -517,7 +518,8 @@ places no baseline crops. The buttons and controls in these shots already took
 the theme's accent through a configured class; the dashed frame that would have
 shown it is on the surface element, *outside* every component crop.
 
-The same wiring moved four of the six documentation screenshots by thousands of
+The same wiring moved four of the six documentation screenshots the manual then
+had by thousands of
 pixels, so the manual's shots are the ones with the wider view. What covers the
 gap directly is a DOM assertion:
 `ThemeOverride.spec.ts` reads the border colour of the state badge — an element
@@ -530,8 +532,9 @@ without moving a baseline: **a pixel comparison is not a substitute for an
 assertion about a thing you can name.**
 
 **And the manual is guarded separately.**
-`Build/Scripts/runTests.sh -s checkDocumentationScreenshots` compares the six
-screenshots `Documentation/` embeds against the surface they claim to show. It
+`Build/Scripts/runTests.sh -s checkDocumentationScreenshots` compares the twelve
+screenshots `Documentation/` embeds — six states in two colour schemes — against
+the surface they claim to show. It
 covers two states these baselines deliberately do not — the anonymous visitor and
 the JavaScript-disabled fallback — so a styling change that only affects those
 still fails something. Together the two suites are why there is **no** baseline

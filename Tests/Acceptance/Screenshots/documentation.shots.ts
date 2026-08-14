@@ -39,7 +39,7 @@ import { expect, test } from '../fixtures';
 import { ProfileEditPage } from '../Support/profileEditPage';
 import { assertShotIsCurrent } from '../Support/screenshotComparison';
 import { orphanedShotImages, unresolvableEmbeds, unusedImages } from '../Support/screenshotWiring';
-import { defaults, shots } from '../../../Build/playwright/screenshots.config';
+import { defaults, variants } from '../../../Build/playwright/screenshots.config';
 
 // `__dirname`, not `import.meta.dirname`: the latter makes the file an ES
 // module, and the Playwright transform emits CommonJS for the test files it
@@ -56,19 +56,28 @@ const imageRoot = resolve(__dirname, '../../../Documentation/files/images');
  */
 const checking = process.env.DOCUMENTATION_SCREENSHOTS === 'check';
 
-for (const shot of shots) {
-    // A describe block per shot, because viewport, device scale factor and
-    // "javaScriptEnabled" are *context* options: they have to be set before the
-    // page exists, and "test.use()" is the only way to do that per test. Setting
-    // the viewport on a live page would apply the first but silently ignore the
-    // other two, which is exactly the defect this shape prevents - a shot of the
-    // server rendered fallback taken with JavaScript enabled looks entirely
-    // plausible and shows the wrong thing.
-    test.describe(shot.name, (): void => {
+for (const { shot, scheme, name, output } of variants) {
+    // A describe block per variant, because viewport, device scale factor,
+    // "javaScriptEnabled" and "colorScheme" are all *context* options: they have
+    // to be set before the page exists, and "test.use()" is the only way to do
+    // that per test. Setting the viewport on a live page would apply the first
+    // but silently ignore the rest, which is exactly the defect this shape
+    // prevents - a shot of the server rendered fallback taken with JavaScript
+    // enabled looks entirely plausible and shows the wrong thing.
+    //
+    // "colorScheme" emulates "prefers-color-scheme", which is enough to flip
+    // both stylesheets at once: the site package applies its dark palette inside
+    // that media query to "body[data-color-scheme='auto']", and "auto" is what
+    // this instance renders. No site configuration is touched, and the pinned
+    // scheme sites that "PinnedColorScheme.spec.ts" needs are deliberately not
+    // used here - the manual illustrates what a *visitor* sees, not how an
+    // integrator configured the fixture.
+    test.describe(name, (): void => {
         test.use({
             viewport: shot.viewport ?? defaults.viewport,
             deviceScaleFactor: defaults.deviceScaleFactor,
             javaScriptEnabled: shot.javaScriptEnabled ?? true,
+            colorScheme: scheme,
         });
 
         test(checking ? 'is up to date' : 'is generated', async ({ page, loginAs }): Promise<void> => {
@@ -116,11 +125,11 @@ for (const shot of shots) {
                 caret: 'hide',
                 animations: 'disabled',
             });
-            const file = resolve(imageRoot, shot.output);
+            const file = resolve(imageRoot, output);
             const avif = await sharp(png).avif(defaults.avif).toBuffer();
 
             if (checking) {
-                await assertShotIsCurrent(file, avif, shot.name);
+                await assertShotIsCurrent(file, avif, name);
 
                 return;
             }
@@ -138,7 +147,7 @@ if (checking) {
     // these: adding a shot means generating an image that no chapter embeds yet.
     test.describe('the documentation images', (): void => {
         test('are all produced by a configured shot', (): void => {
-            const orphans = orphanedShotImages(shots.map((shot): string => shot.output));
+            const orphans = orphanedShotImages(variants.map((variant): string => variant.output));
 
             expect(
                 orphans,

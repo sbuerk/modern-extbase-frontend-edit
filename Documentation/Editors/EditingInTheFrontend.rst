@@ -11,6 +11,18 @@ It shows one profile — theirs — and, depending on who is looking and on the
 state of the installation, either an editing surface or a plain rendering of
 the same record.
 
+..  note::
+
+    Every screenshot on this page is shown in both colour schemes, on a
+    :guilabel:`Light` and a :guilabel:`Dark` tab. Switching one switches them
+    all, so the page can be read through in either scheme.
+
+    What the surface looks like is a website's decision rather than this
+    extension's: it is drawn from custom properties a site declares, and the
+    screenshots here are taken on the development site package this repository
+    tests with. Colours, spacing and control shapes will be the website's own.
+    → :ref:`configuration-styling`
+
 ..  _editors-editing-in-the-frontend-states:
 
 The four states of the edit plugin
@@ -23,12 +35,22 @@ Nobody is logged in
     A sentence asks the visitor to log in. Nothing else is rendered, and no
     profile data reaches the page.
 
-    ..  figure:: /files/images/frontend-edit/anonymous.avif
-        :alt: The heading "Your profile", followed by the sentence "You are not logged in. Log in to view and edit your profile."
-        :class: with-border
+    ..  tabs::
 
-        A visitor who is not logged in is told so in one sentence — no form, no
-        error page.
+        ..  group-tab:: Light
+
+            ..  figure:: /files/images/frontend-edit/anonymous-light.avif
+                :alt: The heading "Your profile", followed by the sentence "You are not logged in. Log in to view and edit your profile." Light scheme.
+                :class: with-border
+
+        ..  group-tab:: Dark
+
+            ..  figure:: /files/images/frontend-edit/anonymous-dark.avif
+                :alt: The heading "Your profile", followed by the sentence "You are not logged in. Log in to view and edit your profile." Dark scheme.
+                :class: with-border
+
+    A visitor who is not logged in is told so in one sentence — no form, no
+    error page.
 
     ..  note::
 
@@ -62,14 +84,24 @@ JavaScript switched off, a script that did not load, a page type for the
 editing requests that nothing answers — the rendered record is what stays on
 the page.
 
-..  figure:: /files/images/frontend-edit/server-rendered.avif
-    :alt: The profile of Ada Lovelace as plain HTML: the name as a heading, a birthday and a biography, a list of four addresses of which the last is marked "Hidden", and a list of two e-mail addresses rendered as links.
-    :class: with-border
+..  tabs::
 
-    The same profile with the editing component absent: name, birthday,
-    biography, addresses and e-mail addresses, and not a single control. The
-    hidden address is in the list and marked as hidden, because this view is
-    the owner's.
+    ..  group-tab:: Light
+
+        ..  figure:: /files/images/frontend-edit/server-rendered-light.avif
+            :alt: The profile of Ada Lovelace as plain HTML: the name as a heading, a birthday and a biography, a list of four addresses of which the last is marked "Hidden", and a list of two e-mail addresses rendered as links. Light scheme.
+            :class: with-border
+
+    ..  group-tab:: Dark
+
+        ..  figure:: /files/images/frontend-edit/server-rendered-dark.avif
+            :alt: The profile of Ada Lovelace as plain HTML: the name as a heading, a birthday and a biography, a list of four addresses of which the last is marked "Hidden", and a list of two e-mail addresses rendered as links. Dark scheme.
+            :class: with-border
+
+The same profile with the editing component absent: name, birthday,
+biography, addresses and e-mail addresses, and not a single control. The
+hidden address is in the list and marked as hidden, because this view is
+the owner's.
 
 What is missing in that situation is the editing, never the content, and never
 an error page. An editor can leave the plugin on the page in any of those
@@ -84,19 +116,29 @@ Once the component has loaded, it replaces the rendered record with its own
 surface. Everything the surface can change is inside it, so the page can never
 show a stale value next to a fresh one.
 
-..  figure:: /files/images/frontend-edit/owner-view.avif
-    :alt: The editing surface at rest: an "Edit all fields" button, the portrait with a file control and a disabled "Remove" button, the five profile fields each with their value and an "Edit" button, then the addresses and e-mail addresses, each record with its own buttons and each section ending in an empty form with an "Add" button.
-    :class: with-border
+..  tabs::
 
-    The surface at rest. Every field shows its stored value with an
-    :guilabel:`Edit` button next to it; each record carries an :guilabel:`Edit
-    all fields` button of its own; each child record adds :guilabel:`Move to
-    top`, :guilabel:`Move up`, :guilabel:`Move down`, :guilabel:`Move to
-    bottom`, :guilabel:`Hide` and :guilabel:`Remove`; each collection ends in
-    an :guilabel:`Add` button that opens a dialog; and each
-    collection ends in an empty form for a new entry. The hidden address is
-    marked :guilabel:`Hidden` and offers :guilabel:`Show` instead of
-    :guilabel:`Hide`.
+    ..  group-tab:: Light
+
+        ..  figure:: /files/images/frontend-edit/owner-view-light.avif
+            :alt: The editing surface at rest: an "Edit all fields" button, the portrait with a file control and a disabled "Remove" button, the five profile fields each with their value and an "Edit" button, then the addresses and e-mail addresses, each record with its own buttons and each section ending in an empty form with an "Add" button. Light scheme.
+            :class: with-border
+
+    ..  group-tab:: Dark
+
+        ..  figure:: /files/images/frontend-edit/owner-view-dark.avif
+            :alt: The editing surface at rest: an "Edit all fields" button, the portrait with a file control and a disabled "Remove" button, the five profile fields each with their value and an "Edit" button, then the addresses and e-mail addresses, each record with its own buttons and each section ending in an empty form with an "Add" button. Dark scheme.
+            :class: with-border
+
+The surface at rest. Every field shows its stored value with an
+:guilabel:`Edit` button next to it; each record carries an :guilabel:`Edit
+all fields` button of its own; each child record adds :guilabel:`Move to
+top`, :guilabel:`Move up`, :guilabel:`Move down`, :guilabel:`Move to
+bottom`, :guilabel:`Hide` and :guilabel:`Remove`; each collection ends in
+an :guilabel:`Add` button that opens a dialog; and each
+collection ends in an empty form for a new entry. The hidden address is
+marked :guilabel:`Hidden` and offers :guilabel:`Show` instead of
+:guilabel:`Hide`.
 
 Every save is answered with the profile as it is stored **afterwards**, and
 that answer is what the page then shows. A value the server trims or normalises
@@ -112,11 +154,21 @@ Editing one field
 cursor in it. :guilabel:`Apply` sends **only that field**;
 :guilabel:`Cancel` closes it again without sending anything.
 
-..  figure:: /files/images/frontend-edit/field-open.avif
-    :alt: The field "First name" switched into a text control holding "Ada", with an "Apply" and a "Cancel" button to its right.
-    :class: with-border
+..  tabs::
 
-    One field open for editing. Two buttons, and they act on this field alone.
+    ..  group-tab:: Light
+
+        ..  figure:: /files/images/frontend-edit/field-open-light.avif
+            :alt: The field "First name" switched into a text control holding "Ada", with an "Apply" and a "Cancel" button to its right. Light scheme.
+            :class: with-border
+
+    ..  group-tab:: Dark
+
+        ..  figure:: /files/images/frontend-edit/field-open-dark.avif
+            :alt: The field "First name" switched into a text control holding "Ada", with an "Apply" and a "Cancel" button to its right. Dark scheme.
+            :class: with-border
+
+One field open for editing. Two buttons, and they act on this field alone.
 
 :guilabel:`Cancel` puts the field back to the value the server last confirmed —
 which, after a save in the same visit, is that saved value rather than the one
@@ -147,12 +199,22 @@ Editing a whole record
 replaces itself with :guilabel:`Save all fields` and :guilabel:`Cancel`. All
 fields are then sent in a single request.
 
-..  figure:: /files/images/frontend-edit/record-open.avif
-    :alt: The profile record fully open: "Save all fields" and "Cancel" at the top, and the short name, first name, last name, birthday and biography all as controls, while the addresses and e-mail addresses below stay in their read view with their own Edit buttons.
-    :class: with-border
+..  tabs::
 
-    The profile record open as a whole. The child records below are untouched
-    by it — each carries its own :guilabel:`Edit all fields`.
+    ..  group-tab:: Light
+
+        ..  figure:: /files/images/frontend-edit/record-open-light.avif
+            :alt: The profile record fully open: "Save all fields" and "Cancel" at the top, and the short name, first name, last name, birthday and biography all as controls, while the addresses and e-mail addresses below stay in their read view with their own Edit buttons. Light scheme.
+            :class: with-border
+
+    ..  group-tab:: Dark
+
+        ..  figure:: /files/images/frontend-edit/record-open-dark.avif
+            :alt: The profile record fully open: "Save all fields" and "Cancel" at the top, and the short name, first name, last name, birthday and biography all as controls, while the addresses and e-mail addresses below stay in their read view with their own Edit buttons. Dark scheme.
+            :class: with-border
+
+The profile record open as a whole. The child records below are untouched
+by it — each carries its own :guilabel:`Edit all fields`.
 
 The two modes are labelled differently on purpose: they sit next to each other
 on the same surface, and :guilabel:`Apply` on one field means something else
@@ -202,17 +264,17 @@ The buttons of a record are:
         -   Send the record to one end of the collection in a single step,
             rather than repeating :guilabel:`Move up` for a long list.
 
+    *   -   :guilabel:`Hide`, :guilabel:`Show`
+        -   Take the record off the list and the detail page, or put it back. A
+            hidden record stays in this surface and is marked
+            :guilabel:`Hidden`, which is why the owner can find it again.
+
 ..  note::
     A reordering action is **not shown** on a record it could not move: the
     first record of a collection offers no :guilabel:`Move up` or
     :guilabel:`Move to top`, and the last offers no :guilabel:`Move down` or
     :guilabel:`Move to bottom`. A collection with only one record shows none of
     the four.
-
-    *   -   :guilabel:`Hide`, :guilabel:`Show`
-        -   Take the record off the list and the detail page, or put it back. A
-            hidden record stays in this surface and is marked
-            :guilabel:`Hidden`, which is why the owner can find it again.
 
 Every one of these takes effect immediately and is stored; none of them waits
 for a save step.
@@ -250,12 +312,22 @@ When a change is refused
 A rejected save keeps what was typed and shows the reason at the field it
 belongs to, so nothing has to be entered again. Nothing is stored.
 
-..  figure:: /files/images/frontend-edit/field-rejected.avif
-    :alt: The field "Short name" open and empty, its control outlined in red, "Apply" and "Cancel" still beside it, and the message "Enter a short name." below it.
-    :class: with-border
+..  tabs::
 
-    A refused value. The field stays open with the typed value in it, and the
-    reason is shown where the value is.
+    ..  group-tab:: Light
+
+        ..  figure:: /files/images/frontend-edit/field-rejected-light.avif
+            :alt: The field "Short name" open and empty, its control outlined in red, "Apply" and "Cancel" still beside it, and the message "Enter a short name." below it. Light scheme.
+            :class: with-border
+
+    ..  group-tab:: Dark
+
+        ..  figure:: /files/images/frontend-edit/field-rejected-dark.avif
+            :alt: The field "Short name" open and empty, its control outlined in red, "Apply" and "Cancel" still beside it, and the message "Enter a short name." below it. Dark scheme.
+            :class: with-border
+
+A refused value. The field stays open with the typed value in it, and the
+reason is shown where the value is.
 
 Failures that are not about the value itself are reported as one sentence for
 the whole record:

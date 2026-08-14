@@ -43,10 +43,22 @@ import type { Role } from '../../Tests/Acceptance/fixtures';
 import type { ProfileEditPage } from '../../Tests/Acceptance/Support/profileEditPage';
 
 export interface Shot {
-    /** Identifies the shot, and selects it: `-- --grep edit-owner-idle`. */
+    /**
+     * Identifies the state. The scheme is appended to it, so this is a prefix
+     * of two test names rather than a test name — `-- --grep edit-owner-idle`
+     * still selects both, and `edit-owner-idle-dark` selects one.
+     */
     readonly name: string;
-    /** Path below `Documentation/files/images/`, subdirectory included. */
-    readonly output: string;
+    /**
+     * Path below `Documentation/files/images/`, subdirectory included, **and
+     * without the scheme suffix or the file extension**. Both are appended by
+     * {@see variants}.
+     *
+     * A base rather than a finished path is what makes a shot that exists in
+     * only one scheme unrepresentable. There is no generic `anonymous.avif`
+     * any more: every file says which scheme it is.
+     */
+    readonly outputBase: string;
     /** `null` for a visitor who is not logged in. */
     readonly as: Role | null;
     /** Everything to do before the shutter. */
@@ -82,20 +94,20 @@ export const defaults = {
 export const shots: readonly Shot[] = [
     {
         name: 'edit-anonymous',
-        output: 'frontend-edit/anonymous.avif',
+        outputBase: 'frontend-edit/anonymous',
         as: null,
         clip: '.modern-extbase-frontend-edit-profile-edit',
     },
     {
         name: 'edit-server-rendered',
-        output: 'frontend-edit/server-rendered.avif',
+        outputBase: 'frontend-edit/server-rendered',
         as: 'owner',
         javaScriptEnabled: false,
         clip: '.modern-extbase-frontend-edit-profile-edit',
     },
     {
         name: 'edit-owner-idle',
-        output: 'frontend-edit/owner-view.avif',
+        outputBase: 'frontend-edit/owner-view',
         as: 'owner',
         prepare: async (surface: ProfileEditPage): Promise<void> => {
             await surface.waitForEnhancement();
@@ -104,7 +116,7 @@ export const shots: readonly Shot[] = [
     },
     {
         name: 'edit-field-open',
-        output: 'frontend-edit/field-open.avif',
+        outputBase: 'frontend-edit/field-open',
         as: 'owner',
         prepare: async (surface: ProfileEditPage): Promise<void> => {
             await surface.waitForEnhancement();
@@ -117,7 +129,7 @@ export const shots: readonly Shot[] = [
     },
     {
         name: 'edit-field-rejected',
-        output: 'frontend-edit/field-rejected.avif',
+        outputBase: 'frontend-edit/field-rejected',
         as: 'owner',
         prepare: async (surface: ProfileEditPage): Promise<void> => {
             await surface.waitForEnhancement();
@@ -129,7 +141,7 @@ export const shots: readonly Shot[] = [
     },
     {
         name: 'edit-record-open',
-        output: 'frontend-edit/record-open.avif',
+        outputBase: 'frontend-edit/record-open',
         as: 'owner',
         prepare: async (surface: ProfileEditPage): Promise<void> => {
             await surface.waitForEnhancement();
@@ -138,3 +150,46 @@ export const shots: readonly Shot[] = [
         clip: 'modern-extbase-frontend-edit-profile',
     },
 ];
+
+/**
+ * The colour schemes every shot is taken in.
+ *
+ * Both, always. The manual shows each state in two tabs, and a state that
+ * existed in one scheme only would render as a tab with a broken image in it —
+ * which is why this is not a per shot option. Adding a third scheme here would
+ * add a third image and a third tab to every chapter, and nothing else.
+ */
+export const schemes = ['light', 'dark'] as const;
+
+export type Scheme = (typeof schemes)[number];
+
+export interface ShotVariant {
+    readonly shot: Shot;
+    readonly scheme: Scheme;
+    /**
+     * Unique across the whole run, because it is two things at once: what
+     * `--grep` selects, and the directory a failed comparison writes
+     * `committed.png`, `taken.png` and `diff.png` into.
+     */
+    readonly name: string;
+    /** Path below `Documentation/files/images/`, extension included. */
+    readonly output: string;
+}
+
+/**
+ * Every shot in every scheme — the list both suites actually iterate.
+ *
+ * Derived rather than written out, so the twelve entries cannot disagree with
+ * the six states they come from, and so adding a state adds both of its images.
+ */
+export const variants: readonly ShotVariant[] = shots.flatMap(
+    (shot: Shot): readonly ShotVariant[] =>
+        schemes.map(
+            (scheme: Scheme): ShotVariant => ({
+                shot,
+                scheme,
+                name: `${shot.name}-${scheme}`,
+                output: `${shot.outputBase}-${scheme}.avif`,
+            }),
+        ),
+);
