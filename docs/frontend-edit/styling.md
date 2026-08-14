@@ -311,6 +311,45 @@ than eight literals, and it is not used: the browser floor of the import map
 mechanism is `chrome89 / firefox108 / safari16.4`, and `color-mix()` needs
 Chrome 111 and Firefox 113. It cannot be lowered by the build the way nesting can.
 
+## A derived token does not follow a scheme it was resolved above
+
+The focus ring shipped in the **light** accent on a dark page — `#2563a8` against
+`#171c21`, **2.80:1**, under the 3:1 that WCAG 1.4.11 asks of a focus indicator.
+The cause is worth more than the fix, because it is a shape rather than a value:
+
+```css
+:root {
+    --c-accent: #2563a8;
+    --focus-color: var(--c-accent);   /* resolved to #2563a8 here, on :root */
+}
+
+body[data-color-scheme='dark'] {
+    --c-accent: #6ba4e0;              /* --focus-color cannot follow */
+}
+```
+
+A custom property is substituted **at computed value time on the element that
+declares it**. What inherits down from `:root` is the resolved colour, not the
+reference, so redefining `--c-accent` on `body` changes everything that reads it
+*directly* and nothing that read it one element higher.
+
+Every other role token in the theme is redefined in the scheme blocks anyway, so
+only this one was exposed — but a **new** token of the same shape would be, and
+the declaration gives no hint: it reads exactly like one that works.
+
+It also evaded every other suite. No visual baseline photographs a focused
+control, the contrast tests measure resting borders, and two documentation
+screenshots did contain the ring — where a slightly wrong blue looks entirely
+deliberate. Only measuring it found it.
+
+`Tests/Acceptance/Frontend/FocusRingContrast.spec.ts` therefore asserts the
+**mechanism** and not the colour: `--focus-color` resolved on `body` must equal
+`--c-accent` resolved on `body`. A token that goes stale fails on the cause.
+
+The ring is measured against the **page**, not against the control: it is an
+outline with `outline-offset: 2px`, so it does not touch the control, and both
+of its sides show what is painted behind it.
+
 ## Three border roles, because one of them is a requirement
 
 A border is not one thing. `--frontend-edit-color-border-control` draws the
