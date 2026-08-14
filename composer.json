@@ -101,7 +101,7 @@
         "typo3/cms": {
             "extension-key": "modern_extbase_frontend_edit",
             "web-dir": ".Build/Web",
-            "version": "1.0.0-dev",
+            "version": "1.0.0",
             "Package": {
                 "providesPackages": []
             }
