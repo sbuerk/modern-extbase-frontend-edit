@@ -431,6 +431,31 @@ the **smallest** of those differs by 8858 pixels against the 60 that are
 tolerated. The two that stay green are the ones that do not render the component
 at all, which is the cross-check that the gate is not simply failing everything.
 
+**A differing pixel count is not a measure of how much changed.** Both sides are
+whole-image AVIF encodes, and the encoder allocates bits across the whole frame,
+so changing one region shifts the quantisation of unrelated ones. Giving the
+control borders their own token moved a one pixel edge on a handful of controls
+and the dark owner view reported 8571 differing pixels — of which one connected
+region of 1408 was the actual change, the rest being sparse, low magnitude noise
+on text antialiasing far from anything that was touched.
+
+The consequence is a habit, not a threshold change: **read the diff by region,
+not by count.** The count says something moved; the regions say what. A quick way
+to separate the two, when the diff image is large enough that the red is hard to
+place:
+
+```bash
+cd .Build/Web/typo3temp/var/tests/screenshot-check-reports/<shot>
+convert committed.png taken.png -compose difference -composite \
+    -colorspace Gray -threshold 12% mask.png
+convert mask.png -define connected-components:verbose=true \
+    -define connected-components:area-threshold=400 -connected-components 8 null:
+```
+
+Every bounding box it lists should be a component you meant to change. One that
+is the size and position of a control is a restyle; one over a paragraph is a
+layout shift and a defect.
+
 On failure it writes `committed.png`, `taken.png` and `diff.png` per shot into
 `.Build/Web/typo3temp/var/tests/screenshot-check-reports/`, and CI uploads them.
 The failure message names the directory, because "9907 pixels differ" tells
