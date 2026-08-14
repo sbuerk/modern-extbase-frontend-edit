@@ -69,7 +69,21 @@
     --c-surface: var(--c-neutral-0);
     --c-surface-sunken: var(--c-neutral-10);
     --c-border: var(--c-neutral-30);
-    --c-border-strong: var(--c-neutral-40);
+
+    /*
+     * The border of something operable — this theme's own `.button` and
+     * `.form-control` take it, and the editing surface's control edge maps onto
+     * it. That makes it the token WCAG 1.4.11 lands on, and it owes 3:1 against
+     * the surfaces it is drawn between.
+     *
+     * It was `--c-neutral-40` and measured **2.18:1** against `--c-surface`,
+     * which is why every button and every input on this site had an edge that
+     * was decoration rather than information. `--c-neutral-50` is 3.71:1 against
+     * the surface, 3.49:1 against the page and 3.24:1 against the sunken fill —
+     * the darkest of the three is the one that has to clear, so all three are
+     * listed. The dark scheme was already on `--c-neutral-50` and is unchanged.
+     */
+    --c-border-strong: var(--c-neutral-50);
     --c-text: var(--c-neutral-90);
     --c-text-muted: var(--c-neutral-60);
     --c-text-inverted: var(--c-neutral-0);

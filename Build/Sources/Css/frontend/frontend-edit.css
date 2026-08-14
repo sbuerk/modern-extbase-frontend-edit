@@ -85,8 +85,36 @@
     --frontend-edit-color-accent-contrast: #ffffff;
     --frontend-edit-color-danger: #a4141a;
     --frontend-edit-color-danger-surface: #fdf2f2;
+
+    /*
+     * Three border roles, and they are three because WCAG 1.4.11 applies to
+     * exactly one of them.
+     *
+     * `-control` draws the resting edge of something operable — a button, the
+     * file picker label, an input, a select, a textarea. That edge is the only
+     * thing saying the control is there, so it is *visual information required
+     * to identify a user interface component* and owes 3:1 against both the fill
+     * it encloses and the page behind it. Every value here clears that against
+     * `--frontend-edit-color-surface` and `--frontend-edit-color-surface-sunken`
+     * with margin, in both schemes; `Tests/Acceptance/Frontend/ControlContrast`
+     * measures it rather than trusting this sentence.
+     *
+     * The plain token is decoration — separators, the dialog frame, the badge,
+     * the image frame, the marker on a child's leading edge. None of them
+     * identifies a control, none of them owes 3:1, and holding a hairline to a
+     * control's contrast turns the surface into a stack of boxes.
+     *
+     * `-strong` is the emphasis step, one beyond `-control`: the hover edge and
+     * the dashed frame of a child being added. It has to stay *past* the resting
+     * edge, which is why it moved when `-control` arrived — at the old value the
+     * hover state would have been the lighter of the two and read as the control
+     * going quiet under the pointer.
+     *
+     * Before the split one token drew all three, at 1.6:1 against its own fill.
+     */
     --frontend-edit-color-border: #c7ccd1;
-    --frontend-edit-color-border-strong: #8b9299;
+    --frontend-edit-color-border-control: #7d838a;
+    --frontend-edit-color-border-strong: #656d75;
     --frontend-edit-color-surface: #ffffff;
     --frontend-edit-color-surface-sunken: #f2f4f5;
     --frontend-edit-color-muted: #5c6469;
@@ -177,7 +205,8 @@ modern-extbase-frontend-edit-profile {
         --frontend-edit-color-danger: #ef8f93;
         --frontend-edit-color-danger-surface: #3a2224;
         --frontend-edit-color-border: #3c444c;
-        --frontend-edit-color-border-strong: #6a747d;
+        --frontend-edit-color-border-control: #79848e;
+        --frontend-edit-color-border-strong: #9aa4ae;
         --frontend-edit-color-surface: #262c33;
         --frontend-edit-color-surface-sunken: #1d2228;
         --frontend-edit-color-muted: #a3acb4;
@@ -262,7 +291,7 @@ modern-extbase-frontend-edit-profile button,
     gap: var(--frontend-edit-space-xs);
     min-height: var(--frontend-edit-control-min-height);
     padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
-    border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+    border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border-control);
     border-radius: var(--frontend-edit-radius);
     background-color: var(--frontend-edit-color-surface);
     color: inherit;
@@ -388,7 +417,7 @@ modern-extbase-frontend-edit-profile button[data-icon-only] .frontend-edit-butto
 :where(modern-extbase-frontend-edit-profile) :where(textarea) {
     min-height: var(--frontend-edit-control-min-height);
     padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
-    border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+    border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border-control);
     border-radius: var(--frontend-edit-radius);
     background-color: var(--frontend-edit-color-surface);
     color: inherit;

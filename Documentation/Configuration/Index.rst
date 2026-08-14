@@ -56,8 +56,8 @@ Two things are configured outside that set, and each has a page of its own
 because neither is a value to fill in.
 
 *   **The appearance** of the editing surface, which is changed with CSS custom
-    properties rather than with settings, because the surface is drawn inside a
-    shadow root that no stylesheet reaches. See :ref:`configuration-styling`.
+    properties and with class names the installation configures, rather than with
+    settings. See :ref:`configuration-styling`.
 
 *   **The Content Security Policy** the extension declares. Nothing has to be
     enabled for it, and on an installation without frontend CSP it has no

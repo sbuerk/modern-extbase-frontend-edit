@@ -96,7 +96,24 @@ modern-extbase-frontend-edit-profile {
     --frontend-edit-color-danger: var(--c-danger);
     --frontend-edit-color-danger-surface: var(--c-danger-soft);
     --frontend-edit-color-border: var(--c-border);
-    --frontend-edit-color-border-strong: var(--c-border-strong);
+
+    /*
+     * The two control border roles, mapped onto what this theme already decided
+     * for its own controls rather than onto tokens invented for the surface.
+     *
+     * `--c-border-strong` is what `_button.css` and `_form.css` draw a resting
+     * control with, so the surface's resting control edge is the same edge — the
+     * distinction the surface needed already existed here, it was simply not
+     * reachable through the one border token the surface used to have.
+     *
+     * The emphasis step maps to `--c-text-muted` because that is this theme's
+     * answer to the same question: `.form-control:hover` moves its border there.
+     * A fourth border token would have been a token the theme owns for the
+     * plugin's benefit, which is the wrong direction — the theme decides, the
+     * surface follows.
+     */
+    --frontend-edit-color-border-control: var(--c-border-strong);
+    --frontend-edit-color-border-strong: var(--c-text-muted);
     --frontend-edit-color-surface: var(--c-surface);
     --frontend-edit-color-surface-sunken: var(--c-surface-sunken);
     --frontend-edit-color-muted: var(--c-text-muted);

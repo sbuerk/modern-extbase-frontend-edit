@@ -7,7 +7,8 @@
   --frontend-edit-color-danger: #a4141a;
   --frontend-edit-color-danger-surface: #fdf2f2;
   --frontend-edit-color-border: #c7ccd1;
-  --frontend-edit-color-border-strong: #8b9299;
+  --frontend-edit-color-border-control: #7d838a;
+  --frontend-edit-color-border-strong: #656d75;
   --frontend-edit-color-surface: #ffffff;
   --frontend-edit-color-surface-sunken: #f2f4f5;
   --frontend-edit-color-muted: #5c6469;
@@ -53,7 +54,8 @@ modern-extbase-frontend-edit-profile {
     --frontend-edit-color-danger: #ef8f93;
     --frontend-edit-color-danger-surface: #3a2224;
     --frontend-edit-color-border: #3c444c;
-    --frontend-edit-color-border-strong: #6a747d;
+    --frontend-edit-color-border-control: #79848e;
+    --frontend-edit-color-border-strong: #9aa4ae;
     --frontend-edit-color-surface: #262c33;
     --frontend-edit-color-surface-sunken: #1d2228;
     --frontend-edit-color-muted: #a3acb4;
@@ -82,7 +84,7 @@ modern-extbase-frontend-edit-profile button,
   gap: var(--frontend-edit-space-xs);
   min-height: var(--frontend-edit-control-min-height);
   padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
-  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border-control);
   border-radius: var(--frontend-edit-radius);
   background-color: var(--frontend-edit-color-surface);
   color: inherit;
@@ -160,7 +162,7 @@ modern-extbase-frontend-edit-profile button[data-icon-only] .frontend-edit-butto
 :where(modern-extbase-frontend-edit-profile) :where(textarea) {
   min-height: var(--frontend-edit-control-min-height);
   padding: var(--frontend-edit-control-padding-block) var(--frontend-edit-control-padding-inline);
-  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border);
+  border: var(--frontend-edit-border-width) solid var(--frontend-edit-color-border-control);
   border-radius: var(--frontend-edit-radius);
   background-color: var(--frontend-edit-color-surface);
   color: inherit;

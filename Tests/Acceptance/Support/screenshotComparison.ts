@@ -51,9 +51,14 @@ const channelTolerance = 12;
  * megapixels, and unusably tight on `field-open`, which is a hundredth of that.
  *
  * The headroom is measured, not guessed — see the calibration in
- * `docs/testing/documentation-screenshots.md`. A one word label change is
- * thousands of pixels at this resolution, so nothing that a reader would notice
- * fits underneath.
+ * `docs/testing/acceptance-tests.md`. A one word label change is thousands of
+ * pixels at this resolution, so nothing that a reader would notice fits
+ * underneath.
+ *
+ * The count is a trigger, not a measure of how much moved: both sides are
+ * whole-image AVIF encodes, so a change in one region shifts the encoder's bit
+ * allocation and perturbs unrelated ones below the visible threshold. The same
+ * page explains how to read a diff by region instead.
  */
 const maxDifferingPixels = 60;
 

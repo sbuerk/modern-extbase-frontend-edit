@@ -301,7 +301,7 @@ screenshots are what made it obvious.
 ## Colour, and the dark scheme
 
 The light values are the defaults. A `@media (prefers-color-scheme: dark)` block
-redefines eight of them, which is a courtesy for a host page that follows the
+redefines eleven of them, which is a courtesy for a host page that follows the
 system setting rather than a claim to support every dark theme — a site that
 themes itself by some other means overrides the tokens directly, and that beats
 both branches.
@@ -310,6 +310,47 @@ both branches.
 than eight literals, and it is not used: the browser floor of the import map
 mechanism is `chrome89 / firefox108 / safari16.4`, and `color-mix()` needs
 Chrome 111 and Firefox 113. It cannot be lowered by the build the way nesting can.
+
+## Three border roles, because one of them is a requirement
+
+A border is not one thing. `--frontend-edit-color-border-control` draws the
+resting edge of everything operable, `--frontend-edit-color-border` draws
+decoration, and `--frontend-edit-color-border-strong` is the step past the
+resting edge that a hover state needs.
+
+The split exists because **WCAG 1.4.11 applies to exactly one of the three**. It
+asks for 3:1 on the visual information required to identify a user interface
+component, and on this surface that information is the border and nothing else —
+the fill of a button differs from the page by 1.30:1 in dark and 1.45:1 in light,
+so a control is not identified by its fill. Until the split, one token drew all
+three roles at **1.62:1** against its own fill in light and **1.42:1** in dark.
+
+Decoration is deliberately left below the threshold. A separator does not
+identify a control, and holding a hairline to a control's contrast turns the
+surface into a stack of boxes — which is a real appearance cost paid for a
+requirement that does not apply.
+
+The emphasis role had to move when the control role arrived, and that is the part
+worth remembering: at its old value it would have been *lighter* than the new
+resting edge in the light scheme, so hovering a button would have weakened its
+border. A scale is only a scale while it is monotonic.
+
+Two suites measure this, and neither subsumes the other:
+
+| Suite                                          | Measures                       | Blind to                 |
+|------------------------------------------------|--------------------------------|--------------------------|
+| `Tests/Unit/Styling/ControlBorderContrastTest` | the shipped defaults           | the mapping onto a theme |
+| `Tests/Acceptance/Frontend/ControlContrast`    | the token, and what is painted | the unthemed defaults    |
+
+The acceptance half is the subtler one. On the acceptance instance `classes.button`
+and `classes.control` are configured to the site package's own class names, so a
+button's painted edge comes from `_button.css` and **not** from the surface's
+token — the first version of that spec measured only the painted edge and passed
+while the token was mapped to something invisible. It now asserts both: the
+resolved token, which pins the mapping, and the painted edge, which pins what a
+visitor gets.
+
+→ [A control edge carries a contrast requirement](../../Documentation/Configuration/Styling.rst)
 
 ## The button hierarchy is an attribute, not a class
 
