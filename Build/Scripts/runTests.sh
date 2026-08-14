@@ -344,6 +344,8 @@ Options:
             - buildJs: compile Build/Sources/ into Resources/Public/
             - cgl: test and fix all php files
             - checkBom: check UTF-8 files do not contain BOM
+            - checkDerivedTokens: check no root declared custom property reads a token that a
+              colour scheme redefines further down, where it could not follow it
             - checkDesignTokenWiring: check every design token of the editing surface has a
               single source rather than a value repeated in the site package
             - checkDocumentationScreenshots: check the committed documentation screenshots still
@@ -937,6 +939,11 @@ case ${TEST_SUITE} in
     checkBom)
         COMMAND="Build/Scripts/checkUtf8Bom.sh"
         ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-bom-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
+        SUITE_EXIT_CODE=$?
+        ;;
+    checkDerivedTokens)
+        COMMAND="php -dxdebug.mode=off Build/Scripts/checkDerivedTokens.php"
+        ${CONTAINER_BIN} run ${CONTAINER_COMMON_PARAMS} --name check-derived-tokens-${SUFFIX} ${IMAGE_PHP} /bin/sh -c "${COMMAND}"
         SUITE_EXIT_CODE=$?
         ;;
     checkDesignTokenWiring)

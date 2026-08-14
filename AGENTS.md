@@ -272,6 +272,7 @@ Build/Scripts/runTests.sh -t 13 -s checkMarkdownTables
 Build/Scripts/runTests.sh -t 13 -s checkRstSectionAdornments
 Build/Scripts/runTests.sh -t 13 -s checkTestMethodsPrefix
 Build/Scripts/runTests.sh -t 13 -s checkDesignTokenWiring
+Build/Scripts/runTests.sh -t 13 -s checkDerivedTokens
 
 # Then the same for TYPO3 v14, starting with composerUpdate again.
 Build/Scripts/runTests.sh -t 14 -s composerUpdate

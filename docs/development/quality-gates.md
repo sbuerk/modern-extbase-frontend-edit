@@ -61,6 +61,7 @@ Build/Scripts/runTests.sh -s checkJsBuildClean
 | `checkRstSectionAdornments` | [`Build/Scripts/checkRstSectionAdornments.php`](../../Build/Scripts/checkRstSectionAdornments.php)   | no                     |
 | `checkTestMethodsPrefix`    | [`Build/Scripts/testMethodPrefixChecker.php`](../../Build/Scripts/testMethodPrefixChecker.php)       | no                     |
 | `checkDesignTokenWiring`    | [`Build/Scripts/DesignTokenWiringChecker.php`](../../Build/Scripts/DesignTokenWiringChecker.php)     | no                     |
+| `checkDerivedTokens`        | [`Build/Scripts/DerivedTokenChecker.php`](../../Build/Scripts/DerivedTokenChecker.php)               | no                     |
 | `lintTypescript`            | [`Build/eslint.config.mjs`](../../Build/eslint.config.mjs)                                           | no                     |
 | `typecheckJs`               | [`Build/tsconfig.json`](../../Build/tsconfig.json) and the two projects extending it                 | no                     |
 | `unitJs`                    | [`Build/package.json`](../../Build/package.json), `Build/Tests/TypeScript/`                          | no                     |
@@ -189,6 +190,47 @@ What it cannot answer is whether a mapping is the *right* one — that a radius
 points at the theme's medium step rather than its large one is a visual question,
 and belongs to `visualRegression` and a person.
 → [Styling](../frontend-edit/styling.md#every-token-has-one-source-and-a-gate-says-so)
+
+## Derived tokens and the scheme they cannot follow
+
+`checkDerivedTokens` answers a different question about the same tokens: not
+*where does this value come from*, but *does it survive the colour scheme being
+switched underneath it*.
+
+```bash
+Build/Scripts/runTests.sh -s checkDerivedTokens
+```
+
+A custom property is substituted **at computed value time on the element that
+declares it**. A token declared on `:root` as `var(--other)` therefore resolves
+there, against the root's value, and inherits the *result* downwards — so a
+scheme block on `body` that redefines `--other` changes everything reading it
+directly and nothing that read it one element higher.
+
+That shipped: `--focus-color: var(--c-accent)` on `:root` meant every focused
+control on a dark page drew the light accent, 2.80:1 against the page, under the
+3:1 WCAG 1.4.11 asks of a focus indicator. It survived for pull requests because
+nothing could see it — the declaration is valid, the colour is real, and two
+documentation screenshots carried the wrong blue looking entirely deliberate.
+
+A finding needs three things together: a token declared on the **root**, reading
+a token that a **non-root** context redefines, and not being redefined there
+itself.
+
+**The narrowness is the design.** The root is the only selector guaranteed to be
+an ancestor of everything else, which is what makes this decidable from selector
+text. For any other pair the answer depends on the document — `_plugin.css`
+declares `--frontend-edit-color-accent: var(--c-accent)` on the surface element
+and is perfectly safe, because the surface sits *below* the `body` that switches
+the scheme. Reporting that would be a false positive, and a gate that cries wolf
+gets deleted. Two contexts that both match the root are the same element, so a
+scheme pinned with `html[data-theme='dark']` against defaults on `:root` is not a
+finding either.
+
+So it answers "can a **root declared** token go stale", which is the whole of the
+exposure while the scheme switches on `body`. A theme that switched it elsewhere
+would need real ancestor analysis, and this would have to be widened.
+→ [Styling](../frontend-edit/styling.md#a-derived-token-does-not-follow-a-scheme-it-was-resolved-above)
 
 ## Markdown table formatting
 
