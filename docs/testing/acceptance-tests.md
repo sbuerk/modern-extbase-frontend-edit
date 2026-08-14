@@ -333,11 +333,55 @@ Build/Scripts/runTests.sh -s screenshotDocumentation -- --grep edit-field-reject
 
 Which shots exist is data, in
 [`Build/playwright/screenshots.config.ts`](../../Build/playwright/screenshots.config.ts):
-a name, an output path, who is logged in, what to do before the shutter, and
+a name, an output **base**, who is logged in, what to do before the shutter, and
 what to clip to. The runner in
 [`Tests/Acceptance/Screenshots/documentation.shots.ts`](../../Tests/Acceptance/Screenshots/documentation.shots.ts)
-turns each entry into one Playwright test and encodes the PNG to AVIF with
-`sharp`. Output goes to `Documentation/files/images/`.
+turns each entry into Playwright tests and encodes the PNG to AVIF with `sharp`.
+Output goes to `Documentation/files/images/`.
+
+### Six states, twelve images
+
+Every shot is taken in **both** colour schemes, and the two are not two entries
+in the list. `shots` describes six *states*; `variants` derives twelve
+`(state, scheme)` pairs from it, and both the generator and the gate iterate the
+derived list.
+
+That is the whole reason it is derived rather than written out: a state that
+existed in one scheme only would render in the manual as a tab with a broken
+image in it, and deriving makes it unrepresentable. Adding a state adds both of
+its images and both of its tabs.
+
+```ts
+export const variants: readonly ShotVariant[] = shots.flatMap((shot) =>
+    schemes.map((scheme) => ({
+        shot,
+        scheme,
+        name: `${shot.name}-${scheme}`,
+        output: `${shot.outputBase}-${scheme}.avif`,
+    })),
+);
+```
+
+`outputBase` carries no extension and no suffix, so **there is no generic file
+name left**: every image says which scheme it is, and `name` is unique because
+it is two things at once — what `--grep` selects, and the directory a failed
+comparison writes its `committed.png`, `taken.png` and `diff.png` into.
+
+The scheme is applied with `colorScheme` in the same `test.use()` as the
+viewport, because it is a **context** option like the other three. It emulates
+`prefers-color-scheme`, which flips both stylesheets at once: the site package
+applies its dark palette inside that media query to
+`body[data-color-scheme="auto"]`, and `auto` is what this instance renders.
+
+The pinned-scheme sites that [`PinnedColorScheme.spec.ts`](../../Tests/Acceptance/Frontend/PinnedColorScheme.spec.ts)
+needs are deliberately **not** used here. The manual illustrates what a visitor
+sees, not how an integrator configured the fixture.
+
+The manual shows each pair on a `Light` and a `Dark` tab, using the docs theme's
+`tabs::` / `group-tab::` directives. The theme syncs them across the page by
+comparing `innerHTML.trim()` of every `[role="tab"]`, so identical labels mean
+switching one switches all six — verified in the rendered `theme.min.js`, not
+assumed.
 
 **It is a generator, not a gate**: it writes into the tracked tree, which no gate
 does, and it is not in the CI workflow. What checks its output is its sibling.
@@ -381,7 +425,8 @@ decoded *from AVIF*, never PNG against AVIF: the encode is lossy, so comparing a
 raw screenshot with a stored image would differ everywhere by a little.
 
 The headroom was measured rather than estimated. Raising
-`--frontend-edit-border-width` from 1px to 2px fails four of the six shots, and
+`--frontend-edit-border-width` from 1px to 2px fails four of the six shots that
+existed when it was measured, and
 the **smallest** of those differs by 8858 pixels against the 60 that are
 tolerated. The two that stay green are the ones that do not render the component
 at all, which is the cross-check that the gate is not simply failing everything.
@@ -415,7 +460,8 @@ reading it:
   identical.
 - **Animations are disabled**, which is the half that had actually reached the
   manual. The 120ms `border-color` transition on buttons is still running when
-  the shutter opens, so three of the six shots showed a `Cancel` button caught
+  the shutter opens, so three of the six shots that existed then showed a
+  `Cancel` button caught
   part way through a fade — a state the surface never rests in. Disabling
   animations finishes a transition rather than photographing it.
 
