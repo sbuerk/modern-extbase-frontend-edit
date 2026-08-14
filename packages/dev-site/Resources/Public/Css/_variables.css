@@ -118,7 +118,33 @@
     --shadow-sm: 0 1px 2px rgb(23 28 33 / 8%);
     --shadow: 0 2px 8px rgb(23 28 33 / 10%);
 
-    /* Focus. Its own colour so it can be raised for contrast alone. */
+    /*
+     * Focus. Its own colour so it can be raised for contrast alone.
+     *
+     * ## Why this one token is restated in both dark blocks
+     *
+     * It is the only token here whose value is another token *and* which the
+     * scheme blocks would otherwise not touch, and that combination is a trap.
+     *
+     * A custom property is substituted at **computed value time on the element
+     * that declares it**. This declaration is on `:root`, so `var(--c-accent)`
+     * resolves against the *light* accent right here, and what inherits down to
+     * `body` is the resulting literal — not the reference. The dark blocks then
+     * redefine `--c-accent` on `body`, which changes nothing for a value that
+     * was already resolved one element higher.
+     *
+     * The result shipped: every focused control on a dark page drew the light
+     * accent `#2563a8` against a `#171c21` page — **2.80:1**, under the 3:1 that
+     * WCAG 1.4.11 asks of a focus indicator. Nothing caught it, because the
+     * declaration reads exactly like one that works, and because a ring in the
+     * wrong blue looks deliberate in a screenshot.
+     *
+     * Every other role token here is redefined in the dark blocks anyway, so the
+     * same trap cannot reach them. A **new** token of this shape has to be added
+     * to both blocks as well;
+     * `Tests/Acceptance/Frontend/FocusRingContrast.spec.ts` asserts the
+     * mechanism rather than the colour, so it fails on the cause.
+     */
     --focus-color: var(--c-accent);
     --focus-width: 2px;
     --focus-offset: 2px;
@@ -211,6 +237,9 @@
 
         --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
         --shadow: 0 2px 8px rgb(0 0 0 / 45%);
+
+        /* Restated here for the reason given on the light declaration. */
+        --focus-color: var(--c-accent);
     }
 }
 
@@ -239,4 +268,7 @@ body[data-color-scheme='dark'] {
 
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
     --shadow: 0 2px 8px rgb(0 0 0 / 45%);
+
+    /* Restated here for the reason given on the light declaration. */
+    --focus-color: var(--c-accent);
 }
