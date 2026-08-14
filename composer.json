@@ -72,7 +72,11 @@
     "autoload-dev": {
         "psr-4": {
             "SBUERK\\ModernExtbaseFrontendEdit\\Tests\\": "Tests/"
-        }
+        },
+        "classmap": [
+            "Build/Scripts/DerivedTokenChecker.php",
+            "Build/Scripts/DesignTokenWiringChecker.php"
+        ]
     },
     "scripts": {
         "cgl:fix": "Build/Scripts/runTests.sh -s cgl",

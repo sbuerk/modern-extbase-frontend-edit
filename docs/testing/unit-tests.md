@@ -108,6 +108,37 @@ appears — see [Class design](../architecture/class-design.md).
 If wiring itself is what needs verification, that belongs in a
 [functional test](functional-tests.md), where the real container is available.
 
+## The build tooling is unit tested too
+
+`Tests/Unit/Build/` covers the checkers behind the quality gates —
+[`DerivedTokenChecker`](../../Build/Scripts/DerivedTokenChecker.php) and
+[`DesignTokenWiringChecker`](../../Build/Scripts/DesignTokenWiringChecker.php) —
+on stylesheets small enough to reason about.
+
+**A gate that is green against the real files has proved only that the real files
+pass.** It has not proved that a broken one would fail, and several rules of
+those two cannot be exercised against the repository at all without breaking it
+on purpose: a cycle between two tokens, a mapping for a token that no longer
+exists, and the difference between a mapping that repeats a literal and a token
+that is merely unwired. Those had no coverage for six pull requests.
+
+The **negative** cases carry the most weight, because both checkers are
+deliberately narrower than the obvious rule and the narrowing is what a later
+simplification would remove. `checkDerivedTokens` must stay silent about a token
+declared *below* the scheme switch and about two contexts that are both the
+document root; each has a test whose name says why it is not a finding.
+
+Every test was shown to fail by mutating the checker — widening the subject
+beyond root-declared tokens, dropping the restatement skip, making the cycle
+guard answer "wired", reporting a literal mapping as unwired as well, taking the
+last declaration instead of the first, and removing comment stripping. All six
+turned a test red.
+
+The checkers are **not namespaced and not in the shipped autoload map** — they
+are build tooling, not extension code. `composer.json` reaches them through
+`autoload-dev.classmap`, which makes them loadable from a test and resolvable for
+PHPStan without adding `Build/` to the analysed paths.
+
 ## See also
 
 - [PHPUnit configuration](phpunit-configuration.md)
