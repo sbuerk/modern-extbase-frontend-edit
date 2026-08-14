@@ -72,5 +72,10 @@ Classic mode
 
 The extension is developed and tested in composer mode. It carries an
 :file:`ext_emconf.php` and has no composer-only dependency, so a classic mode
-installation is expected to work, but it is not part of the test matrix and no
-release has been published to the TYPO3 Extension Repository yet.
+installation is expected to work, but it is not part of the test matrix.
+
+Releases are published to the `TYPO3 Extension Repository
+<https://extensions.typo3.org/extension/modern_extbase_frontend_edit>`__ under
+the extension key ``modern_extbase_frontend_edit``. The archive uploaded there
+holds the same files as the package composer installs — the developer
+documentation, the test suites and the build tooling are in neither.

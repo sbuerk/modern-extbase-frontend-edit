@@ -1,8 +1,7 @@
 name: publish
 
 # Turns a version tag into a GitHub release with a TER upload artifact attached,
-# and — once enabled at the bottom of this file — publishes that artifact to the
-# TYPO3 Extension Repository.
+# and publishes that same artifact to the TYPO3 Extension Repository.
 #
 # Triggered by pushing a tag. The tag has to be a bare "MAJOR.MINOR.PATCH"
 # without a "v" prefix, which is what "Build/Scripts/release.sh" creates, and it
@@ -12,12 +11,23 @@ name: publish
 #
 # The extension key is read from "composer.json" at runtime rather than written
 # into this file, so this workflow holds no copy of it that could drift from
-# the package it publishes.
+# the package it publishes. Tailor reads it from the same place for the upload,
+# which is why the "TYPO3_EXTENSION_KEY" variable is deliberately not set: it is
+# deprecated, and because it is a secret in most setups it masks the key in the
+# messages the TER sends back ("Could not publish extension ***").
 #
-# Requirements before the first release:
+# What this depends on, both in place:
 #
-#   - The repository secret "TYPO3_API_TOKEN" for the TER publishing step.
-#   - The extension key registered in the TER, owned by that token.
+#   - The repository secret "TYPO3_API_TOKEN", belonging to the account that
+#     owns the extension key.
+#   - The extension key "modern_extbase_frontend_edit" registered in the TER.
+#
+# The TER upload is the last step, and that order is deliberate. It is the only
+# step that cannot be taken back — a version number can be published to the TER
+# exactly once. Everything before it is idempotent enough to re-run: creating a
+# release that exists only uploads the files again. So a failed run is re-run
+# from the top, and only the TER step can then object, naming the version it
+# already has.
 #
 # → "docs/workflow/releasing.md"
 
@@ -75,7 +85,16 @@ jobs:
         run: composer global require typo3/tailor --prefer-dist --no-progress --no-suggest
 
       # Note that step will fail when `env.version` does not match the `ext_emconf.php` version.
+      #
+      # Tailor zips the checked out working tree, which is the whole repository.
+      # "TYPO3_EXCLUDE_FROM_PACKAGING" keeps the parts of it that no installation
+      # needs out of the archive, by reading the "export-ignore" declarations
+      # this repository already carries in ".gitattributes" — so the artifact
+      # holds what "git archive" holds, and the TER and composer channels ship
+      # the same files.
       - name: Create local TER package upload artifact
+        env:
+          TYPO3_EXCLUDE_FROM_PACKAGING: ${{ github.workspace }}/Build/tailor/ExcludeFromPackaging.php
         run: |
           php ~/.composer/vendor/bin/tailor create-artefact ${{ env.version }}
 
@@ -92,10 +111,11 @@ jobs:
             LICENSE
           fail_on_unmatched_files: true
 
-      # @todo Enable the TER publishing as soon as the extension is public and
-      #       its extension key is registered in the TER. The `TYPO3_API_TOKEN`
-      #       repository secret must be set up for it.
-      #- name: Publish to TER
-      #  run: |
-      #    php ~/.composer/vendor/bin/tailor ter:publish --comment "${{ env.terReleaseNotes }}" ${{ env.version }} \
-      #      --artefact=tailor-version-artefact/${{ env.DETECTED_EXTENSION_KEY }}_${{ env.version }}.zip
+      # `--artefact` hands the TER the very file that was attached to the GitHub
+      # release above, rather than letting tailor pack the working tree a second
+      # time. The two distribution channels therefore cannot serve a different
+      # archive for one version, and a packaging change is visible in both.
+      - name: Publish to TER
+        run: |
+          php ~/.composer/vendor/bin/tailor ter:publish --comment "${{ env.terReleaseNotes }}" ${{ env.version }} \
+            --artefact=tailor-version-artefact/${{ env.DETECTED_EXTENSION_KEY }}_${{ env.version }}.zip

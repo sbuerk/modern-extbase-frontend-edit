@@ -66,7 +66,39 @@ so a release can safely be rehearsed. `git` and the GitHub CLI (`gh`) have to be
 available and authenticated for `--execute`.
 
 Pushing the tag triggers the [`publish`](../../.github/workflows/publish.yml)
-workflow, which builds the TER artifact and creates the GitHub release.
+workflow, which builds the TER artifact, creates the GitHub release with that
+artifact attached, and uploads the same file to the
+[TYPO3 Extension Repository](https://extensions.typo3.org/extension/modern_extbase_frontend_edit).
+
+The TER upload is the last step, and it is the only irreversible one: a version
+number can be published to the TER exactly once. Everything before it can be
+re-run — creating a release that exists only uploads its files again — so a
+failed run is repeated from the top, and only the TER step can then object,
+naming the version it already has.
+
+## What the artifact contains
+
+`tailor create-artefact` zips the **working tree**, and a CI checkout is the
+whole repository: [`docs/`](../Index.md), the
+[development site package](../development/dev-site-package.md) and the agent
+instructions included. That is 680 KiB of a 1.8 MiB archive that no installation
+has a use for, and it would reach the people who install from the TER but not
+the people who install with composer — the archive GitHub generates honours
+`export-ignore`, and tailor knows nothing about it.
+
+[`Build/tailor/ExcludeFromPackaging.php`](../../Build/tailor/ExcludeFromPackaging.php)
+closes that gap. It reads the `export-ignore` declarations out of
+[`.gitattributes`](../../.gitattributes) and adds them to tailor's own defaults,
+which makes that file the single place deciding what ships. The result is
+entry for entry what `git archive HEAD` produces — 165 files rather than 223 —
+so both channels distribute the same package.
+
+Tailor **replaces** its exclusion list with the file that the
+`TYPO3_EXCLUDE_FROM_PACKAGING` environment variable names rather than merging
+into it, which is why that file loads tailor's defaults and merges them itself.
+They are deliberately not copied: the workflow installs tailor unpinned, and the
+list moves — 2.0.0 and the current development version already differ by a dozen
+entries.
 
 ## Before releasing
 
