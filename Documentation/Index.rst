@@ -6,10 +6,6 @@
 Modern Extbase Frontend Edit
 ============================
 
-..  image:: /files/images/logo/mark.svg
-    :alt: Four rounded squares on a dark tile, the lower right one filled yellow — the mark of Stefan Buerk
-    :width: 96px
-
 :Extension key:
     modern_extbase_frontend_edit
 
