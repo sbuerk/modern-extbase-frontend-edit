@@ -3,7 +3,7 @@
 $EM_CONF['modern_extbase_frontend_edit'] = [
     'title' => 'Modern Extbase Frontend Edit',
     'description' => 'TYPO3 CMS extension modern_extbase_frontend_edit.',
-    'version' => '1.0.0',
+    'version' => '1.0.1',
     'category' => 'misc',
     'state' => 'alpha',
     'author' => 'sbuerk',
