@@ -7,7 +7,7 @@ From a change in the working copy to a published release.
 | [Commit messages](commit-messages.md)                         | TYPO3 core commit message conventions: tags, subject length, body wrapping, footers, referencing core changelogs. |
 | [Pull requests](pull-requests.md)                             | Branching, the local pre-flight checklist, review and history hygiene.                                            |
 | [Changelog and documentation](changelog-and-documentation.md) | `Documentation/` vs `docs/`, reST changelog entries, rendering, the changelogs shipped with `typo3/cms-core`.     |
-| [Releasing](releasing.md)                                     | `setVersion.sh` and `release.sh`, their safety gates, the publish workflow.                                       |
+| [Releasing](releasing.md)                                     | `setVersion.sh` and `release.sh`, their safety gates, the publish workflow, what the TER artifact contains.       |
 
 ## The short version
 

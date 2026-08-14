@@ -106,6 +106,12 @@ entries.
 - Changelog entries for the version in place, see
   [Changelog and documentation](changelog-and-documentation.md).
 - `Build/Scripts/runTests.sh -s renderDocumentation` passing.
+- After the tag is pushed, **read the `Create local TER package upload artifact`
+  step before the TER step spends the version number.** No gate covers
+  `ExcludeFromPackaging.php`: it is verified by having been run once against the
+  real tool, which proves that it worked, not that a broken one would be
+  noticed. Attaching the wrong archive to a GitHub release is a mistake that can
+  be corrected; publishing it to the TER is not.
 
 ## See also
 
