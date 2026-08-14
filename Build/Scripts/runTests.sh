@@ -1075,7 +1075,32 @@ case ${TEST_SUITE} in
                 ;;
             mysql)
                 echo "Using driver: ${DATABASE_DRIVER}"
-                ${CONTAINER_BIN} run ${CI_PARAMS} --name mysql-func-${SUFFIX} --network ${NETWORK} -d -e MYSQL_ROOT_PASSWORD=funcp --tmpfs /var/lib/mysql/:rw,noexec,nosuid ${IMAGE_MYSQL} >/dev/null
+                # Two server defaults are switched off. Neither changes what the
+                # suite can observe, and **neither is here for speed**.
+                #
+                # - "--skip-log-bin" - a binary log exists for replication and
+                #   point in time recovery. This database is created, filled and
+                #   thrown away inside one container on a tmpfs, and nothing ever
+                #   reads it.
+                # - "--performance-schema=OFF" - instrumentation nothing here
+                #   queries.
+                #
+                # The reason they are worth setting is that MariaDB defaults both
+                # the other way, and the mysql job is persistently the slowest of
+                # the four DBMS jobs. Any comparison between the two started with
+                # mysql doing two things mariadb was not - so this removes a
+                # confounder from a question that is still open, rather than
+                # answering it.
+                #
+                # It does not make the suite meaningfully faster, and that was
+                # measured rather than assumed: 112s before and 110s after on one
+                # machine against the v14 set, which is inside the run to run
+                # noise. Both runs report the same 424 tests and 2530 assertions.
+                # In particular this is **not** a fix for the CI outlier it was
+                # found while investigating, which is a 3-6x effect bound to the
+                # runner host and measured across 847 jobs - see
+                # "docs/testing/functional-tests.md#the-mysql-job-in-ci-is-slow-not-broken".
+                ${CONTAINER_BIN} run ${CI_PARAMS} --name mysql-func-${SUFFIX} --network ${NETWORK} -d -e MYSQL_ROOT_PASSWORD=funcp --tmpfs /var/lib/mysql/:rw,noexec,nosuid ${IMAGE_MYSQL} --skip-log-bin --performance-schema=OFF >/dev/null
                 SUITE_EXIT_CODE=$? && [[ "${SUITE_EXIT_CODE}" -ne 0 ]] && printSummary
                 waitForDatabase mysql mysql-func-${SUFFIX} ${IMAGE_MYSQL}
                 CONTAINERPARAMS="-e typo3DatabaseDriver=${DATABASE_DRIVER} -e typo3DatabaseName=func_test -e typo3DatabaseUsername=root -e typo3DatabaseHost=mysql-func-${SUFFIX} -e typo3DatabasePassword=funcp"

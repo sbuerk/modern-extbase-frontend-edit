@@ -175,6 +175,80 @@ silence them in the test; fix the code that triggers them.
 Debug output is the one to watch for here: a `var_dump()` left in a test or in
 the code under test turns a green functional test red.
 
+## The mysql job in CI is slow, not broken
+
+This suite has one long standing reputation problem, and measuring it changed
+what it is. `functional mysql 8.0` was recorded here for a long time as
+*flaky* — a database dying part way through a run. Over the retained CI history
+that is not what it does.
+
+**847 functional jobs, 0 failures.** 808 succeeded, 37 were cancelled by the
+`concurrency` group superseding a run, 2 were skipped. The originally recorded
+failure predates GitHub's log retention and could not be retrieved, so it is
+neither confirmed nor denied here; what is measurable is a different phenomenon
+with the same job name.
+
+What the job actually does is take between one and six times as long as itself,
+and job duration tells the story better than any log:
+
+| Suite          | n   | median | p90   | max       | jobs > 2× median |
+|----------------|-----|--------|-------|-----------|------------------|
+| `sqlite`       | 168 | 81 s   | 94 s  | 106 s     | **0**            |
+| `mariadb 10.6` | 160 | 115 s  | 159 s | 359 s     | 3                |
+| `mariadb 10.4` | 160 | 128 s  | 200 s | 561 s     | 9                |
+| `mysql 8.0`    | 160 | 167 s  | 251 s | **914 s** | **12**           |
+| `postgres 10`  | 160 | 186 s  | 210 s | 224 s     | **0**            |
+
+The row that settles it is `postgres`. It has the **highest median of all five**
+and produces **no outliers at all**, so "the slowest suite gets the worst tail"
+is not the explanation. Something is specific to the MySQL path.
+
+**It is bound to the runner host, and this repository is not the cause.** Every
+job log carries `Azure Region:`, and grouping by it separates cleanly:
+
+| Region      | `mysql` median                       | `postgres` median | `sqlite` median |
+|-------------|--------------------------------------|-------------------|-----------------|
+| `centralus` | **290 s** (1.73×), 7 of 16 beyond 2× | 172 s (0.92×), 0  | 77 s (0.95×), 0 |
+| every other | 160–176 s (≈1.0×)                    | 178–195 s, 0      | 77–89 s, 0      |
+
+`centralus` is, if anything, a slightly **faster** region for the other two
+suites. It is only mysql that degrades there.
+
+Two further checks rule out the obvious alternatives. All **808 successful jobs
+ran on 808 distinct runners**, so the four sibling matrix jobs never share a
+machine. And a slow VM is not slow at anything else — comparing two jobs of the
+**same CI run**, one slow and one fast:
+
+| Step                     | slow job | fast sibling | ratio    |
+|--------------------------|----------|--------------|----------|
+| Execute functional tests | 809 s    | 114 s        | **7.1×** |
+| Prepare dependencies     | 17 s     | 10 s         | 1.7×     |
+| Checkout                 | 2 s      | 2 s          | 1.0×     |
+| Set up job               | 1 s      | 1 s          | 1.0×     |
+
+`Prepare dependencies` is a full composer install — network, disk and CPU. It
+barely moves while the database workload stretches sevenfold, so whatever the
+host is short of, it is not general throughput.
+
+Two consequences for working here:
+
+- **A slow mysql job is not a signal about the change under review.** Do not
+  re-run it hoping for a different result, and do not read a 9 minute job as a
+  hint that something was made slower.
+- **It is not solved, and the next experiment is named.** What would settle the
+  mechanism is one CI step printing `/proc/pressure/{io,memory,cpu}`, `nproc`,
+  `free -m` and the clocksource before and after the suite, collected over a few
+  dozen runs and correlated against the region. That has not been added, because
+  the phenomenon costs waiting rather than correctness and a permanent probe is
+  a permanent cost.
+
+`runTests.sh` starts mysql with `--skip-log-bin --performance-schema=OFF`, which
+came out of this investigation but is **not** a fix for it. Both are defaults
+MariaDB has the other way round, so every comparison between the two started with
+mysql doing two things mariadb was not; switching them off removes a confounder.
+It was measured and does **not** make the suite meaningfully faster — 112 s
+against 110 s locally, inside the noise.
+
 ## Related topics
 
 | Topic                                               | Page                                        |
