@@ -346,6 +346,13 @@ deliberate. Only measuring it found it.
 **mechanism** and not the colour: `--focus-color` resolved on `body` must equal
 `--c-accent` resolved on `body`. A token that goes stale fails on the cause.
 
+That covers the one token; `-s checkDerivedTokens` covers the shape. It reads
+every stylesheet of the page as one cascade and reports any **root declared**
+token that reads a token a non-root context redefines without being redefined
+there itself — so the next token written this way fails before anyone has to
+think to measure it.
+→ [Quality gates](../development/quality-gates.md#derived-tokens-and-the-scheme-they-cannot-follow)
+
 The ring is measured against the **page**, not against the control: it is an
 outline with `outline-offset: 2px`, so it does not touch the control, and both
 of its sides show what is painted behind it.
